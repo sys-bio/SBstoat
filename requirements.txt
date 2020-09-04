@@ -1,0 +1,8 @@
+coverage
+jupyter
+libroadrunner
+lmfit
+nose
+numpy
+tellurium
+docstring_expander

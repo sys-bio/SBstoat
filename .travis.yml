@@ -1,0 +1,20 @@
+language: python
+
+python:
+  - "3.8"
+
+after_success:
+  - bash <(curl -s https://codecov.io/bash)
+
+install:
+  - sudo apt-get install python3-tk
+  - pip install --upgrade pip
+  - pip install --upgrade certifi
+  - pip install numpy>=1.19
+  - pip install --upgrade numpy>=1.19
+  - pip install tellurium
+  - pip install codecov
+  - python setup.py install
+
+script:
+  - nosetests --with-coverage --cover-package=SBStoat tests
