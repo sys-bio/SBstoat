@@ -5,6 +5,8 @@
   </tr>
 </table> 
 
+![alt text](SBStoat_logo.png "")
+
  
 <a href="https://codecov.io/gh/sys-bio/SBStoat">
 </a>
