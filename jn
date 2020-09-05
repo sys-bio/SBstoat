@@ -1,0 +1,8 @@
+#!/bin/bash
+# Jupyter doesn't seem to pick up site-packages in the virtual environment. So put it in the PYTHONPATH.
+bash setup_run.sh
+PYTHONPATH=`pwd`:'/home/ubuntu/SBStoat/sbf/lib/python3.6/site-packages'
+export PYTHONPATH
+jupyter lab &
+sleep 5
+firefox http://localhost:8891/lab
