@@ -15,8 +15,8 @@
 
 # Fitting SBML Models with Tellurium
 
-This repo provides easy to use tools for doing parameter using the Tellurium simulator.
-The project is named after the stoat, a fury animal to that fits into small places.
+This repo provides easy-to-use tools for doing parameter using the Tellurium simulator.
+The project is named after the stoat, an animal that has superb skills at fitting into small places.
 
 The main module is `modelFitter`. A typically parameter fitting session is
 shown below. For convenience, the model is expressed using the [Antimony](http://antimony.sourceforge.net/) modeling language.
