@@ -1,7 +1,7 @@
  <table style="width:100%">
   <tr>
-    <td><img src="https://api.travis-ci.org/sys-bio/SBstoat.svg?branch=master" width="100"/></td>
-    <td><img src="https://codecov.io/gh/sys-bio/SBstoat/branch/master/graph/badge.svg" /></td>
+    <td><img src="https://api.travis-ci.org/sys-bio/SBStoat.svg?branch=master" width="100"/></td>
+    <td><img src="https://codecov.io/gh/sys-bio/SBStoat/branch/master/graph/badge.svg" /></td>
   </tr>
 </table> 
 
