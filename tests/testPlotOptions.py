@@ -5,7 +5,7 @@ Created on August 14, 2020
 @author: joseph-hellerstein
 """
 
-from SBStoat._plotOptions import PlotOptions
+from SBstoat._plotOptions import PlotOptions
 
 import unittest
 import matplotlib

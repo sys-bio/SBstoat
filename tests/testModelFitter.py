@@ -6,7 +6,7 @@ Created on Tue Jul  7 14:24:09 2020
 @author: joseph-hellerstein
 """
 
-from SBStoat.modelFitter import ModelFitter
+from SBstoat.modelFitter import ModelFitter
 from tests import _testHelpers as th
 
 import matplotlib
@@ -74,7 +74,7 @@ class TestModelFitter(unittest.TestCase):
         if IGNORE_TEST:
             return
         import tellurium as te
-        import SBStoat as tu
+        import SBstoat as tu
         
         r = te.loada("""
             J1: S1 -> S2; k1*S1

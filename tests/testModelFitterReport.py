@@ -6,8 +6,8 @@ Created on Aug 19, 2020
 @author: joseph-hellerstein
 """
 
-from SBStoat._modelFitterReport import ModelFitterReport
-from SBStoat.namedTimeseries import NamedTimeseries
+from SBstoat._modelFitterReport import ModelFitterReport
+from SBstoat.namedTimeseries import NamedTimeseries
 from tests import _testHelpers as th
 
 import numpy as np

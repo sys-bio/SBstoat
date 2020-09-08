@@ -6,9 +6,9 @@ Created on Tue Aug 19, 2020
 @author: joseph-hellerstein
 """
 
-import SBStoat._modelFitterCore as mf
-from SBStoat._modelFitterCore import ModelFitterCore
-from SBStoat.namedTimeseries import NamedTimeseries, TIME
+import SBstoat._modelFitterCore as mf
+from SBstoat._modelFitterCore import ModelFitterCore
+from SBstoat.namedTimeseries import NamedTimeseries, TIME
 from tests import _testHelpers as th
 
 import copy

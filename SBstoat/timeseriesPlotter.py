@@ -14,11 +14,11 @@ Created on Tue Jul  7 14:24:09 2020
       one or two timeseries plot
 """
 
-from SBStoat import _plotOptions as po
-from SBStoat import _layoutManager as lm
-from SBStoat.namedTimeseries import NamedTimeseries, TIME
-from SBStoat import _helpers
-from SBStoat._statementManager import StatementManager
+from SBstoat import _plotOptions as po
+from SBstoat import _layoutManager as lm
+from SBstoat.namedTimeseries import NamedTimeseries, TIME
+from SBstoat import _helpers
+from SBstoat._statementManager import StatementManager
 
 import copy
 from docstring_expander.expander import Expander

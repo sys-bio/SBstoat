@@ -36,12 +36,12 @@ The code is arranged as a hierarchy of classes that use the previous class:
     modelFitter - plot routines
 """
 
-from SBStoat.namedTimeseries import NamedTimeseries, TIME, mkNamedTimeseries
-import SBStoat._plotOptions as po
-from SBStoat import timeseriesPlotter as tp
-from SBStoat import _helpers
-from SBStoat._modelFitterReport import ModelFitterReport
-from SBStoat.residualsAnalyzer import ResidualsAnalyzer
+from SBstoat.namedTimeseries import NamedTimeseries, TIME, mkNamedTimeseries
+import SBstoat._plotOptions as po
+from SBstoat import timeseriesPlotter as tp
+from SBstoat import _helpers
+from SBstoat._modelFitterReport import ModelFitterReport
+from SBstoat.residualsAnalyzer import ResidualsAnalyzer
 
 from docstring_expander.expander import Expander
 import numpy as np

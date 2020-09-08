@@ -1,14 +1,14 @@
  <table style="width:100%">
   <tr>
-    <td><img src="https://api.travis-ci.org/sys-bio/SBStoat.svg?branch=master" width="100"/></td>
-    <td><img src="https://codecov.io/gh/sys-bio/SBStoat/branch/master/graph/badge.svg" /></td>
+    <td><img src="https://api.travis-ci.org/sys-bio/SBstoat.svg?branch=master" width="100"/></td>
+    <td><img src="https://codecov.io/gh/sys-bio/SBstoat/branch/master/graph/badge.svg" /></td>
   </tr>
 </table> 
 
-![alt text](SBStoat_logo.png "")
+![alt text](SBstoat_logo.png "")
 
  
-<a href="https://codecov.io/gh/sys-bio/SBStoat">
+<a href="https://codecov.io/gh/sys-bio/SBstoat">
 </a>
 
 
@@ -36,7 +36,7 @@ However, SBML models can be loaded into [tellurium](http://tellurium.analogmachi
 Now suppose we have the data file `tst_data.txt`. To fit this model to these data and see a report on the fit:
 
     # Fit parameters to ts1
-    from SBStoat.modelFitter import ModelFitter
+    from SBstoat.modelFitter import ModelFitter
     fitter = ModelFitter(ANTIMONY_MODEL, "tst_data.txt", ["k1", "k2", "k3", "k4", "k5"])
     fitter.fitModel()
     print(fitter.reportFit())
@@ -72,7 +72,7 @@ The output is:
     C(k1, k5) = -0.144
     C(k1, k4) = -0.141
     
-You can also get bootstrap estimates of parameter values. Because bootstrapping is computationally intensive, SBStoat uses multiple processes on your machine.
+You can also get bootstrap estimates of parameter values. Because bootstrapping is computationally intensive, SBstoat uses multiple processes on your machine.
 
     # Get estimates of parameters
     fitter.bootstrap(numIteration=2000, reportInterval=500)
@@ -114,11 +114,11 @@ Here is the output:
       std: 1.0301263970600283
       [2.5, 97.55] Percentiles: [4.42373341 8.44386604]
 
-More details of the features of `SBStoat` can be found in this
-[tutorial](https://github.com/sys-bio/SBStoat/blob/master/notebooks/Tutorial%20on%20Utilities%20for%20Model%20Fitting.ipynb).
+More details of the features of `SBstoat` can be found in this
+[tutorial](https://github.com/sys-bio/SBstoat/blob/master/notebooks/Tutorial%20on%20Utilities%20for%20Model%20Fitting.ipynb).
 
 # Installation
-1. `pip install SBStoat`
+1. `pip install SBstoat`
 
 
 # Developer Notes

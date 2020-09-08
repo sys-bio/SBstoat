@@ -8,8 +8,8 @@ Codes used in support of test modules.
 """
 
 
-from SBStoat.namedTimeseries import NamedTimeseries, TIME
-from SBStoat._modelFitterCore import ModelFitterCore
+from SBstoat.namedTimeseries import NamedTimeseries, TIME
+from SBstoat._modelFitterCore import ModelFitterCore
 
 import os
 

@@ -5,8 +5,8 @@ Created on Aug 20, 2020
 @author: joseph-hellerstein
 """
 
-from SBStoat.modelFitter import ModelFitter
-from SBStoat.residualsAnalyzer import ResidualsAnalyzer
+from SBstoat.modelFitter import ModelFitter
+from SBstoat.residualsAnalyzer import ResidualsAnalyzer
 import tests._testHelpers as th
 
 import matplotlib

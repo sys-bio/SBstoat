@@ -6,7 +6,7 @@ Created on Tue Jul  7 14:24:09 2020
 @author: joseph-hellerstein
 """
 
-from SBStoat.modelFitter import ModelFitter
+from SBstoat.modelFitter import ModelFitter
 
 import numpy as np
 import os

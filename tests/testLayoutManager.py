@@ -5,8 +5,8 @@ Created on Aug 14, 2020
 @author: joseph-hellerstein
 """
 
-import SBStoat._plotOptions as po
-from SBStoat import _layoutManager as lm
+import SBstoat._plotOptions as po
+from SBstoat import _layoutManager as lm
 
 import os
 import unittest

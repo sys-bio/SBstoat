@@ -6,11 +6,11 @@ Created on Tue Jul  7 14:24:09 2020
 @author: joseph-hellerstein
 """
 
-from SBStoat.namedTimeseries import NamedTimeseries, mkNamedTimeseries, TIME
-import SBStoat.namedTimeseries as namedTimeseries
-from SBStoat import _plotOptions as po
-from SBStoat.timeseriesPlotter import TimeseriesPlotter
-from SBStoat import timeseriesPlotter as tp
+from SBstoat.namedTimeseries import NamedTimeseries, mkNamedTimeseries, TIME
+import SBstoat.namedTimeseries as namedTimeseries
+from SBstoat import _plotOptions as po
+from SBstoat.timeseriesPlotter import TimeseriesPlotter
+from SBstoat import timeseriesPlotter as tp
 
 import numpy as np
 import os

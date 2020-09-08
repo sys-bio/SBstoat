@@ -7,7 +7,7 @@
 Creates synthetic observations.
 """
 
-from SBStoat.namedTimeseries import NamedTimeseries
+from SBstoat.namedTimeseries import NamedTimeseries
 
 import abc
 import numpy as np

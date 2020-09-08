@@ -6,8 +6,8 @@ Created on Aug 30, 2020
 @author: joseph-hellerstein
 """
 
-from SBStoat import observationSynthesizer as obs
-from SBStoat.namedTimeseries import NamedTimeseries, TIME
+from SBstoat import observationSynthesizer as obs
+from SBstoat.namedTimeseries import NamedTimeseries, TIME
 
 import numpy as np
 import unittest

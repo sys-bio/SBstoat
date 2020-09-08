@@ -12,9 +12,9 @@ Several considerations are made;
      method. Arguments are packaged in _Arguments.
 """
 
-from SBStoat.namedTimeseries import NamedTimeseries, TIME, mkNamedTimeseries
-from SBStoat import _modelFitterCore as mfc
-from SBStoat import _helpers
+from SBstoat.namedTimeseries import NamedTimeseries, TIME, mkNamedTimeseries
+from SBstoat import _modelFitterCore as mfc
+from SBstoat import _helpers
 
 import multiprocessing
 import numpy as np

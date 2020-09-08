@@ -7,10 +7,10 @@
 Core logic of model fitter. Does not include plots.
 """
 
-from SBStoat.namedTimeseries import NamedTimeseries, TIME, mkNamedTimeseries
-import SBStoat.timeseriesPlotter as tp
-from SBStoat import namedTimeseries
-from SBStoat import _helpers
+from SBstoat.namedTimeseries import NamedTimeseries, TIME, mkNamedTimeseries
+import SBstoat.timeseriesPlotter as tp
+from SBstoat import namedTimeseries
+from SBstoat import _helpers
 
 import collections
 import lmfit

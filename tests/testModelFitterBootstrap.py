@@ -6,8 +6,8 @@ Created on Aug 19, 2020
 @author: joseph-hellerstein
 """
 
-from SBStoat import _modelFitterBootstrap as mfb
-from SBStoat.namedTimeseries import NamedTimeseries, TIME
+from SBstoat import _modelFitterBootstrap as mfb
+from SBstoat.namedTimeseries import NamedTimeseries, TIME
 from tests import _testHelpers as th
 
 import numpy as np

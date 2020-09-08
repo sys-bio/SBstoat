@@ -6,8 +6,8 @@ Created on Tue Jul  7 14:24:09 2020
 @author: joseph-hellerstein
 """
 
-from SBStoat.namedTimeseries import NamedTimeseries, mkNamedTimeseries
-import SBStoat.namedTimeseries as namedTimeseries
+from SBstoat.namedTimeseries import NamedTimeseries, mkNamedTimeseries
+import SBstoat.namedTimeseries as namedTimeseries
 
 import numpy as np
 import os

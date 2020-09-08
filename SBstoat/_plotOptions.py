@@ -14,7 +14,7 @@ corresponds to the instance within the scope. A figure scope is
 always single valued.
 """
 
-from SBStoat._statementManager import StatementManager
+from SBstoat._statementManager import StatementManager
 
 from docstring_expander.kwarg import Kwarg
 import matplotlib.pyplot as plt

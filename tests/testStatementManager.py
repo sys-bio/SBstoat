@@ -5,7 +5,7 @@ Created on Aug 8, 2020
 @author: joseph-hellerstein
 """
 
-from SBStoat._statementManager import StatementManager
+from SBstoat._statementManager import StatementManager
 
 import unittest
 

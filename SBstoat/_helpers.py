@@ -1,7 +1,7 @@
-"""Helper functions used in SBStoat."""
+"""Helper functions used in SBstoat."""
 
 
-from SBStoat import _plotOptions as po
+from SBstoat import _plotOptions as po
 
 import numpy as np
 

@@ -7,8 +7,8 @@
 Reports for model fitter
 """
 
-from SBStoat.namedTimeseries import NamedTimeseries, TIME, mkNamedTimeseries
-from SBStoat._modelFitterBootstrap import ModelFitterBootstrap
+from SBstoat.namedTimeseries import NamedTimeseries, TIME, mkNamedTimeseries
+from SBstoat._modelFitterBootstrap import ModelFitterBootstrap
 
 import lmfit
 import numpy as np

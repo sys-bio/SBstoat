@@ -12,10 +12,10 @@ Plots are organized by the timeseries and the characteristic analyzed. These
 characteristics are: (a) over time, (b) histogram.
 """
 
-from SBStoat.namedTimeseries import NamedTimeseries, TIME, mkNamedTimeseries
-import SBStoat._plotOptions as po
-from SBStoat import timeseriesPlotter as tp
-from SBStoat import _helpers
+from SBstoat.namedTimeseries import NamedTimeseries, TIME, mkNamedTimeseries
+import SBstoat._plotOptions as po
+from SBstoat import timeseriesPlotter as tp
+from SBstoat import _helpers
 
 from docstring_expander.expander import Expander
 import numpy as np

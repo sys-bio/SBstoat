@@ -17,4 +17,4 @@ install:
   - python setup.py install
 
 script:
-  - nosetests --with-coverage --cover-package=SBStoat tests
+  - nosetests --with-coverage --cover-package=SBstoat tests
