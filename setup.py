@@ -23,9 +23,9 @@ def get_version(rel_path):
         raise RuntimeError("Unable to find version string.")
 
 setup(
-    name='SBStoat',    # This is the name of your PyPI-package.
-    packages=['SBStoat'],
-    version=get_version("SBStoat/_version.py"),   # Update the version number for new releases
+    name='SBstoat',    # This is the name of your PyPI-package.
+    packages=['SBstoat'],
+    version=get_version("SBstoat/_version.py"),   # Update the version number for new releases
     #scripts=['teutilities'],    # The name of your scipt, and also the command you'll be using for calling it
     author='H M Sauro, J Hellerstein',
     author_email='hsauro@uw.edu',
