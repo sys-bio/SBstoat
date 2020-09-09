@@ -9,12 +9,11 @@ A ModelFitter estimates parameters of a roadrunner model by using observed value
 of floating species concentrations to construct fitted values with 
 small residuals (the difference between fitted and observed values).
 
-The user can access:
-    estimated parameter values
-    roadrunner model with estimated parameter values
-    observed values of floating species concentrations
-    fitted values of floating species concentrations
-    residuals of observed - fitted
+Properties of interest are:
+    fittedTS - estimated parameter values
+    roadrunnerModel - roadrunner model object
+    observedTS - observed values of floating species concentrations
+    residualsTS - observedTS - fittedTS
 
 Usage
 -----
