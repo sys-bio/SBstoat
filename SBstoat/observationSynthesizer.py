@@ -68,10 +68,6 @@ class ObservationSynthesizer(abc.ABC):
 
 class ObservationSynthesizerRandomizedResiduals(ObservationSynthesizer):
 
-    def __init__(self, observedTS:NamedTimeseries,
-                 fittedTS:NamedTimeseries):
-        super().__init__(observedTS=observedTS, fittedTS=fittedTS)
-
     def calculate(self):
         """
         Calculates synthetic observations by randomly rearranging residuals.
@@ -90,12 +86,15 @@ class ObservationSynthesizerRandomErrors(ObservationSynthesizer):
     distribution.
     """
 
-    def __init__(self, fittedTS:NamedTimeseries, std:float=0.1):
+    def __init__(self, observedTS=None,
+              fittedTS:NamedTimeseries=None, std:float=0.1):
         """
         Parameters
         ----------
         std: standard deviation for random numbers
         """
+        if fittedTS is None:
+            raise ValueError("Must supply fitted timeseries")
         self.std = std
         super().__init__(fittedTS=fittedTS)
 

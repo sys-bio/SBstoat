@@ -89,7 +89,8 @@ class TestObservationSynthesizerRandomizedErrors(TestObservationSynthesizer):
 
     def setUp(self):
         self.observedTS, self.fittedTS, self.residualsTS = mkTimeseries()
-        self.synthesizer = obs.ObservationSynthesizerRandomErrors(self.fittedTS)
+        self.synthesizer = obs.ObservationSynthesizerRandomErrors(
+              fittedTS=self.fittedTS)
         self.columns = self.observedTS.colnames
 
     def testCalculate(self):

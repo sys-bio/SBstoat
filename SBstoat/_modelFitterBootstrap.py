@@ -13,6 +13,8 @@ Several considerations are made;
 """
 
 from SBstoat.namedTimeseries import NamedTimeseries, TIME, mkNamedTimeseries
+from SBstoat.observationSynthesizer import  \
+      ObservationSynthesizerRandomizedResiduals
 from SBstoat import _modelFitterCore as mfc
 from SBstoat import _helpers
 
@@ -29,49 +31,22 @@ ITERATION_MULTIPLIER = 10  # Multiplier to calculate max bootsrap iterations
 ITERATION_PER_PROCESS = 200  # Numer of iterations handled by a process
 
 
-############# FUNCTIONS #################
-def calcObservedTS(fitter:mfc.ModelFitterCore,
-      **kwargs: dict) -> NamedTimeseries:
-    """
-    Calculates synthetic observations by randomly rearranging residuals.
-    """
-    fitter._checkFit()
-    numRow = len(fitter.observedTS)
-    newObservedTS = fitter.observedTS.copy()
-    for column in fitter.selectedColumns:
-        newObservedTS[column] = np.random.choice(
-            fitter.residualsTS[column],numRow, replace=True) +  \
-            fitter.fittedTS[column]
-    return newObservedTS
-
-def calcObservedTSNormal(fitter:mfc.ModelFitterCore, 
-      std:float=0.1) -> NamedTimeseries:
-    """
-    Calculates synthetic observations using i.i.d. normals.
-    """
-    fitter._checkFit()
-    numRow = len(fitter.observedTS)
-    newObservedTS = fitter.observedTS.copy()
-    for column in fitter.selectedColumns:
-        randoms = np.random.normal(0, std, numRow)
-        newObservedTS[column] += randoms
-    return newObservedTS
-
 class _Arguments():
     """ Arguments passed to _runBootstrap. """
 
     def __init__(self, fitter, numProcess:int, processIdx:int,
                  numIteration:int=10,
                  reportInterval:int=-1,
-                 calcObservedFunc:typing.Callable=None,
+                 synthesizerClass=  \
+                 ObservationSynthesizerRandomizedResiduals,
                  **kwargs: dict):
         # Same the antimony model, not roadrunner bcause of Pickle
         self.fitter = fitter.copy()
         self.numIteration  = numIteration
         self.reportInterval  = reportInterval
-        self.calcObservedFunc  = calcObservedFunc
         self.numProcess = numProcess
         self.processIdx = processIdx
+        self.synthesizerClass = synthesizerClass
         self.kwargs = kwargs
 
 def _runBootstrap(arguments:_Arguments)->dict:
@@ -99,17 +74,16 @@ def _runBootstrap(arguments:_Arguments)->dict:
     fitter.fitModel()  # Initialize model
     numIteration = arguments.numIteration
     reportInterval = arguments.reportInterval
-    calcObservedFunc = arguments.calcObservedFunc
     processIdx = arguments.processIdx
     processingRate = min(arguments.numProcess,
                          multiprocessing.cpu_count())
-    kwargs = arguments.kwargs
+    synthesizer = arguments.synthesizerClass(
+          observedTS=fitter.observedTS, fittedTS=fitter.fittedTS,
+          **arguments.kwargs)
     # Initialize
-    if calcObservedFunc is None:
-        calcObservedFunc = calcObservedTS
     parameterDct = {p: [] for p in fitter.parametersToFit}
     numSuccessIteration = 0
-    newObservedTS = calcObservedFunc(fitter, **kwargs)
+    newObservedTS = synthesizer.calculate()
     lastReport = 0
     baseChisq = fitter.minimizerResult.redchi
     newFitter = ModelFitterBootstrap(fitter.roadrunnerModel,
@@ -147,7 +121,7 @@ def _runBootstrap(arguments:_Arguments)->dict:
         numSuccessIteration += 1
         dct = newFitter.params.valuesdict()
         [parameterDct[p].append(dct[p]) for p in fitter.parametersToFit]
-        newFitter.observedTS = calcObservedFunc(fitter, **kwargs)
+        newFitter.observedTS = synthesizer.calculate()
     print("Completed bootstrap process %d." % (processIdx + 1))
     return parameterDct, numSuccessIteration
 
@@ -211,7 +185,7 @@ class ModelFitterBootstrap(mfc.ModelFitterCore):
 
     def bootstrap(self, numIteration:int=10, 
           reportInterval:int=1000,
-          calcObservedFunc=None,
+          synthesizerClass=ObservationSynthesizerRandomizedResiduals,
           maxProcess:int=None,
            **kwargs: dict):
         """
@@ -221,10 +195,10 @@ class ModelFitterBootstrap(mfc.ModelFitterCore):
         ----------
         numIteration: number of bootstrap iterations
         reportInterval: number of iterations between progress reports
-        calcObservedFunc: Function
-            Function used to calculate new observed values
+        synthesizerClass: object that synthesizes new observations
+            Must subclass ObservationSynthesizer
         maxProcess: Maximum number of processes to use. Default: numCPU
-        kwargs: arguments passed to calcObservedFunct
+        kwargs: arguments passed to ObservationSynthesizer
               
         Example
         -------
@@ -235,8 +209,6 @@ class ModelFitterBootstrap(mfc.ModelFitterCore):
         Notes
         ----
         """
-        if calcObservedFunc is None:
-            calcObservedFunc = calcObservedTS
         if maxProcess is None:
             maxProcess = multiprocessing.cpu_count()
         base_redchi = self.minimizerResult.redchi
@@ -246,9 +218,9 @@ class ModelFitterBootstrap(mfc.ModelFitterCore):
         numProcessIteration = int(np.ceil(numIteration/numProcess))
         args_list = [_Arguments(self, numProcess, i,
               numIteration=numProcessIteration,
-              reportInterval=reportInterval ,
-              calcObservedFunc=calcObservedFunc ,
-              kwargs=kwargs) for i in range(numProcess)]
+              reportInterval=reportInterval,
+              synthesizerClass=synthesizerClass,
+              **kwargs) for i in range(numProcess)]
         print("\n**Running bootstrap for %d iterations with %d processes."
               % (numIteration, numProcess))
         with multiprocessing.Pool(numProcess) as pool:

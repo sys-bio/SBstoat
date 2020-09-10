@@ -9,6 +9,9 @@ Created on Aug 19, 2020
 from SBstoat import _modelFitterBootstrap as mfb
 from SBstoat.namedTimeseries import NamedTimeseries, TIME
 from tests import _testHelpers as th
+from SBstoat.observationSynthesizer import  \
+      ObservationSynthesizerRandomizedResiduals,  \
+      ObservationSynthesizerRandomErrors
 
 import numpy as np
 import os
@@ -32,10 +35,12 @@ class TestModelFitterBootstrap(unittest.TestCase):
 
     def testRunBootstrap(self):
         if IGNORE_TEST:
-            return
+          return
         NUM_ITERATION = 10
         MAX_DIFF = 4
-        arguments = mfb._Arguments(self.fitter, 1, 0)
+        arguments = mfb._Arguments(self.fitter, 1, 0, 
+              synthesizerClass=ObservationSynthesizerRandomErrors,
+              std=0.01)
         arguments.numIteration = NUM_ITERATION
         parameterDct, numSuccessIteration = mfb._runBootstrap(arguments)
         self.assertEqual(numSuccessIteration, NUM_ITERATION)
@@ -64,15 +69,6 @@ class TestModelFitterBootstrap(unittest.TestCase):
         values = self.fitter.getFittedParameters()
         _ = self.checkParameterValues()
 
-    def testCalcNewObserved(self):
-        if IGNORE_TEST:
-            return
-        ts = mfb.calcObservedTS(self.fitter)
-        self.assertEqual(len(ts),
-              len(self.fitter.observedTS))
-        self.assertGreater(ts["S1"][0], ts["S6"][0])
-        self.assertGreater(ts["S6"][-1], ts["S1"][-1])
-
     def testBoostrapTimeMultiprocessing(self):
         return
         if IGNORE_TEST:
@@ -92,7 +88,7 @@ class TestModelFitterBootstrap(unittest.TestCase):
 
     def testBoostrap(self):
         if IGNORE_TEST:
-            return
+          return
         self.fitter.bootstrap(numIteration=500,
               reportInterval=100, maxProcess=2)
         NUM_STD = 10
@@ -117,6 +113,15 @@ class TestModelFitterBootstrap(unittest.TestCase):
         stds = self.fitter.getFittedParameterStds()
         for std in stds:
             self.assertTrue(isinstance(std, float))
+
+    def testBootstrapSynthesizer(self):
+        if IGNORE_TEST:
+          return
+        self.fitter.bootstrap(numIteration=500,
+              synthesizerClass=ObservationSynthesizerRandomErrors,
+              reportInterval=100, maxProcess=2, std=0.01)
+        result = self.fitter.bootstrapResult
+        self.assertTrue(result is not None)
 
 
 if __name__ == '__main__':
