@@ -39,7 +39,7 @@ IS_REPORT = False
 ##############################
 class ModelFitterCore(object):
 
-    def __init__(self, modelSpecification, observedTS, parametersToFit,
+    def __init__(self, modelSpecification, observedData, parametersToFit,
                  selectedColumns=None, method=METHOD_BOTH,
                  parameterLowerBound=PARAMETER_LOWER_BOUND,
                  parameterUpperBound=PARAMETER_UPPER_BOUND,
@@ -50,14 +50,14 @@ class ModelFitterCore(object):
         ---------
         modelSpecification: ExtendedRoadRunner/str
             roadrunner model or antimony model
-        observedTS: NamedTimeseries/str
+        observedData: NamedTimeseries/str
             str: path to CSV file
         parametersToFit: list-str/None
             parameters in the model that you want to fit
             if None, no parameters are fit
         selectedColumns: list-str
             species names you wish use to fit the model
-            default: all columns in observedTS
+            default: all columns in observedData
         parameterLowerBound: float
             lower bound for the fitting parameters
         parameterUpperBound: float
@@ -73,7 +73,7 @@ class ModelFitterCore(object):
         self.parametersToFit = parametersToFit
         self.LowerBound = parameterLowerBound
         self.UpperBound = parameterUpperBound
-        self.observedTS = mkNamedTimeseries(observedTS)
+        self.observedTS = mkNamedTimeseries(observedData)
         if selectedColumns is None:
             selectedColumns = self.observedTS.colnames
         self.selectedColumns = selectedColumns
