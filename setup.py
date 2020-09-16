@@ -45,6 +45,7 @@ setup(
         'numpy', 
         'tellurium',
         'pandas',
+        'nose',
         'python-libsbml',
         'docstring_expander',
     ],
