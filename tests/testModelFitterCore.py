@@ -7,6 +7,7 @@ Created on Tue Aug 19, 2020
 """
 
 import SBstoat._modelFitterCore as mf
+from SBstoat.modelFitter import ModelFitter
 from SBstoat._modelFitterCore import ModelFitterCore
 from SBstoat.namedTimeseries import NamedTimeseries, TIME
 from tests import _testHelpers as th
@@ -70,6 +71,47 @@ class TestModelFitterCore(unittest.TestCase):
         for value in dct.values():
             self.assertTrue(isinstance(value, float))
         return dct
+
+    def testInitializeParams(self):
+        if IGNORE_TEST:
+            return
+        LOWER = -10
+        UPPER = -1
+        VALUE = -5
+        NEW_SPECIFICATION = ModelFitter.ParameterSpecification(
+              lower=LOWER,
+              upper=UPPER,
+              value=VALUE)
+        DEFAULT_SPECIFICATION = ModelFitter.ParameterSpecification(
+              lower=mf.PARAMETER_LOWER_BOUND,
+              upper=mf.PARAMETER_UPPER_BOUND,
+              value=(mf.PARAMETER_LOWER_BOUND+mf.PARAMETER_UPPER_BOUND)/2,
+              )
+        def test(params, exceptions=[]):
+            def check(parameter, specification):
+                self.assertEqual(parameter.min, specification.lower)
+                self.assertEqual(parameter.max, specification.upper)
+                self.assertEqual(parameter.value, specification.value)
+            #
+            names = params.valuesdict().keys()
+            for name in names:
+                parameter = params.get(name)
+                if name in exceptions:
+                    check(parameter, NEW_SPECIFICATION)
+                else:
+                    check(parameter, DEFAULT_SPECIFICATION)
+        #
+        fitter = ModelFitterCore(
+              self.fitter.modelSpecification,
+              self.fitter.observedTS,
+              self.fitter.parametersToFit,
+              parameterDct={"k1": NEW_SPECIFICATION},
+              )
+        params = fitter._initializeParams()
+        test(params, exceptions=["k1"])
+        #
+        params = self.fitter._initializeParams()
+        test(params, [])
 
     def testFit1(self):
         if IGNORE_TEST:

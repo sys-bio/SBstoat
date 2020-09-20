@@ -91,8 +91,8 @@ def _runBootstrap(arguments:_Arguments)->dict:
           fitter.parametersToFit,
           selectedColumns=fitter.selectedColumns,
           method=mfc.METHOD_LEASTSQR,
-          parameterLowerBound=fitter.LowerBound,
-          parameterUpperBound=fitter.UpperBound,
+          parameterLowerBound=fitter.lowerBound,
+          parameterUpperBound=fitter.upperBound,
           isPlot=fitter._isPlot)
     # Do the bootstrap iterations
     for iteration in range(numIteration*ITERATION_MULTIPLIER):
@@ -223,9 +223,13 @@ class ModelFitterBootstrap(mfc.ModelFitterCore):
               **kwargs) for i in range(numProcess)]
         print("\n**Running bootstrap for %d iterations with %d processes."
               % (numIteration, numProcess))
-        with multiprocessing.Pool(numProcess) as pool:
-            results = pool.map(_runBootstrap, args_list)
-        pool.join()
+        if False:
+            with multiprocessing.Pool(numProcess) as pool:
+                results = pool.map(_runBootstrap, args_list)
+            pool.join()
+        else:
+            result = _runBootstrap(args_list[0])
+            results = [result]
         totSuccessIteration = sum([i for _, i in results])
         # Accumulate the results
         parameterDct = {p: [] for p in self.parametersToFit}

@@ -36,13 +36,18 @@ NULL_STR = ""
 IS_REPORT = False
 
 
+
 ##############################
 class ModelFitterCore(object):
+
+    ParameterSpecification = collections.namedtuple("ParameterSpecification",
+          "lower upper value")
 
     def __init__(self, modelSpecification, observedData, parametersToFit,
                  selectedColumns=None, method=METHOD_BOTH,
                  parameterLowerBound=PARAMETER_LOWER_BOUND,
                  parameterUpperBound=PARAMETER_UPPER_BOUND,
+                 parameterDct={},
                  isPlot=True
                  ):
         """
@@ -62,6 +67,9 @@ class ModelFitterCore(object):
             lower bound for the fitting parameters
         parameterUpperBound: float
             upper bound for the fitting parameters
+        parameterDct: dict
+            key: parameter name
+            value: ParameterSpecification
         method: str
             method used for minimization
 
@@ -71,8 +79,9 @@ class ModelFitterCore(object):
         """
         self.modelSpecification = modelSpecification
         self.parametersToFit = parametersToFit
-        self.LowerBound = parameterLowerBound
-        self.UpperBound = parameterUpperBound
+        self.lowerBound = parameterLowerBound
+        self.upperBound = parameterUpperBound
+        self.parameterDct = dict(parameterDct)
         self.observedTS = mkNamedTimeseries(observedData)
         if selectedColumns is None:
             selectedColumns = self.observedTS.colnames
@@ -89,6 +98,27 @@ class ModelFitterCore(object):
         self.residualsTS = None  # Residuals for selectedColumns
         self.bootstrapResult = None  # Result from bootstrapping
 
+    @staticmethod
+    def addParameter(parameterDct: dict,
+          name: str, lower: float, upper: float, value: float):
+        """
+        Adds a parameter to a list of parameters.
+
+        Parameters
+        ----------
+        parameterDct: parameter dictionary to agument
+        name: parameter name
+        lower: lower range of parameter value
+        upper: upper range of parameter value
+        value: initial value
+        
+        Returns
+        -------
+        dict
+        """
+        parameterDct[name] = ModelFitterCore.ParameterSpecification(
+              lower=lower, upper=upper, value=value)
+
     def copy(self):
         """
         Creates a copy of the model fitter.
@@ -103,8 +133,8 @@ class ModelFitterCore(object):
               self.parametersToFit,
               selectedColumns=self.selectedColumns,
               method=self._method,
-              parameterLowerBound=self.LowerBound,
-              parameterUpperBound=self.UpperBound,
+              parameterLowerBound=self.lowerBound,
+              parameterUpperBound=self.upperBound,
               isPlot=self._isPlot)
         return newModelFitter
 
@@ -136,8 +166,12 @@ class ModelFitterCore(object):
         self.fittedTS
         """
         self._setupModel(params=params)
-        self.fittedTS[self.fittedTS.allColnames] = self.roadrunnerModel.simulate(
+        data = self.roadrunnerModel.simulate(
               self.observedTS.start, self.observedTS.end, len(self.observedTS))
+        columnIndices = [i for i in range(len(data.colnames))
+              if data.colnames[i][1:-1] in self.fittedTS.allColnames]
+        columnIndices.insert(0, 0)
+        self.fittedTS[self.fittedTS.allColnames] = data[:, columnIndices]
 
     def _residuals(self, params:lmfit.Parameters=None)->np.ndarray:
         """
@@ -232,10 +266,18 @@ class ModelFitterCore(object):
 
     def _initializeParams(self):
         params = lmfit.Parameters()
-        value = np.mean([self.LowerBound, self.UpperBound])
-        for parameter in self.parametersToFit:
-           params.add(parameter, value=value,
-                 min=self.LowerBound, max=self.UpperBound)
+        value = np.mean([self.lowerBound, self.upperBound])
+        for parameterName in self.parametersToFit:
+            if parameterName in self.parameterDct.keys():
+              specification = self.parameterDct[parameterName]
+              params.add(parameterName,
+                    value=specification.value,
+                    min=specification.lower,
+                    max=specification.upper,
+                    )
+            else:
+              params.add(parameterName, value=value,
+                    min=self.lowerBound, max=self.upperBound)
         return params
 
     def _checkFit(self):
