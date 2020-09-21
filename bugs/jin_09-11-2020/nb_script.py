@@ -129,14 +129,13 @@ SBstoat.ModelFitter.addParameter(parameterDct, "c", 0, 10, 5.2)
 print("# In[9]:")
 
 
-if False:
-    parameterDct = {
-        "beta": mkSpecification(0, 10e-5, 3.2e-5),
-        "kappa": mkSpecification(0, 10, 4.0),
-        "delta": mkSpecification(0, 10, 5.2),
-        "p": mkSpecification(0, 1, 4.6e-2),
-        "c": mkSpecification(0, 10, 5.2)
-    }
+parameterDct = {
+    "beta": mkSpecification(0, 10e-5, 3.2e-5),
+    "kappa": mkSpecification(0, 10, 4.0),
+    "delta": mkSpecification(0, 10, 5.2),
+    "p": mkSpecification(0, 1, 4.6e-2),
+    "c": mkSpecification(0, 10, 5.2)
+}
 
 
 print("# In[10]:")

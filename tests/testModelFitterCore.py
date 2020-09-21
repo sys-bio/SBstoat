@@ -148,6 +148,32 @@ class TestModelFitterCore(unittest.TestCase):
         self.assertGreater(stds[0], stds[1])
         self.assertGreater(stds[1], stds[2])
 
+    def testFitDataTransformDct(self):
+        if IGNORE_TEST:
+            return
+        def test(col, func, maxDifference=0.0):
+            timeseries = self.timeseries.copy()
+            timeseries[col] = func(timeseries)
+            fittedDataTransformDct = {col: func}
+            fitter = ModelFitterCore(th.ANTIMONY_MODEL, self.timeseries,
+                  list(th.PARAMETER_DCT.keys()),
+                  fittedDataTransformDct=fittedDataTransformDct)
+            fitter.fitModel()
+            for name in self.fitter.params.valuesdict().keys():
+                value1 = self.fitter.params.valuesdict()[name]
+                value2 = fitter.params.valuesdict()[name]
+                diff = np.abs(value1-value2)
+                self.assertLessEqual(diff, maxDifference)
+        #
+        self.fitter.fitModel()
+        col = "S1"
+        #
+        func2 = lambda t: 2*t[col]
+        test(col, func2, maxDifference=2)
+        #
+        func1 = lambda t: t[col]
+        test(col, func1)
+
     def testGetFittedModel(self):
         if IGNORE_TEST:
             return

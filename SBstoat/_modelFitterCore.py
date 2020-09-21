@@ -49,6 +49,7 @@ class ModelFitterCore(object):
                  parameterLowerBound=PARAMETER_LOWER_BOUND,
                  parameterUpperBound=PARAMETER_UPPER_BOUND,
                  parameterDct={},
+                 fittedDataTransformDct={},
                  isPlot=True
                  ):
         """
@@ -71,6 +72,10 @@ class ModelFitterCore(object):
         parameterDct: dict
             key: parameter name
             value: ParameterSpecification
+        fittedDataTransformDct: dict
+            key: column in selectedColumns
+            value: function of the data in selectedColumns;
+                   outputs data for the key column
         method: str
             method used for minimization
 
@@ -84,6 +89,7 @@ class ModelFitterCore(object):
         self.upperBound = parameterUpperBound
         self.parameterDct = dict(parameterDct)
         self.observedTS = mkNamedTimeseries(observedData)
+        self.fittedDataTransformDct = fittedDataTransformDct
         if selectedColumns is None:
             selectedColumns = self.observedTS.colnames
         self.selectedColumns = selectedColumns
@@ -95,10 +101,27 @@ class ModelFitterCore(object):
         self.minimizer = None  # lmfit.minimizer
         self.minimizerResult = None  # Results of minimization
         self.params = None  # params property in lmfit.minimizer
-        self.fittedTS = self.observedTS.copy()  # Initialization of columns
+        self._fittedTS = self.observedTS.copy()  # Initialization of columns
         self.residualsTS = None  # Residuals for selectedColumns
         self.bootstrapResult = None  # Result from bootstrapping
+        # Validation checks
+        self._validateFittedDataTransformDct()
 
+    def _validateFittedDataTransformDct(self):
+        excess = set(self.fittedDataTransformDct.keys()).difference(
+              self.selectedColumns)
+        if len(excess) > 0:
+            msg = "fittedDataTransformDct columns not in selectedColumns: %s"  \
+                  % str(excess)
+            raise ValueError(excess)
+
+    @property
+    def fittedTS(self):
+        timeseries = self._fittedTS.copy()
+        for column, func in self.fittedDataTransformDct.items():
+            timeseries[column] = func(self._fittedTS)
+        return timeseries
+        
     @staticmethod
     def addParameter(parameterDct: dict,
           name: str, lower: float, upper: float, value: float):
@@ -137,6 +160,7 @@ class ModelFitterCore(object):
               parameterLowerBound=self.lowerBound,
               parameterUpperBound=self.upperBound,
               parameterDct=self.parameterDct,
+              fittedDataTransformDct=self.fittedDataTransformDct,
               isPlot=self._isPlot)
         return newModelFitter
 
@@ -173,7 +197,7 @@ class ModelFitterCore(object):
         columnIndices = [i for i in range(len(data.colnames))
               if data.colnames[i][1:-1] in self.fittedTS.allColnames]
         columnIndices.insert(0, 0)
-        self.fittedTS[self.fittedTS.allColnames] = data[:, columnIndices]
+        self._fittedTS[self.fittedTS.allColnames] = data[:, columnIndices]
 
     def _residuals(self, params:lmfit.Parameters=None)->np.ndarray:
         """
