@@ -29,6 +29,7 @@ PERCENTILES = [2.5, 97.55]  # Percentile for confidence limits
 IS_REPORT = False
 ITERATION_MULTIPLIER = 10  # Multiplier to calculate max bootsrap iterations
 ITERATION_PER_PROCESS = 200  # Numer of iterations handled by a process
+MAX_TRIES = 10  # Maximum number of tries to fit
 
 
 class _Arguments():
@@ -70,8 +71,17 @@ def _runBootstrap(arguments:_Arguments)->dict:
         
     """
     # Unapack arguments
-    fitter = arguments.fitter
-    fitter.fitModel()  # Initialize model
+    isSuccess = False
+    for _ in range(MAX_TRIES):
+        try:
+            fitter = arguments.fitter
+            fitter.fitModel()  # Initialize model
+            isSuccess = True
+            break
+        except:
+            pass
+    if not isSuccess:
+        print("***Failed to fit.""")
     numIteration = arguments.numIteration
     reportInterval = arguments.reportInterval
     processIdx = arguments.processIdx
@@ -223,13 +233,9 @@ class ModelFitterBootstrap(mfc.ModelFitterCore):
               **kwargs) for i in range(numProcess)]
         print("\n**Running bootstrap for %d iterations with %d processes."
               % (numIteration, numProcess))
-        if False:
-            with multiprocessing.Pool(numProcess) as pool:
-                results = pool.map(_runBootstrap, args_list)
-            pool.join()
-        else:
-            result = _runBootstrap(args_list[0])
-            results = [result]
+        with multiprocessing.Pool(numProcess) as pool:
+            results = pool.map(_runBootstrap, args_list)
+        pool.join()
         totSuccessIteration = sum([i for _, i in results])
         # Accumulate the results
         parameterDct = {p: [] for p in self.parametersToFit}

@@ -78,11 +78,11 @@ class TestModelFitterCore(unittest.TestCase):
         LOWER = -10
         UPPER = -1
         VALUE = -5
-        NEW_SPECIFICATION = ModelFitter.ParameterSpecification(
+        NEW_SPECIFICATION = mf.ParameterSpecification(
               lower=LOWER,
               upper=UPPER,
               value=VALUE)
-        DEFAULT_SPECIFICATION = ModelFitter.ParameterSpecification(
+        DEFAULT_SPECIFICATION = mf.ParameterSpecification(
               lower=mf.PARAMETER_LOWER_BOUND,
               upper=mf.PARAMETER_UPPER_BOUND,
               value=(mf.PARAMETER_LOWER_BOUND+mf.PARAMETER_UPPER_BOUND)/2,

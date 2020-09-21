@@ -36,12 +36,13 @@ NULL_STR = ""
 IS_REPORT = False
 
 
+ParameterSpecification = collections.namedtuple("ParameterSpecification",
+      "lower upper value")
+
+
 
 ##############################
 class ModelFitterCore(object):
-
-    ParameterSpecification = collections.namedtuple("ParameterSpecification",
-          "lower upper value")
 
     def __init__(self, modelSpecification, observedData, parametersToFit,
                  selectedColumns=None, method=METHOD_BOTH,
@@ -116,7 +117,7 @@ class ModelFitterCore(object):
         -------
         dict
         """
-        parameterDct[name] = ModelFitterCore.ParameterSpecification(
+        parameterDct[name] = ParameterSpecification(
               lower=lower, upper=upper, value=value)
 
     def copy(self):
@@ -135,6 +136,7 @@ class ModelFitterCore(object):
               method=self._method,
               parameterLowerBound=self.lowerBound,
               parameterUpperBound=self.upperBound,
+              parameterDct=self.parameterDct,
               isPlot=self._isPlot)
         return newModelFitter
 
