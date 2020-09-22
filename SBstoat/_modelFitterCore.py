@@ -195,9 +195,9 @@ class ModelFitterCore(object):
         data = self.roadrunnerModel.simulate(
               self.observedTS.start, self.observedTS.end, len(self.observedTS))
         columnIndices = [i for i in range(len(data.colnames))
-              if data.colnames[i][1:-1] in self.fittedTS.allColnames]
+              if data.colnames[i][1:-1] in self._fittedTS.allColnames]
         columnIndices.insert(0, 0)
-        self._fittedTS[self.fittedTS.allColnames] = data[:, columnIndices]
+        self._fittedTS[self._fittedTS.allColnames] = data[:, columnIndices]
 
     def _residuals(self, params:lmfit.Parameters=None)->np.ndarray:
         """

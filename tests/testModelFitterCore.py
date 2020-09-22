@@ -19,8 +19,8 @@ import tellurium
 import unittest
 
 
-IGNORE_TEST = False
-IS_PLOT = False
+IGNORE_TEST = True
+IS_PLOT = True
 TIMESERIES = th.getTimeseries()
         
 
@@ -149,13 +149,12 @@ class TestModelFitterCore(unittest.TestCase):
         self.assertGreater(stds[1], stds[2])
 
     def testFitDataTransformDct(self):
-        if IGNORE_TEST:
-            return
+        # TESTING
         def test(col, func, maxDifference=0.0):
             timeseries = self.timeseries.copy()
             timeseries[col] = func(timeseries)
             fittedDataTransformDct = {col: func}
-            fitter = ModelFitterCore(th.ANTIMONY_MODEL, self.timeseries,
+            fitter = ModelFitterCore(th.ANTIMONY_MODEL, timeseries,
                   list(th.PARAMETER_DCT.keys()),
                   fittedDataTransformDct=fittedDataTransformDct)
             fitter.fitModel()
@@ -169,7 +168,7 @@ class TestModelFitterCore(unittest.TestCase):
         col = "S1"
         #
         func2 = lambda t: 2*t[col]
-        test(col, func2, maxDifference=2)
+        test(col, func2, maxDifference=0.3)
         #
         func1 = lambda t: t[col]
         test(col, func1)
