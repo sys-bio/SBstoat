@@ -75,7 +75,8 @@ class ModelFitterCore(object):
         fittedDataTransformDct: dict
             key: column in selectedColumns
             value: function of the data in selectedColumns;
-                   outputs data for the key column
+                   input: NamedTimeseries
+                   output: array for the values of the column
         method: str
             method used for minimization
 
@@ -220,7 +221,9 @@ class ModelFitterCore(object):
         if self.residualsTS is None:
             self.residualsTS = self.observedTS.subsetColumns(cols)
         self.residualsTS[cols] = self.observedTS[cols] - self.fittedTS[cols]
-        return self.residualsTS.flatten()
+        residuals = self.residualsTS.flatten()
+        print(np.std(residuals))
+        return residuals
 
     def fitModel(self, params:lmfit.Parameters=None):
         """

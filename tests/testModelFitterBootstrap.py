@@ -19,8 +19,8 @@ import time
 import unittest
 
 
-IGNORE_TEST = False
-IS_PLOT = False
+IGNORE_TEST = True
+IS_PLOT = True
 TIMESERIES = th.getTimeseries()
 FITTER = th.getFitter(cls=mfb.ModelFitterBootstrap)
 FITTER.fitModel()
@@ -87,8 +87,7 @@ class TestModelFitterBootstrap(unittest.TestCase):
         timeIt(4)
 
     def testBoostrap(self):
-        if IGNORE_TEST:
-          return
+        # TESTING
         self.fitter.bootstrap(numIteration=500,
               reportInterval=100, maxProcess=2)
         NUM_STD = 10
