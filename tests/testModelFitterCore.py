@@ -128,7 +128,7 @@ class TestModelFitterCore(unittest.TestCase):
         self.fitter.fitModel()
         dct = self.checkParameterValues()
         #
-        for method in [mf.METHOD_LEASTSQR, mf.METHOD_BOTH,
+        for method in [mf.METHOD_LEASTSQ, mf.METHOD_BOTH,
               mf.METHOD_DIFFERENTIAL_EVOLUTION]:
             test(method)
 
