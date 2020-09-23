@@ -14,7 +14,6 @@ from SBstoat import _helpers
 
 import collections
 import lmfit
-from multiprocessing import Pool
 import numpy as np
 import pandas as pd
 import random
@@ -28,7 +27,7 @@ PARAMETER_UPPER_BOUND = 10
 #  Minimizer methods
 METHOD_BOTH = "both"
 METHOD_DIFFERENTIAL_EVOLUTION = "differential_evolution"
-METHOD_LEASTSQR = "leastsqr"
+METHOD_LEASTSQ = "leastsqr"
 MAX_CHISQ_MULT = 5
 PERCENTILES = [2.5, 97.55]  # Percentile for confidence limits
 INDENTATION = "  "
@@ -102,7 +101,7 @@ class ModelFitterCore(object):
         self.minimizer = None  # lmfit.minimizer
         self.minimizerResult = None  # Results of minimization
         self.params = None  # params property in lmfit.minimizer
-        self._fittedTS = self.observedTS.copy()  # Initialization of columns
+        self.fittedTS = self.observedTS.copy()  # Initialization of columns
         self.residualsTS = None  # Residuals for selectedColumns
         self.bootstrapResult = None  # Result from bootstrapping
         # Validation checks
@@ -116,12 +115,17 @@ class ModelFitterCore(object):
                   % str(excess)
             raise ValueError(excess)
 
-    @property
-    def fittedTS(self):
-        timeseries = self._fittedTS.copy()
+    def _updateFittedTS(self, data):
+        """
+        Updates the fittedTS taking into account required transformations.
+ 
+        Parameters
+        ----------
+        data: np.ndarray
+        """
+        self.fittedTS[self.fittedTS.allColnames] = data
         for column, func in self.fittedDataTransformDct.items():
-            timeseries[column] = func(self._fittedTS)
-        return timeseries
+            self.fittedTS[column] = func(self.fittedTS)
         
     @staticmethod
     def addParameter(parameterDct: dict,
@@ -196,9 +200,9 @@ class ModelFitterCore(object):
         data = self.roadrunnerModel.simulate(
               self.observedTS.start, self.observedTS.end, len(self.observedTS))
         columnIndices = [i for i in range(len(data.colnames))
-              if data.colnames[i][1:-1] in self._fittedTS.allColnames]
+              if data.colnames[i][1:-1] in self.fittedTS.allColnames]
         columnIndices.insert(0, 0)
-        self._fittedTS[self._fittedTS.allColnames] = data[:, columnIndices]
+        self._updateFittedTS(data[:, columnIndices])
 
     def _residuals(self, params:lmfit.Parameters=None)->np.ndarray:
         """
@@ -222,10 +226,10 @@ class ModelFitterCore(object):
             self.residualsTS = self.observedTS.subsetColumns(cols)
         self.residualsTS[cols] = self.observedTS[cols] - self.fittedTS[cols]
         residuals = self.residualsTS.flatten()
-        print(np.std(residuals))
         return residuals
 
-    def fitModel(self, params:lmfit.Parameters=None):
+    def fitModel(self, params:lmfit.Parameters=None,
+          max_nfev:int=100):
         """
         Fits the model by adjusting values of parameters based on
         differences between simulated and provided values of
@@ -234,6 +238,7 @@ class ModelFitterCore(object):
         Parameters
         ----------
         params: starting values of parameters
+        max_nfev: maximum number of function evaluations
 
         Example
         -------
@@ -251,12 +256,17 @@ class ModelFitterCore(object):
             #   Global differential evolution to get us close to minimum
             #   A local Levenberg-Marquardt to getsus to the minimum
             if self._method in [METHOD_BOTH, METHOD_DIFFERENTIAL_EVOLUTION]:
-                minimizer = lmfit.Minimizer(self._residuals, params)
+                minimizer = lmfit.Minimizer(self._residuals, params,
+                      max_nfev=max_nfev)
                 self.minimizerResult = minimizer.minimize(
-                      method=METHOD_DIFFERENTIAL_EVOLUTION)
-            if self._method in [METHOD_BOTH, METHOD_LEASTSQR]:
-                minimizer = lmfit.Minimizer(self._residuals, params)
-                self.minimizerResult = minimizer.minimize(method='leastsqr')
+                      method=METHOD_DIFFERENTIAL_EVOLUTION,
+                      max_nfev=max_nfev)
+            if self._method in [METHOD_BOTH, METHOD_LEASTSQ]:
+                minimizer = lmfit.Minimizer(self._residuals, params,
+                      max_nfev=max_nfev)
+                self.minimizerResult = minimizer.minimize(
+                      method=METHOD_LEASTSQ,
+                      max_nfev=max_nfev)
             self.params = self.minimizerResult.params
             self.minimizer = minimizer
             if not self.minimizer.success:

@@ -63,9 +63,12 @@ import matplotlib.pyplot as plt
 import SBstoat
 import tellurium as te
 import matplotlib
+import pickle
 matplotlib.use('TkAgg')
 
 VIRUS = "V"
+PICKLE_FILE = "virus.pcl"
+NUM_BOOTSTRAP_ITERATIONS = 10000
 
 """
 Transform the input data
@@ -85,7 +88,7 @@ print(observedTS)
 # Extract data in the correct format for fitting
 def extractPatientData(timeseries, patient):
      newTimeseries = timeseries.copy()
-     newTimeseries[VIRUS] = newTimeseries[patient]
+     newTimeseries[VIRUS] = 10**newTimeseries[patient]
      return newTimeseries.subsetColumns([VIRUS])
 
 def transformData(timeseries):
@@ -95,6 +98,7 @@ def transformData(timeseries):
     arr = np.array([1 if v < 1 else v 
           for v in timeseries[VIRUS]])
     timeseries[VIRUS] = np.log10(arr)
+    return timeseries
 
 
 # The model
@@ -130,8 +134,7 @@ ANTIMONY_MODEL  = '''
 rr = te.loada(ANTIMONY_MODEL)
 estimates = rr.simulate()
 v_estimate = np.log10(estimates["[V]"])
-import pdb; pdb.set_trace()
-plt.plot(estimates["time"], v_estimate)
+#plt.plot(estimates["time"], v_estimate)
 
 
 # Do some fits
@@ -145,7 +148,7 @@ SBstoat.ModelFitter.addParameter(parameterDct, "c", 0, 10, 5.2)
 
 
 # Fit to the one patient
-singleObservedTS = extractPatientData(observedTS, "P5")
+singleObservedTS = extractPatientData(observedTS, "P3")
 fittedDataTransformDct = {VIRUS: transformData}
 
 # Fit parameters to ts1
@@ -156,12 +159,66 @@ fitter.fitModel()
 print(fitter.reportFit())
 
 
-import pdb; pdb.set_trace()
-fitter.plotFitAll(numRow=2, numCol=2, ylabel="log10(V)")
-fitter.plotResiduals(numRow=2, numCol=2, ylable="log10(V)")
-exit()
+fitter.observedTS = transformData(fitter.observedTS)
+fitter.fittedTS = transformData(fitter.fittedTS)
+fitter.residualsTS = transformData(fitter.residualsTS)
+if False:
+    fitter.plotFitAll(numRow=2, numCol=2, ylabel="log10(V)")
+    fitter.plotResiduals(numRow=2, numCol=2, ylabel="log10(V)")
 
 
 # Get estimates of parameters
-fitter.bootstrap(numIteration=500, reportInterval=100)
-fitter.reportBootstrap()
+if False:
+    fitter.bootstrap(numIteration=10000, reportInterval=1000)
+    fitter.reportBootstrap()
+
+# Create fitters for all patients
+def mkFitter(patient):
+    """
+    Creates a fitter for the patient and runs
+    bootsrapping.
+
+    Parameters
+    ----------
+    patient: str
+    
+    Returns
+    -------
+    ModelFitter
+    """
+    parameterDct = {}
+    SBstoat.ModelFitter.addParameter(parameterDct, "beta", 0, 10e-5, 3.2e-5)
+    SBstoat.ModelFitter.addParameter(parameterDct, "kappa", 0, 10, 4.0)
+    SBstoat.ModelFitter.addParameter(parameterDct, "delta", 0, 10, 5.2)
+    SBstoat.ModelFitter.addParameter(parameterDct, "p", 0, 1, 4.6e-2)
+    SBstoat.ModelFitter.addParameter(parameterDct, "c", 0, 10, 5.2)
+    # Obtain the input data
+    patientObservedTS = extractPatientData(observedTS, patient)
+    fittedDataTransformDct = {VIRUS: transformData}
+    
+    # Fit parameters to ts1
+    fitter = SBstoat.ModelFitter(ANTIMONY_MODEL,
+        patientObservedTS, ["beta","kappa","delta","p","c"],
+        parameterDct=parameterDct)
+    fitter.fitModel()
+    # Do the bootstrap
+    reportInterval = int(NUM_BOOTSTRAP_ITERATIONS/10)
+    fitter.bootstrap(numIteration=NUM_BOOTSTRAP_ITERATIONS,
+          reportInterval=reportInterval)
+    #
+    return fitter
+
+################# Bootstrap Analysis ##################
+if os.path.isfile(PICKLE_FILE):
+    fitters = pickle.load(open( PICKLE_FILE, "rb" ) )
+else:
+    # Construct fitters for all patients
+    fitters = []
+    for patient in nameDct.values():
+        print("\n\n*** Processing patient %s""" % patient)
+        fitter = mkFitter(patient)
+        fitters.append(fitter)
+        fitter.roadrunnerModel = None  # Cannot serialize this object
+        pickle.dump(fitters, open( PICKLE_FILE, "wb" ) )
+
+# Construct parameter plots

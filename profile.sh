@@ -1,5 +1,11 @@
 #! /bin/bash
-python -m cProfile tests/benchmarkModelFitter.py > profile.csv
+# Profiles codes that use SBstoat. $1 is the file or use the default benchmark.
+PATH="tests/benchmarkModelFitter.py"
+if [ $# -eq 1 ]; then
+    PATH="$1"
+fi
+echo "Profiling file ${PATH}"
+python -m ${PATH} > profile.csv
 echo " ncalls  tottime  percall  cumtime  percall filename:lineno(function)" > result.csv
 grep namedTimeseries profile.csv >> result.csv
 grep timeseriesPlotter profile.csv >> result.csv

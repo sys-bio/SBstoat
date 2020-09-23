@@ -100,9 +100,10 @@ def _runBootstrap(arguments:_Arguments)->dict:
           newObservedTS,  
           fitter.parametersToFit,
           selectedColumns=fitter.selectedColumns,
-          method=mfc.METHOD_LEASTSQR,
+          method=fitter._method,
           parameterLowerBound=fitter.lowerBound,
           parameterUpperBound=fitter.upperBound,
+          fittedDataTransformDct=fitter.fittedDataTransformDct,
           isPlot=fitter._isPlot)
     # Do the bootstrap iterations
     for iteration in range(numIteration*ITERATION_MULTIPLIER):

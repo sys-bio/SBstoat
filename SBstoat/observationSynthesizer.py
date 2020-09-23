@@ -32,9 +32,11 @@ class ObservationSynthesizer(abc.ABC):
         self._observedTS = observedTS
         self._fittedTS = fittedTS
         self._residualsTS = residualsTS
+        # Set the columns based on the information provided
         for ts in [self._observedTS, self._fittedTS, self._residualsTS]:
             if ts is not None:
                 self.columns = ts.colnames
+                break
 
     @property
     def observedTS(self):
