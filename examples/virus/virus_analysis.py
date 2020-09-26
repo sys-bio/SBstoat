@@ -66,9 +66,16 @@ import matplotlib
 import pickle
 matplotlib.use('TkAgg')
 
+IS_PLOT = True
 VIRUS = "V"
 PICKLE_FILE = "virus.pcl"
 NUM_BOOTSTRAP_ITERATIONS = 10000
+PARAM_BETA = "beta"
+PARAM_KAPPA = "kappa"
+PARAM_P = "p"
+PARAM_C = "c"
+PARAM_DELTA = "delta"
+PARAMS = [PARAM_BETA, PARAM_KAPPA, PARAM_P, PARAM_C, PARAM_DELTA]
 
 """
 Transform the input data
@@ -80,8 +87,8 @@ input_file = "Influenza.csv"
 dataDF = pd.read_csv(input_file, header=None)
 dataDF = dataDF.transpose()
 dataDF.index.name = "time"
-nameDct = {p: "P%d" % p for p in range(6)}
-dataDF = dataDF.rename(columns=nameDct)
+patientDct = {p: "P%d" % (p+1) for p in range(6)}
+dataDF = dataDF.rename(columns=patientDct)
 observedTS = SBstoat.NamedTimeseries(dataframe=dataDF)
 print(observedTS)
 
@@ -147,32 +154,28 @@ SBstoat.ModelFitter.addParameter(parameterDct, "p", 0, 1, 4.6e-2)
 SBstoat.ModelFitter.addParameter(parameterDct, "c", 0, 10, 5.2)
 
 
-# Fit to the one patient
-singleObservedTS = extractPatientData(observedTS, "P3")
+# Plot fits for each patient
+patients = [p+1 for p in patientDct.keys()]
+fig, axes = plt.subplots(5,1, figsize=(12,10))
 fittedDataTransformDct = {VIRUS: transformData}
+for pos, param in enumerate(PARAMS):
+    singleObservedTS = extractPatientData(observedTS, "P4")
+    fitter = SBstoat.ModelFitter(ANTIMONY_MODEL,
+        singleObservedTS, ["beta","kappa","delta","p","c"],
+        parameterDct=parameterDct)
+    fitter.fitModel()
+    print("\n\n***Analysis for patient %s***\n" % patientDct[pos])
+    print(fitter.reportFit())
+    fitter.fitModel()
+    if IS_PLOT:
+        fitter.observedTS = transformData(fitter.observedTS)
+        fitter.fittedTS = transformData(fitter.fittedTS)
+        fitter.residualsTS = transformData(fitter.residualsTS)
+        fitter.plotFitAll(numRow=2, numCol=2, ylabel="log10(V)")
+        fitter.plotResiduals(numRow=2, numCol=2, ylabel="log10(V)")
 
-# Fit parameters to ts1
-fitter = SBstoat.ModelFitter(ANTIMONY_MODEL,
-    singleObservedTS, ["beta","kappa","delta","p","c"],
-    parameterDct=parameterDct)
-fitter.fitModel()
-print(fitter.reportFit())
 
-
-fitter.observedTS = transformData(fitter.observedTS)
-fitter.fittedTS = transformData(fitter.fittedTS)
-fitter.residualsTS = transformData(fitter.residualsTS)
-if False:
-    fitter.plotFitAll(numRow=2, numCol=2, ylabel="log10(V)")
-    fitter.plotResiduals(numRow=2, numCol=2, ylabel="log10(V)")
-
-
-# Get estimates of parameters
-if False:
-    fitter.bootstrap(numIteration=10000, reportInterval=1000)
-    fitter.reportBootstrap()
-
-# Create fitters for all patients
+# Create bootstrapped fitters for all patients
 def mkFitter(patient):
     """
     Creates a fitter for the patient and runs
@@ -214,7 +217,7 @@ if os.path.isfile(PICKLE_FILE):
 else:
     # Construct fitters for all patients
     fitters = []
-    for patient in nameDct.values():
+    for patient in patientDct.values():
         print("\n\n*** Processing patient %s""" % patient)
         fitter = mkFitter(patient)
         fitters.append(fitter)
@@ -222,3 +225,16 @@ else:
         pickle.dump(fitters, open( PICKLE_FILE, "wb" ) )
 
 # Construct parameter plots
+patients = [p+1 for p in patientDct.keys()]
+fig, axes = plt.subplots(5,1, figsize=(12,10))
+for pos, param in enumerate(PARAMS):
+    ax = axes[pos]
+    param = PARAMS[pos]
+    means = [f.bootstrapResult.meanDct[param] for f in fitters]
+    stds = [f.bootstrapResult.stdDct[param] for f in fitters]
+    ax.errorbar(patients, means, yerr=stds)
+    ax.set_title(param)
+    if pos == len(PARAMS) - 1:
+        ax.set_xlabel("Patient")
+plt.suptitle("Bootstrap Parameter Estimates")
+plt.show()
