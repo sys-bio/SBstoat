@@ -1,61 +1,8 @@
-#!/usr/bin/env python
-# coding: utf-8
+print("# In[1]:")
 
-
-"""
-Analysis of the virus model.
-
- We will fit each of these patients separately, obtaining different values of parameters.
-
- ## Fitting
-
- There are 6 patients with one value to fit. So, there are 6 different fits.
-
-
- Influenza, SARS and SARS-CoV3 in Tellurium
-
-## A simple target cell-limited model, T ==> E ==> I --> produce V:
- T - number of target cells
- E - number of exposed cells (virus replicating inside, not yet spreading virus)
- I - number of infected cells (active virus production)
- V - viral titre, in units of TCID50/ml of biofluid wash (for Influenza)
-
-# The ODEs
- dT/dt = - beta*T*V
- dE/dt =   beta*T*V - kappa*E;
- dI/dt =   kappa * E - delta*I;
- dV/dt =   p*y(I) - c*y(V);
-
- All viral data is in log10(load),...
- log10(load predicted by model) may be needed for data fitting
-
-
-Influenza.csv
- Influenza A data - 5 patients
- viral levels in log10(TCID50 / ml of nasal wash)
- time in days since volunteer exposure
- each line in the array is an individual volunteer
-
-
-
-SARS_CoV2_sputum.csv and SARS_CoV2_nasal.csv
- SARS-CoV-2 data - 9 patients,
- for each patient - viral loads from lungs (sputum) and from nasal cavity (swab)
- viral levels in log10(RNA copies / ml sputum), ...
- respectively log10(RNA copies / nasal swab)
- time in days since symptoms onset
- corresponding lines in the two arrays belong to an individual patient
-
-
-
-SARS.csv
- SARS data recorded from 12 patients;
- included them just for comparison, probably too few datapoints for model inference
- viral levels in log10(RNA copies / ml of nasopharingeal aspirate)
- time - only three samples per patient, at 5, 10 and 15 days post symptoms onset
-"""
 
 # Imports
+import lmfit
 import os
 import pandas as pd
 import numpy as np
@@ -64,11 +11,19 @@ import SBstoat
 import tellurium as te
 import matplotlib
 import pickle
+#get_ipython().run_line_magic('matplotlib', 'inline')
+import matplotlib
 matplotlib.use('TkAgg')
+
+
+print("# In[24]:")
+
 
 IS_PLOT = True
 VIRUS = "V"
-PICKLE_FILE = "virus.pcl"
+DIR = "/home/ubuntu/SBstoat/examples/virus"
+PICKLE_FILE = os.path.join(DIR, "virus.pcl")
+INPUT_FILE =  os.path.join(DIR, "Influenza.csv")
 NUM_BOOTSTRAP_ITERATIONS = 10000
 PARAM_BETA = "beta"
 PARAM_KAPPA = "kappa"
@@ -76,39 +31,13 @@ PARAM_P = "p"
 PARAM_C = "c"
 PARAM_DELTA = "delta"
 PARAMS = [PARAM_BETA, PARAM_KAPPA, PARAM_P, PARAM_C, PARAM_DELTA]
-
-"""
-Transform the input data
-"""
-
-input_file = "Influenza.csv"
-
-# Convert input file to correct format
-dataDF = pd.read_csv(input_file, header=None)
-dataDF = dataDF.transpose()
-dataDF.index.name = "time"
-patientDct = {p: "P%d" % (p+1) for p in range(6)}
-dataDF = dataDF.rename(columns=patientDct)
-observedTS = SBstoat.NamedTimeseries(dataframe=dataDF)
-print(observedTS)
-
-# Extract data in the correct format for fitting
-def extractPatientData(timeseries, patient):
-     newTimeseries = timeseries.copy()
-     newTimeseries[VIRUS] = 10**newTimeseries[patient]
-     return newTimeseries.subsetColumns([VIRUS])
-
-def transformData(timeseries):
-    """
-    Changes the timeseries to log units
-    """
-    arr = np.array([1 if v < 1 else v 
-          for v in timeseries[VIRUS]])
-    timeseries[VIRUS] = np.log10(arr)
-    return timeseries
+TIME = "time"
 
 
-# The model
+# ## Antimony Model
+
+print("# In[3]:")
+
 
 ANTIMONY_MODEL  = '''
     // Equations
@@ -136,12 +65,60 @@ ANTIMONY_MODEL  = '''
 '''
 
 
-# Run the simulation
+# ## Functions
+
+print("# In[4]:")
+
+
+def extractPatientData(timeseries, patient):
+     newTimeseries = timeseries.copy()
+     newTimeseries[VIRUS] = newTimeseries[patient]
+     return newTimeseries.subsetColumns([VIRUS])
+
+
+# ## Data Setup
+
+print("# In[5]:")
+
+
+"""
+Transform the input data
+"""
+
+# Convert input file to correct format
+dataDF = pd.read_csv(INPUT_FILE, header=None)
+dataDF = dataDF.transpose()
+dataDF.index.name = "time"
+patientDct = {p: "P%d" % (p+1) for p in range(6)}
+dataDF = dataDF.rename(columns=patientDct)
+observedTS = SBstoat.NamedTimeseries(dataframe=dataDF)
+print(observedTS)
+
+
+print("# In[35]:")
+
+
+# Compare baseline simulation with observed values
 
 rr = te.loada(ANTIMONY_MODEL)
-estimates = rr.simulate()
+estimates = rr.simulate(0, 6)
 v_estimate = np.log10(estimates["[V]"])
-#plt.plot(estimates["time"], v_estimate)
+fig, ax = plt.subplots(1, 1)
+ax.plot(estimates["time"], v_estimate)
+COLORS = ["r", "grey", "b", "g", "yellow", "pink"]
+for idx, patient in enumerate(observedTS.colnames):
+    color = COLORS[idx]
+    ax.scatter(observedTS[TIME], observedTS[patient], color=color)
+legends = ["fitted"]
+legends.extend(observedTS.colnames)
+plt.legend(legends)
+
+
+# ## Construct Parameter Fittings
+# This is a computationally intensive procedure. So, results from a past parameter fit are saved in PICKLE_FILE.
+# The plots constructed in the next section
+
+print("# In[7]:")
 
 
 # Do some fits
@@ -154,29 +131,36 @@ SBstoat.ModelFitter.addParameter(parameterDct, "p", 0, 1, 4.6e-2)
 SBstoat.ModelFitter.addParameter(parameterDct, "c", 0, 10, 5.2)
 
 
-# Plot fits for each patient
-patients = [p+1 for p in patientDct.keys()]
-fig, axes = plt.subplots(5,1, figsize=(12,10))
-fittedDataTransformDct = {VIRUS: transformData}
-for pos, param in enumerate(PARAMS):
-    singleObservedTS = extractPatientData(observedTS, "P4")
-    fitter = SBstoat.ModelFitter(ANTIMONY_MODEL,
-        singleObservedTS, ["beta","kappa","delta","p","c"],
-        parameterDct=parameterDct)
-    fitter.fitModel()
-    print("\n\n***Analysis for patient %s***\n" % patientDct[pos])
-    print(fitter.reportFit())
-    fitter.fitModel()
-    if IS_PLOT:
-        fitter.observedTS = transformData(fitter.observedTS)
-        fitter.fittedTS = transformData(fitter.fittedTS)
-        fitter.residualsTS = transformData(fitter.residualsTS)
-        fitter.plotFitAll(numRow=2, numCol=2, ylabel="log10(V)")
-        fitter.plotResiduals(numRow=2, numCol=2, ylabel="log10(V)")
+print("# In[8]:")
+
+
+def transformData(timeseries):
+    """
+    Changes the timeseries to log units
+    """
+    arr = np.array([1 if v < 1 else v
+          for v in timeseries[VIRUS]])
+    timeseries[VIRUS] = np.log10(arr)
+    return timeseries
+
+
+print("# In[9]:")
+
+
+def transformDataArr(timeseries):
+    """
+    Changes the timeseries to log units
+    """
+    arr = np.array([1 if v < 1 else v
+          for v in timeseries[VIRUS]])
+    return np.log10(arr)
+
+
+print("# In[37]:")
 
 
 # Create bootstrapped fitters for all patients
-def mkFitter(patient):
+def mkFitter(patient, isBootstrap=True):
     """
     Creates a fitter for the patient and runs
     bootsrapping.
@@ -197,44 +181,33 @@ def mkFitter(patient):
     SBstoat.ModelFitter.addParameter(parameterDct, "c", 0, 10, 5.2)
     # Obtain the input data
     patientObservedTS = extractPatientData(observedTS, patient)
-    fittedDataTransformDct = {VIRUS: transformData}
-    
+    fittedDataTransformDct = {VIRUS: transformDataArr}  # do fit in log units
+
     # Fit parameters to ts1
     fitter = SBstoat.ModelFitter(ANTIMONY_MODEL,
         patientObservedTS, ["beta","kappa","delta","p","c"],
+        fittedDataTransformDct=fittedDataTransformDct,
         parameterDct=parameterDct)
     fitter.fitModel()
     # Do the bootstrap
     reportInterval = int(NUM_BOOTSTRAP_ITERATIONS/10)
-    fitter.bootstrap(numIteration=NUM_BOOTSTRAP_ITERATIONS,
-          reportInterval=reportInterval)
+    if isBootstrap:
+        fitter.bootstrap(numIteration=NUM_BOOTSTRAP_ITERATIONS,
+              reportInterval=reportInterval)
     #
     return fitter
 
-################# Bootstrap Analysis ##################
-if os.path.isfile(PICKLE_FILE):
-    fitters = pickle.load(open( PICKLE_FILE, "rb" ) )
-else:
-    # Construct fitters for all patients
-    fitters = []
-    for patient in patientDct.values():
-        print("\n\n*** Processing patient %s""" % patient)
-        fitter = mkFitter(patient)
-        fitters.append(fitter)
-        fitter.roadrunnerModel = None  # Cannot serialize this object
-        pickle.dump(fitters, open( PICKLE_FILE, "wb" ) )
 
-# Construct parameter plots
-patients = [p+1 for p in patientDct.keys()]
-fig, axes = plt.subplots(5,1, figsize=(12,10))
-for pos, param in enumerate(PARAMS):
-    ax = axes[pos]
-    param = PARAMS[pos]
-    means = [f.bootstrapResult.meanDct[param] for f in fitters]
-    stds = [f.bootstrapResult.stdDct[param] for f in fitters]
-    ax.errorbar(patients, means, yerr=stds)
-    ax.set_title(param)
-    if pos == len(PARAMS) - 1:
-        ax.set_xlabel("Patient")
-plt.suptitle("Bootstrap Parameter Estimates")
-plt.show()
+# ## Do a Single Fit
+
+print("# In[41]:")
+
+
+fitter = mkFitter("P1", isBootstrap=False)
+print(fitter.params)
+
+
+print("# In[42]:")
+
+
+fitter.plotFitAll(numRow=2, numCol=2, ylabel="log10(V)")

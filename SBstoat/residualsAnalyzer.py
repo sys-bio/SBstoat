@@ -85,7 +85,7 @@ class ResidualsAnalyzer(object):
         #@expand
         """
         self._addKeyword(kwargs, po.MARKER, [None, "o"])
-        self._addKeyword(kwargs, po.SUPTITLE, "Residuals And Fitted Over Time")
+        self._addKeyword(kwargs, po.SUPTITLE, "Observed And Fitted Over Time")
         if isMultiple:
             self._plotter.plotTimeMultiple(self.fittedTS,
                   timeseries2=self.observedTS, **kwargs)

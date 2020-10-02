@@ -18,6 +18,7 @@ from SBstoat.observationSynthesizer import  \
 from SBstoat import _modelFitterCore as mfc
 from SBstoat import _helpers
 
+import lmfit
 import multiprocessing
 import numpy as np
 import pandas as pd
@@ -171,6 +172,8 @@ class BootstrapResult():
         self.percentileDct = {
               p: np.percentile(self.parameterDct[p],
               PERCENTILES) for p in self.parameterDct}
+        # Fitting parameters from result
+        self._params = None
 
     def __str__(self) -> str:
         """
@@ -189,6 +192,24 @@ class BootstrapResult():
                   self.percentileDct[par])
             report.indent(-1)
         return report.get()
+
+    @property
+    def params(self)->lmfit.Parameters:
+        """
+        Constructs parameters from bootstrap result.
+        
+        Returns
+        -------
+        """
+        if not "_params" in self.__dict__.keys():
+            self._params = None
+        if self._params is None:
+            self._params = lmfit.Parameters()
+            for name in self.meanDct.keys():
+                value = self.meanDct[name]
+                self._params.add(name, value=value, min=value*0.99,
+                      max=value*1.01)
+        return self._params
 
 
 ##############################

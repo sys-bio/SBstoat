@@ -178,10 +178,11 @@ class TestModelFitterCore(unittest.TestCase):
         if IGNORE_TEST:
             return
         fitter1 = ModelFitterCore(th.ANTIMONY_MODEL, self.timeseries,
-              list(th.PARAMETER_DCT.keys()), isPlot=IS_PLOT)
+              list(th.PARAMETER_DCT.keys()))
         fitter1.fitModel()
         fittedModel = fitter1.getFittedModel()
-        fitter2 = ModelFitterCore(fittedModel, self.timeseries, None)
+        fitter2 = ModelFitterCore(fittedModel, self.timeseries,
+              list(th.PARAMETER_DCT.keys()))
         fitter2.fitModel()
         # Should get same fit without changing the parameters
         self.assertTrue(np.isclose(np.var(fitter1.residualsTS.flatten()),

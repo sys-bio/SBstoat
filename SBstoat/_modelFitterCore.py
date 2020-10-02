@@ -184,33 +184,65 @@ class ModelFitterCore(object):
             msg = msg + "an Antimony model."
             raise ValueError(msg)
 
-    def _simulate(self, params=None):
+    def simulate(self, params=None, startTime=None, endTime=None, numPoint=None):
         """
-        Runs a simulation. Updates self.fittedTS.
+        Runs a simulation. Defaults to parameter values in the simulation.
 
         Parameters
         ----------
         params: lmfit.Parameters
+        startTime: float
+        endTime: float
+        numPoint: int
+
+        Return
+        ------
+        NamedArray
+        """
+        def set(default, parameter):
+            # Sets to default if parameter unspecified
+            if parameter is None:
+                return default
+            else:
+                return parameter
+        #
+        startTime = set(self.observedTS.start, startTime)
+        endTime = set(self.observedTS.end, endTime)
+        numPoint = set(len(self.observedTS), numPoint)
+        if self.roadrunnerModel is None:
+            self._initializeRoadrunnerModel()
+        self.roadrunnerModel.reset()
+        if params is not None:
+          # Parameters have been specified
+          self._setupModel(params)
+        return self.roadrunnerModel.simulate(startTime, endTime, numPoint)
+
+    def _simulate(self, **kwargs):
+        """
+        Runs a simulation.
+
+        Parameters
+        ----------
+        kwargs: dict
 
         Instance Variables Updated
         --------------------------
         self.fittedTS
         """
-        self._setupModel(params=params)
-        data = self.roadrunnerModel.simulate(
-              self.observedTS.start, self.observedTS.end, len(self.observedTS))
+        data = self.simulate(**kwargs)
         columnIndices = [i for i in range(len(data.colnames))
               if data.colnames[i][1:-1] in self.fittedTS.allColnames]
         columnIndices.insert(0, 0)
         self._updateFittedTS(data[:, columnIndices])
 
-    def _residuals(self, params:lmfit.Parameters=None)->np.ndarray:
+    def _residuals(self, params)->np.ndarray:
         """
         Compute the residuals between objective and experimental data
 
         Parameters
         ----------
-        params: Parameters to use for residual calculation.
+        kwargs: dict
+            arguments for simulation
 
         Instance Variables Updated
         --------------------------
@@ -251,6 +283,8 @@ class ModelFitterCore(object):
         else:
             if params is None:
                 params = self._initializeParams()
+            residuals_DE = self.observedTS.flatten()
+            residuals_LS = residuals_DE
             # Fit the model to the data
             # Use two algorithms:
             #   Global differential evolution to get us close to minimum
@@ -261,19 +295,26 @@ class ModelFitterCore(object):
                 self.minimizerResult = minimizer.minimize(
                       method=METHOD_DIFFERENTIAL_EVOLUTION,
                       max_nfev=max_nfev)
+                params_DE = self.minimizerResult.params
+                residuals_DE = self._residuals(params=params_DE)
             if self._method in [METHOD_BOTH, METHOD_LEASTSQ]:
                 minimizer = lmfit.Minimizer(self._residuals, params,
                       max_nfev=max_nfev)
                 self.minimizerResult = minimizer.minimize(
                       method=METHOD_LEASTSQ,
                       max_nfev=max_nfev)
-            self.params = self.minimizerResult.params
+                params_LS = self.minimizerResult.params
+                residuals_LS = self._residuals(params=params_LS)
+            if np.std(residuals_DE) <= np.std(residuals_LS):
+                self.params = params_DE
+            else:
+                self.params = params_LS
             self.minimizer = minimizer
             if not self.minimizer.success:
                 msg = "*** Minimizer failed for this model and data."
                 raise ValueError(msg)
         # Ensure that residualsTS and fittedTS match the parameters
-        self._residuals(params=self.params)
+        _ = self._residuals(params=self.params)
 
     def getFittedModel(self):
         """
@@ -285,10 +326,10 @@ class ModelFitterCore(object):
         """
         self._checkFit()
         self.roadrunnerModel.reset()
-        self._setupModel(params=self.params)
+        self._setupModel(self.params)
         return self.roadrunnerModel
 
-    def _setupModel(self, params=None):
+    def _setupModel(self, params):
         """
         Sets up the model for use based on the parameter parameters
 
@@ -297,11 +338,9 @@ class ModelFitterCore(object):
         params: lmfit.Parameters
 
         """
-        self.roadrunnerModel.reset()
-        if params is not None:
-            pp = params.valuesdict()
-            for parameter in self.parametersToFit:
-               self.roadrunnerModel.model[parameter] = pp[parameter]
+        pp = params.valuesdict()
+        for parameter in self.parametersToFit:
+            self.roadrunnerModel.model[parameter] = pp[parameter]
 
     def _initializeParams(self):
         params = lmfit.Parameters()

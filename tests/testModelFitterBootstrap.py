@@ -13,17 +13,19 @@ from SBstoat.observationSynthesizer import  \
       ObservationSynthesizerRandomizedResiduals,  \
       ObservationSynthesizerRandomErrors
 
+import lmfit
 import numpy as np
 import os
 import time
 import unittest
 
 
-IGNORE_TEST = True
-IS_PLOT = True
+IGNORE_TEST = False
+IS_PLOT = False
 TIMESERIES = th.getTimeseries()
 FITTER = th.getFitter(cls=mfb.ModelFitterBootstrap)
 FITTER.fitModel()
+NUM_ITERATION = 10
         
 
 class TestModelFitterBootstrap(unittest.TestCase):
@@ -87,7 +89,8 @@ class TestModelFitterBootstrap(unittest.TestCase):
         timeIt(4)
 
     def testBoostrap(self):
-        # TESTING
+        if IGNORE_TEST:
+            return
         self.fitter.bootstrap(numIteration=500,
               reportInterval=100, maxProcess=2)
         NUM_STD = 10
@@ -121,6 +124,32 @@ class TestModelFitterBootstrap(unittest.TestCase):
               reportInterval=100, maxProcess=2, std=0.01)
         result = self.fitter.bootstrapResult
         self.assertTrue(result is not None)
+        
+
+class TestBootstrapResult(unittest.TestCase):
+
+    def setUp(self):
+        self.names = ["A", "B"]
+        self.parameterDct = {n: np.random.random(NUM_ITERATION)
+              for n in self.names}
+        self.bootstrapResult = mfb.BootstrapResult(NUM_ITERATION,
+              self.parameterDct)
+
+    def testConstructor(self):
+        if IGNORE_TEST:
+            return
+        diff = set(self.parameterDct.keys()).symmetric_difference(
+              self.bootstrapResult.parameters)
+        self.assertEqual(len(diff), 0)
+
+    def testParams(self):
+        if IGNORE_TEST:
+            return
+        params = self.bootstrapResult.params
+        name = self.names[0]
+        self.assertEqual(params.valuesdict()[name],
+              np.mean(self.parameterDct[name]))
+
 
 
 if __name__ == '__main__':
