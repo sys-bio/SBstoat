@@ -16,6 +16,7 @@ import collections
 import lmfit
 import numpy as np
 import pandas as pd
+import pickle
 import random
 import roadrunner
 import tellurium as te
@@ -151,6 +152,8 @@ class ModelFitterCore(object):
     def copy(self):
         """
         Creates a copy of the model fitter.
+        Preserves the user-specified settings and the results
+        of bootstrapping.
         """
         if not isinstance(self.modelSpecification, str):
             modelSpecification = self.modelSpecification.getAntimony()
@@ -167,6 +170,11 @@ class ModelFitterCore(object):
               parameterDct=self.parameterDct,
               fittedDataTransformDct=self.fittedDataTransformDct,
               isPlot=self._isPlot)
+        newModelFitter.bootstrapResult = self.bootstrapResult
+        if newModelFitter.bootstrapResult is not None:
+            newModelFitter.params = newModelFitter.bootstrapResult.params
+        else:
+            newModelFitter.params = self.params
         return newModelFitter
 
     def _initializeRoadrunnerModel(self):
@@ -285,10 +293,13 @@ class ModelFitterCore(object):
                 params = self._initializeParams()
             residuals_DE = self.observedTS.flatten()
             residuals_LS = residuals_DE
+            params_DE = None
+            params_LS = None
             # Fit the model to the data
             # Use two algorithms:
             #   Global differential evolution to get us close to minimum
             #   A local Levenberg-Marquardt to getsus to the minimum
+            isMinimized = False
             if self._method in [METHOD_BOTH, METHOD_DIFFERENTIAL_EVOLUTION]:
                 minimizer = lmfit.Minimizer(self._residuals, params,
                       max_nfev=max_nfev)
@@ -297,6 +308,7 @@ class ModelFitterCore(object):
                       max_nfev=max_nfev)
                 params_DE = self.minimizerResult.params
                 residuals_DE = self._residuals(params=params_DE)
+                isMinimized = True
             if self._method in [METHOD_BOTH, METHOD_LEASTSQ]:
                 minimizer = lmfit.Minimizer(self._residuals, params,
                       max_nfev=max_nfev)
@@ -305,10 +317,16 @@ class ModelFitterCore(object):
                       max_nfev=max_nfev)
                 params_LS = self.minimizerResult.params
                 residuals_LS = self._residuals(params=params_LS)
+                isMinimized = True
+            if not isMinimized:
+                raise ValueError("Invalid method specified: %s" % self._method)
             if np.std(residuals_DE) <= np.std(residuals_LS):
                 self.params = params_DE
             else:
-                self.params = params_LS
+                if params_LS is not None:
+                    self.params = params_LS
+                else:
+                    self.params = params_DE
             self.minimizer = minimizer
             if not self.minimizer.success:
                 msg = "*** Minimizer failed for this model and data."
@@ -361,3 +379,37 @@ class ModelFitterCore(object):
     def _checkFit(self):
         if self.params is None:
             raise ValueError("Must use fitModel before using this method.")
+
+    def serialize(self, path):
+        """
+        Serialize the model to a path.
+
+        Parameters
+        ----------
+        path: str
+            File path
+        """
+        newModelFitter = self.copy()
+        with open(path, "wb") as fd:
+            pickle.dump(newModelFitter, fd)
+
+    @classmethod
+    def deserialize(cls, path):
+        """
+        Deserialize the model from a path.
+
+        Parameters
+        ----------
+        path: str
+            File path
+
+        Return
+        ------
+        ModelFitter
+            Model is initialized.
+        """
+        with open(path, "rb") as fd:
+            fitter = pickle.load(fd)
+        fitter._initializeRoadrunnerModel()
+        return fitter
+

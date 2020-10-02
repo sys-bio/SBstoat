@@ -20,15 +20,26 @@ import unittest
 
 
 IGNORE_TEST = False
-IS_PLOT = False
 TIMESERIES = th.getTimeseries()
+DIR = os.path.dirname(os.path.abspath(__file__))
+FILE_SERIALIZE = os.path.join(DIR, "modelFitterCore.pcl")
+FILES = [FILE_SERIALIZE]
         
 
 class TestModelFitterCore(unittest.TestCase):
 
     def setUp(self):
+        self._remove()
         self.timeseries = copy.deepcopy(TIMESERIES)
         self.fitter = th.getFitter(cls=ModelFitterCore)
+    
+    def tearDown(self):
+        self._remove()
+
+    def _remove(self):
+        for ffile in FILES:
+            if os.path.isfile(ffile):
+                os.remove(ffile)
 
     def testConstructor(self):
         if IGNORE_TEST:
@@ -187,6 +198,23 @@ class TestModelFitterCore(unittest.TestCase):
         # Should get same fit without changing the parameters
         self.assertTrue(np.isclose(np.var(fitter1.residualsTS.flatten()),
               np.var(fitter2.residualsTS.flatten())))
+
+    def testSerialize(self):
+        if IGNORE_TEST:
+            return
+        self.fitter.fitModel()
+        self.assertFalse(os.path.isfile(FILE_SERIALIZE))
+        self.fitter.serialize(FILE_SERIALIZE)
+        self.assertTrue(os.path.isfile(FILE_SERIALIZE))
+
+    def testSerialize(self):
+        if IGNORE_TEST:
+            return
+        self.fitter.fitModel()
+        self.fitter.serialize(FILE_SERIALIZE)
+        fitter = ModelFitter.deserialize(FILE_SERIALIZE)
+        self.assertEqual(fitter.modelSpecification,
+              self.fitter.modelSpecification)
         
 
 if __name__ == '__main__':

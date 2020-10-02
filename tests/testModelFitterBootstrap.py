@@ -26,14 +26,26 @@ TIMESERIES = th.getTimeseries()
 FITTER = th.getFitter(cls=mfb.ModelFitterBootstrap)
 FITTER.fitModel()
 NUM_ITERATION = 10
+DIR = os.path.dirname(os.path.abspath(__file__))
+FILE_SERIALIZE = os.path.join(DIR, "modelFitterBootstrap.pcl")
+FILES = [FILE_SERIALIZE]
         
 
 class TestModelFitterBootstrap(unittest.TestCase):
 
     def setUp(self):
+        self._remove()
         self.timeseries = TIMESERIES
         self.fitter = FITTER
         self.fitter.bootstrapResult = None
+    
+    def tearDown(self):
+        self._remove()
+
+    def _remove(self):
+        for ffile in FILES:
+            if os.path.isfile(ffile):
+                os.remove(ffile)
 
     def testRunBootstrap(self):
         if IGNORE_TEST:
@@ -92,7 +104,8 @@ class TestModelFitterBootstrap(unittest.TestCase):
         if IGNORE_TEST:
             return
         self.fitter.bootstrap(numIteration=500,
-              reportInterval=100, maxProcess=2)
+              reportInterval=100, maxProcess=2,
+              serializePath=FILE_SERIALIZE)
         NUM_STD = 10
         result = self.fitter.bootstrapResult
         for p in self.fitter.parametersToFit:
@@ -104,6 +117,9 @@ class TestModelFitterBootstrap(unittest.TestCase):
                   > th.PARAMETER_DCT[p]
             self.assertTrue(isLowerOk)
             self.assertTrue(isUpperOk)
+        #
+        fitter = mfb.ModelFitterBootstrap.deserialize(FILE_SERIALIZE)
+        self.assertIsNotNone(fitter.bootstrapResult)
 
     def testGetFittedParameterStds(self):
         if IGNORE_TEST:

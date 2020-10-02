@@ -219,6 +219,7 @@ class ModelFitterBootstrap(mfc.ModelFitterCore):
           reportInterval:int=1000,
           synthesizerClass=ObservationSynthesizerRandomizedResiduals,
           maxProcess:int=None,
+          serializePath:str=None,
            **kwargs: dict):
         """
         Constructs a bootstrap estimate of parameter values.
@@ -230,6 +231,7 @@ class ModelFitterBootstrap(mfc.ModelFitterCore):
         synthesizerClass: object that synthesizes new observations
             Must subclass ObservationSynthesizer
         maxProcess: Maximum number of processes to use. Default: numCPU
+        serializePath: Where to serialize the fitter after bootstrap
         kwargs: arguments passed to ObservationSynthesizer
               
         Example
@@ -268,6 +270,8 @@ class ModelFitterBootstrap(mfc.ModelFitterCore):
                 parameterDct[parameter].extend(dct[parameter])
         self.bootstrapResult = BootstrapResult(numIteration,
                   parameterDct)
+        if serializePath is not None:
+            self.serialize(serializePath)
 
     def getFittedParameters(self)->typing.List[float]:
         """
