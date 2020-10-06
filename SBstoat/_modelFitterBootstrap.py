@@ -31,8 +31,12 @@ IS_REPORT = False
 ITERATION_MULTIPLIER = 10  # Multiplier to calculate max bootsrap iterations
 ITERATION_PER_PROCESS = 200  # Numer of iterations handled by a process
 MAX_TRIES = 10  # Maximum number of tries to fit
+# Timeseries columns
+COL_SUM = "sum"  # sum of fitted values
+COL_SSQ = "ssq"  # sum of squares
 
 
+##############################
 class _Arguments():
     """ Arguments passed to _runBootstrap. """
 
@@ -51,20 +55,106 @@ class _Arguments():
         self.synthesizerClass = synthesizerClass
         self.kwargs = kwargs
 
-def _runBootstrap(arguments:_Arguments)->dict:
+
+class BootstrapResult():
+
+    def __init__(self, numIteration: int,
+          parameterDct: typing.Dict[str, np.ndarray]):
+        """
+        Results from bootstrap
+
+        Parameters
+        ----------
+        numIteration: number of iterations for solution
+        parameterDct: dict
+            key: parameter name
+            value: list of values
+        """
+        self.numIteration = numIteration
+        # population of parameter values
+        self.parameterDct = dict(parameterDct)
+        # list of parameters
+        self.parameters = list(self.parameterDct.keys())
+        # Number of simulations
+        self.numSimulation =  \
+              len(self.parameterDct[self.parameters[0]])
+        # means of parameter values
+        self.meanDct = {p: np.mean(parameterDct[p])
+              for p in self.parameters}
+        # standard deviation of parameter values
+        self.stdDct = {p: np.std(parameterDct[p])
+              for p in self.parameters}
+        # 95% Confidence limits for parameter values
+        self.percentileDct = {
+              p: np.percentile(self.parameterDct[p],
+              PERCENTILES) for p in self.parameterDct}
+        # Fitting parameters from result
+        self._params = None
+        # Timeseries statistics for fits
+        self.fitStatisticsTS = None
+
+    def __str__(self) -> str:
+        """
+        Bootstrap report.       
+        """
+        report = _helpers.Report()
+        report.addHeader("Bootstrap Report.")
+        report.addTerm("Total iterations", self.numIteration)
+        report.addTerm("Total simulation", self.numSimulation)
+        for par in self.parameters:
+            report.addHeader(par)
+            report.indent(1)
+            report.addTerm("mean", self.meanDct[par])
+            report.addTerm("std", self.stdDct[par])
+            report.addTerm("%s Percentiles" % str(PERCENTILES),
+                  self.percentileDct[par])
+            report.indent(-1)
+        return report.get()
+
+    @property
+    def params(self)->lmfit.Parameters:
+        """
+        Constructs parameters from bootstrap result.
+        
+        Returns
+        -------
+        """
+        if not "_params" in self.__dict__.keys():
+            self._params = None
+        if self._params is None:
+            self._params = lmfit.Parameters()
+            for name in self.meanDct.keys():
+                value = self.meanDct[name]
+                self._params.add(name, value=value, min=value*0.99,
+                      max=value*1.01)
+        return self._params
+
+    @classmethod
+    def merge(cls, bootstrapResults):
+        """
+        Combines a list of BootstrapResult.
+
+        Parameter
+        ---------
+        bootstrapResults: list-BootstrapResult
+
+        Return
+        ------
+        BootstrapResult
+        """
+        numIteration = sum([r.numIteration for r in bootstrapResults])
+        # Accumulate the results
+        parameterDct = {p: [] for p in bootstrapResults[0].parameterDct}
+        for bootstrapResult in bootstrapResults:
+            for parameter in parameterDct.keys():
+                parameterDct[parameter].extend(
+                      bootstrapResult.parameterDct[parameter])
+        return BootstrapResult(numIteration, parameterDct)
+
+
+def _runBootstrap(arguments:_Arguments)->BootstrapResult:
     """
     Executes bootstrapping.
-
-    Parameters
-    ----------
-    args: _Arguments
-    
-    Returns
-    -------
-    dict
-        key: parameer
-        value: list-float (estimates)
-    int: number of successful iterations
 
     Notes
     -----
@@ -135,84 +225,10 @@ def _runBootstrap(arguments:_Arguments)->dict:
         [parameterDct[p].append(dct[p]) for p in fitter.parametersToFit]
         newFitter.observedTS = synthesizer.calculate()
     print("Completed bootstrap process %d." % (processIdx + 1))
-    return parameterDct, numSuccessIteration
+    return BootstrapResult(numSuccessIteration, parameterDct)
 
 
 ##################### CLASSES #########################
-
-##############################
-class BootstrapResult():
-
-    """Result from bootstrap"""
-    def __init__(self, numIteration: int,
-          parameterDct: typing.Dict[str, np.ndarray]):
-        """
-        Parameters
-        ----------
-        numIteration: number of iterations for solution
-        parameterDct: dict
-            key: parameter name
-            value: list of values
-        """
-        self.numIteration = numIteration
-        # population of parameter values
-        self.parameterDct = dict(parameterDct)
-        # list of parameters
-        self.parameters = list(self.parameterDct.keys())
-        # Number of simulations
-        self.numSimulation =  \
-              len(self.parameterDct[self.parameters[0]])
-        # means of parameter values
-        self.meanDct = {p: np.mean(parameterDct[p])
-              for p in self.parameters}
-        # standard deviation of parameter values
-        self.stdDct = {p: np.std(parameterDct[p])
-              for p in self.parameters}
-        # 95% Confidence limits for parameter values
-        self.percentileDct = {
-              p: np.percentile(self.parameterDct[p],
-              PERCENTILES) for p in self.parameterDct}
-        # Fitting parameters from result
-        self._params = None
-
-    def __str__(self) -> str:
-        """
-        Bootstrap report.       
-        """
-        report = _helpers.Report()
-        report.addHeader("Bootstrap Report.")
-        report.addTerm("Total iterations", self.numIteration)
-        report.addTerm("Total simulation", self.numSimulation)
-        for par in self.parameters:
-            report.addHeader(par)
-            report.indent(1)
-            report.addTerm("mean", self.meanDct[par])
-            report.addTerm("std", self.stdDct[par])
-            report.addTerm("%s Percentiles" % str(PERCENTILES),
-                  self.percentileDct[par])
-            report.indent(-1)
-        return report.get()
-
-    @property
-    def params(self)->lmfit.Parameters:
-        """
-        Constructs parameters from bootstrap result.
-        
-        Returns
-        -------
-        """
-        if not "_params" in self.__dict__.keys():
-            self._params = None
-        if self._params is None:
-            self._params = lmfit.Parameters()
-            for name in self.meanDct.keys():
-                value = self.meanDct[name]
-                self._params.add(name, value=value, min=value*0.99,
-                      max=value*1.01)
-        return self._params
-
-
-##############################
 class ModelFitterBootstrap(mfc.ModelFitterCore):
 
     def bootstrap(self, numIteration:int=10, 
@@ -260,16 +276,7 @@ class ModelFitterBootstrap(mfc.ModelFitterCore):
         with multiprocessing.Pool(numProcess) as pool:
             results = pool.map(_runBootstrap, args_list)
         pool.join()
-        totSuccessIteration = sum([i for _, i in results])
-        # Accumulate the results
-        parameterDct = {p: [] for p in self.parametersToFit}
-        totSuccessIteration = 0
-        for parameter in self.parametersToFit:
-            for result in results:
-                dct = result[0]
-                parameterDct[parameter].extend(dct[parameter])
-        self.bootstrapResult = BootstrapResult(numIteration,
-                  parameterDct)
+        self.bootstrapResult = BootstrapResult.merge(results)
         if serializePath is not None:
             self.serialize(serializePath)
 

@@ -49,20 +49,21 @@ class TestModelFitterBootstrap(unittest.TestCase):
 
     def testRunBootstrap(self):
         if IGNORE_TEST:
-          return
+            return
         NUM_ITERATION = 10
         MAX_DIFF = 4
         arguments = mfb._Arguments(self.fitter, 1, 0, 
               synthesizerClass=ObservationSynthesizerRandomErrors,
               std=0.01)
         arguments.numIteration = NUM_ITERATION
-        parameterDct, numSuccessIteration = mfb._runBootstrap(arguments)
-        self.assertEqual(numSuccessIteration, NUM_ITERATION)
-        trues = [len(v)==NUM_ITERATION for _, v in parameterDct.items()]
+        bootstrapResult = mfb._runBootstrap(arguments)
+        self.assertEqual(bootstrapResult.numIteration, NUM_ITERATION)
+        trues = [len(v)==NUM_ITERATION for _, v in 
+              bootstrapResult.parameterDct.items()]
         self.assertTrue(all(trues))
         # Test not too far from true values
         trues = [np.abs(np.mean(v) - th.PARAMETER_DCT[p]) <= MAX_DIFF
-              for p, v in parameterDct.items()]
+              for p, v in bootstrapResult.parameterDct.items()]
         self.assertTrue(all(trues))
 
     def checkParameterValues(self):
@@ -165,6 +166,19 @@ class TestBootstrapResult(unittest.TestCase):
         name = self.names[0]
         self.assertEqual(params.valuesdict()[name],
               np.mean(self.parameterDct[name]))
+
+    def testMerge(self):
+        if IGNORE_TEST:
+            return
+        bootstrapResult = mfb.BootstrapResult(NUM_ITERATION,
+              self.parameterDct)
+        mergedResult = mfb.BootstrapResult.merge(
+              [self.bootstrapResult, bootstrapResult])
+        self.assertEqual(mergedResult.numIteration, 2*NUM_ITERATION)
+        self.assertEqual(len(mergedResult.parameterDct[self.names[0]]),
+              mergedResult.numIteration)
+
+
 
 
 
