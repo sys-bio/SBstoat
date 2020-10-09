@@ -59,16 +59,20 @@ class _Arguments():
 class BootstrapResult():
 
     def __init__(self, numIteration: int,
-          parameterDct: typing.Dict[str, np.ndarray]):
+          parameterDct: typing.Dict[str, np.ndarray],
+          statisticDct:dict):
         """
         Results from bootstrap
 
         Parameters
         ----------
-        numIteration: number of iterations for solution
+        numIteration: number of successful iterations
         parameterDct: dict
             key: parameter name
             value: list of values
+        statisticsDct: dict
+            COL_SUM: timeseries of sum of values
+            COL_SSQ: timeseries of sum of squares
         """
         self.numIteration = numIteration
         # population of parameter values
@@ -88,10 +92,13 @@ class BootstrapResult():
         self.percentileDct = {
               p: np.percentile(self.parameterDct[p],
               PERCENTILES) for p in self.parameterDct}
+        # Timeseries statistics for fits
+        self.statisticDct = statisticDct
+        ### PRIVATE
         # Fitting parameters from result
         self._params = None
-        # Timeseries statistics for fits
-        self.fitStatisticsTS = None
+        self._meanFittedTS = None
+        self._stdFittedTS = None
 
     def __str__(self) -> str:
         """
@@ -129,6 +136,46 @@ class BootstrapResult():
                       max=value*1.01)
         return self._params
 
+    @property
+    def meanFittedTS(self)->NamedTimeseries:
+        """
+        Mean of fitted values.
+        """
+        if self._meanFittedTS is None:
+            self._meanFittedTS = self.statisticDct[COL_SUM].copy()
+            for col in self._meanFittedTS.colnames:
+                self._meanFittedTS[col] = (1.0*self._meanFittedTS[col])  \
+                      /self.numIteration
+        return self._meanFittedTS
+
+    @property
+    def stdFittedTS(self)->NamedTimeseries:
+        """
+        Mean of fitted values.
+        """
+        if self._meanFittedTS is None:
+            self._meanFittedTS = self.statisticDct[COL_SUM].copy()
+            for col in self._meanFittedTS.colnames:
+                self._meanFittedTS[col] =  \
+                      self.statisticDct[COL_SUM][col]/self.numIteration
+        return self._meanFittedTS
+
+    @property
+    def stdFittedTS(self)->NamedTimeseries:
+        """
+        Standard deviation of fitted values.
+        """
+        if self._stdFittedTS is None:
+            self._stdFittedTS = self.statisticDct[COL_SUM].copy(isInitialize=True)
+            if self.numIteration > 1:
+                for col in self._stdFittedTS.colnames:
+                    self._stdFittedTS[col] = self.statisticDct[COL_SSQ][col]  \
+                          - self.numIteration*(self.meanFittedTS[col]**2)
+                    self._stdFittedTS[col] =  \
+                          self._stdFittedTS[col]/(self.numIteration - 1) 
+                    self._stdFittedTS[col] =  np.sqrt(self._stdFittedTS[col])
+        return self._stdFittedTS
+
     @classmethod
     def merge(cls, bootstrapResults):
         """
@@ -142,14 +189,24 @@ class BootstrapResult():
         ------
         BootstrapResult
         """
+        if len(bootstrapResults) == 0:
+            raise ValueError("Must provide a non-empty list")
+        statisticDct = bootstrapResults[0].statisticDct
         numIteration = sum([r.numIteration for r in bootstrapResults])
         # Accumulate the results
         parameterDct = {p: [] for p in bootstrapResults[0].parameterDct}
+        zeroTS = statisticDct[COL_SUM].copy(isInitialize=True)
+        colnames = zeroTS.colnames
+        statisticDct = {c: zeroTS.copy() for c in [COL_SUM, COL_SSQ]}       
         for bootstrapResult in bootstrapResults:
             for parameter in parameterDct.keys():
                 parameterDct[parameter].extend(
                       bootstrapResult.parameterDct[parameter])
-        return BootstrapResult(numIteration, parameterDct)
+            for key in [COL_SUM, COL_SSQ]:
+                statisticDct[key][colnames] +=  \
+                      bootstrapResult.statisticDct[key][colnames]
+        return BootstrapResult(numIteration, parameterDct, statisticDct)
+            
 
 
 def _runBootstrap(arguments:_Arguments)->BootstrapResult:
@@ -196,6 +253,8 @@ def _runBootstrap(arguments:_Arguments)->BootstrapResult:
           parameterUpperBound=fitter.upperBound,
           fittedDataTransformDct=fitter.fittedDataTransformDct,
           isPlot=fitter._isPlot)
+    statisticDct = {c: newObservedTS.copy(isInitialize=True)
+          for c in [COL_SUM, COL_SSQ]}
     # Do the bootstrap iterations
     for iteration in range(numIteration*ITERATION_MULTIPLIER):
         if (iteration > 0) and (numSuccessIteration != lastReport)  \
@@ -223,9 +282,13 @@ def _runBootstrap(arguments:_Arguments)->BootstrapResult:
         numSuccessIteration += 1
         dct = newFitter.params.valuesdict()
         [parameterDct[p].append(dct[p]) for p in fitter.parametersToFit]
+        cols = newFitter.fittedTS.colnames
+        statisticDct[COL_SUM][cols] += newFitter.fittedTS[cols]
+        statisticDct[COL_SSQ][cols] +=   \
+              newFitter.fittedTS[cols]*newFitter.fittedTS[cols]
         newFitter.observedTS = synthesizer.calculate()
     print("Completed bootstrap process %d." % (processIdx + 1))
-    return BootstrapResult(numSuccessIteration, parameterDct)
+    return BootstrapResult(numSuccessIteration, parameterDct, statisticDct)
 
 
 ##################### CLASSES #########################

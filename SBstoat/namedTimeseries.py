@@ -157,6 +157,7 @@ class NamedTimeseries(object):
             timeIdxs = [i for i, c in enumerate(allColnames) if c.lower() == TIME]
             if len(timeIdxs) != 1:
                 raise ValueError("Must have exactly one time column")
+            self.values = self.values.astype(float)
             allColnames[timeIdxs[0]] = TIME
             self.allColnames = []  # all column names
             self.colnames = []  # Names of non-time columns
@@ -422,10 +423,37 @@ class NamedTimeseries(object):
         array = self.values[rowIdxs, :]
         return array[:, colIdxs]
 
-    def copy(self):
-        return copy.deepcopy(self)
+    def copy(self, isInitialize=False):
+        """
+        Copies the orginal timeseries with an option for initializing columns
+        to 0.
+
+        Parameters
+        ----------
+        isIinitialize: bool
+
+        Return
+        -----
+        NamedTimeseries
+        """
+        ts = copy.deepcopy(self)
+        if isInitialize:
+            for column in self.colnames:
+                ts[column] = 0.0
+        return ts
 
     def equals(self, other):
+        """
+        Checks if two timeseries have the same columns and values.
+
+        Parameters
+        ----------
+        other: NamedTimeseries
+        
+        Returns
+        -------
+        bool
+        """
         diff = set(self.allColnames).symmetric_difference(other.allColnames)
         if len(diff) > 0:
             return False

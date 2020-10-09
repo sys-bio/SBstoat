@@ -56,6 +56,9 @@ class TestNamedTimeseries(unittest.TestCase):
         # colnames doesn't include TIME
         self.assertEqual(len(self.timeseries.colnames),
                np.shape(self.timeseries.values)[1] - 1)
+        #
+        newTS = self.timeseries.copy(isInitialize=True)
+        self.assertEqual(np.sum(newTS[self.timeseries.colnames[0]]), 0)
 
     def testConstructor2(self):
         if IGNORE_TEST:
