@@ -28,12 +28,16 @@ PLOT = "plot"
 class ResidualsAnalyzer(object):
 
     def __init__(self, observedTS:NamedTimeseries, fittedTS:NamedTimeseries,
+              residualsTS:NamedTimeseries=None,
               isPlot:bool=True):
         self.observedTS = observedTS
         self.fittedTS = fittedTS
-        self.residualsTS = self.observedTS.copy()
-        cols = self.residualsTS.colnames
-        self.residualsTS[cols] -= self.fittedTS[cols]
+        if residualsTS is None:
+            self.residualsTS = self.observedTS.copy()
+            cols = self.residualsTS.colnames
+            self.residualsTS[cols] -= self.fittedTS[cols]
+        else:
+            self.residualsTS = residualsTS.copy()
         ### Plotter
         self._plotter = tp.TimeseriesPlotter(isPlot=isPlot)
 

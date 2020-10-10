@@ -22,7 +22,7 @@ Usage
          parametersToFit=["k1", "k2"])
    # Fit the model parameters and view parameters
    f.fitModel()
-   print(f.getFittedParamters())
+   print(f.getFittedParameters())
    # Print observed, fitted and residual values
    print(f.observedTS)
    print(f.fittedTS)
@@ -43,6 +43,7 @@ from SBstoat._modelFitterReport import ModelFitterReport
 from SBstoat.residualsAnalyzer import ResidualsAnalyzer
 
 from docstring_expander.expander import Expander
+import lmfit
 import numpy as np
 import pandas as pd
 import typing
@@ -52,7 +53,7 @@ class ModelFitter(ModelFitterReport):
 
     # TODO: The docstring for this method should contain all of the options
     #       in PlotOptions
-    def plot(self, kind:str, **kwargs):
+    def plot(self, kind:str, params=None, numPoint=None, **kwargs):
         """
         High level plot routine.
         A figure may contain 1 or more plot, and each plot may contain
@@ -118,7 +119,7 @@ class ModelFitter(ModelFitterReport):
             statement = "self.plot%s(**kwargs)" % kind
             exec(statement)
         else:
-            self._checkFit()
+            self._updateFit(params, numPoint)
             analyzer = ResidualsAnalyzer(self.observedTS, self.fittedTS,
                   isPlot=self._isPlot)
             statement = "analyzer.plot%s(**kwargs)" % kind
@@ -126,7 +127,8 @@ class ModelFitter(ModelFitterReport):
 
     @Expander(po.KWARGS, po.BASE_OPTIONS, indent=8,
           header=po.HEADER)
-    def plotResidualsAll(self, **kwargs):
+    def plotResidualsAll(self, 
+          params:lmfit.Parameters=None, numPoint:int=None, **kwargs):
         """
         Plots a set of residual plots
     
@@ -134,14 +136,15 @@ class ModelFitter(ModelFitterReport):
         ----------
         #@expand
         """
-        self._checkFit()
+        self._updateFit(params, numPoint)
         analyzer = ResidualsAnalyzer(self.observedTS, self.fittedTS,
               isPlot=self._isPlot)
         analyzer.plotAll(**kwargs)
 
     @Expander(po.KWARGS, po.BASE_OPTIONS, indent=8,
           header=po.HEADER)
-    def plotResiduals(self, **kwargs):
+    def plotResiduals(self,
+          params:lmfit.Parameters=None, numPoint:int=None, **kwargs):
         """
         Plots residuals of a fit over time.
     
@@ -149,13 +152,14 @@ class ModelFitter(ModelFitterReport):
         ----------
         #@expand
         """
-        self._checkFit()
+        self._updateFit(params, numPoint)
         analyzer = ResidualsAnalyzer(self.observedTS, self.fittedTS,
               isPlot=self._isPlot)
         analyzer.plotResidualsOverTime(**kwargs)
 
     @Expander(po.KWARGS, po.BASE_OPTIONS, indent=8, header=po.HEADER)
-    def plotFitAll(self, isMultiple=False, **kwargs):
+    def plotFitAll(self, isMultiple=False,
+          params:lmfit.Parameters=None, numPoint:int=None, **kwargs):
         """
         Plots the fitted with observed data over time.
     
@@ -165,8 +169,9 @@ class ModelFitter(ModelFitterReport):
             plots all variables on a single plot
         #@expand
         """
-        self._checkFit()
+        self._updateFit(params, numPoint)
         analyzer = ResidualsAnalyzer(self.observedTS, self.fittedTS,
+              residualsTS=self.residualsTS,
               isPlot=self._isPlot)
         analyzer.plotFittedObservedOverTime(**kwargs)
 
@@ -222,3 +227,18 @@ class ModelFitter(ModelFitterReport):
         self._checkBootstrap()
         ts = self._mkParameterDF(parameters=parameters)
         self._plotter.plotHistograms(ts, **kwargs)
+
+    def _updateFit(self, params:lmfit.Parameters, numPoint:int):
+        """
+        Checks and updates the fitted values useing the specified parameters
+        and number of poitns.
+
+        Parameters
+        ----------
+        
+        Returns
+        -------
+        """
+        self._checkFit()
+        data = self.simulate(params=params, numPoint=numPoint)
+        self.fittedTS = NamedTimeseries(namedArray=data)

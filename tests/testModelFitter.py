@@ -15,11 +15,11 @@ import unittest
 
 
 IGNORE_TEST = False
-IS_PLOT = False
+IS_PLOT = True
 TIMESERIES = th.getTimeseries()
 FITTER = th.getFitter(cls=ModelFitter, isPlot=IS_PLOT)
 FITTER.fitModel()
-FITTER.bootstrap(numIteration=100)
+FITTER.bootstrap(numIteration=10)
 ANTIMONY_MODEL_BENCHMARK = """
 # Reactions   
     J1: S1 -> S2; k1*S1
@@ -47,6 +47,8 @@ class TestModelFitter(unittest.TestCase):
     def testPlotFitAll(self):
         if IGNORE_TEST:
             return
+        self.fitter.plotFitAll(isMultiple=True, numPoint=3,
+              params=self.fitter.params)
         self.fitter.plotFitAll()
         self.fitter.plotFitAll(isMultiple=True)
 
