@@ -231,7 +231,7 @@ class TimeseriesPlotter(object):
             if  meanTS is not None:
                 if stdTS is None:
                     stdTS = meanTS.copy(isInitialize=True)
-                lineIdx = 1
+                lineIdx = 2
                 initialStatement = StatementManager(ax.scatter)
                 statement = mkStatement(ax, initialStatement, meanTS, variable)
                 options.marker = "^"
@@ -243,7 +243,6 @@ class TimeseriesPlotter(object):
                 statement.addKwargs(yerr=stdTS[variable])
                 statement.addKwargs(linestyle="none")
                 legends.append("Bootstrap mean")
-                options.color = "green"
                 options.lengends = legends
                 options.do(ax, statement=statement, plotIdx=plotIdx, lineIdx=lineIdx)
         if self.isPlot:

@@ -20,8 +20,8 @@ import matplotlib
 import matplotlib.pyplot as plt
 
 
-IGNORE_TEST = False
-IS_PLOT = False
+IGNORE_TEST = True
+IS_PLOT = True
 DIR = os.path.dirname(os.path.abspath(__file__))
 TEST_DATA_PATH = os.path.join(DIR, "tst_data.txt")
 DEFAULT_NUM_ROW = 2
@@ -74,9 +74,8 @@ class TestTimeseriesPlotter(unittest.TestCase):
         self.plotter.plotTimeSingle(self.timeseries, numRow=2, numCol=3, ylabel="xxx")
         self.plotter.plotTimeSingle(self.timeseries, columns=["S1", "S2"])
 
-    def testPlotSingle1(self):
-        if IGNORE_TEST:
-            return
+    def testPlotSingle5(self):
+        # TESTING
         timeseries = self.timeseries.subsetColumns(["S1"])
         dct = {}
         indices = [i for i in range(len(timeseries)) if i % 4 == 0]
@@ -88,13 +87,15 @@ class TestTimeseriesPlotter(unittest.TestCase):
         stdTS = meanTS.copy()
         for col in meanTS.colnames:
             stdTS[col] = 1
+        #
+        self.plotter.plotTimeSingle(timeseries, timeseries2=self.timeseries,
+              meanTS=meanTS, stdTS=stdTS, marker=[None, 'o', "^"],
+              color=["b", "r", "g"])
+        #
         self.plotter.plotTimeSingle(timeseries, meanTS=meanTS, stdTS=stdTS)
         #
         self.plotter.plotTimeSingle(timeseries, timeseries2=self.timeseries,
               marker='*')
-        #
-        self.plotter.plotTimeSingle(timeseries, timeseries2=self.timeseries,
-              meanTS=meanTS, stdTS=stdTS, marker=[None, '*'])
 
 
     def mkTimeseries(self):
