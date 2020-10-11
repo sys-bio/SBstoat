@@ -101,15 +101,19 @@ class ResidualsAnalyzer(object):
         isMultiple: plots all variables on a single plot
         #@expand
         """
-        self._addKeyword(kwargs, po.MARKER, [None, "o"])
         self._addKeyword(kwargs, po.SUPTITLE, "Observed And Fitted Over Time")
         if isMultiple:
+            self._addKeyword(kwargs, po.MARKER, [None, "o"])
             self._plotter.plotTimeMultiple(self.fittedTS,
                   timeseries2=self.observedTS, **kwargs)
         else:
+            self._addKeyword(kwargs, po.MARKER, [None, "o", "^"])
             self._addKeyword(kwargs, po.LEGEND, ["fitted", "observed"])
+            self._addKeyword(kwargs, po.COLOR, ["b", "b", "r"])
             self._plotter.plotTimeSingle(self.fittedTS,
-                  timeseries2=self.observedTS, **kwargs)
+                  timeseries2=self.observedTS, meanTS=self.meanFittedTS,
+                  stdTS=self.stdFittedTS, 
+                  **kwargs)
 
     @Expander(po.KWARGS, po.BASE_OPTIONS, includes=[po.BINS], indent=8,
           header=po.HEADER)

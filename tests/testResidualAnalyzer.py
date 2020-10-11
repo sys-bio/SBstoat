@@ -33,10 +33,23 @@ class TestReidualAnalyzer(unittest.TestCase):
         self.analyzer.plotResidualsOverTime(numCol=3, numRow=2,
               ylim=[-1.5, 1.5])
 
-    def testPlotFittedObservedOverTime(self):
+    def testPlotFittedObservedOverTime1(self):
         if IGNORE_TEST:
             return
         self.analyzer.plotFittedObservedOverTime(numCol=3, numRow=2)
+
+    def testPlotFittedObservedOverTime2(self):
+        if IGNORE_TEST:
+            return
+        meanTS = self.fittedTS.copy(isInitialize=True)
+        stdTS = self.fittedTS.copy(isInitialize=True)
+        for col in meanTS.colnames:
+            meanTS[col] = 2
+            stdTS[col] = 1
+        analyzer = ResidualsAnalyzer(self.observedTS, self.fittedTS,
+              meanFittedTS=meanTS, stdFittedTS=stdTS,
+              isPlot=IS_PLOT)
+        analyzer.plotFittedObservedOverTime(numCol=3, numRow=2)
 
     def testPlotResidualsHistograms(self):
         if IGNORE_TEST:

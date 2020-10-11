@@ -20,8 +20,8 @@ import matplotlib
 import matplotlib.pyplot as plt
 
 
-IGNORE_TEST = True
-IS_PLOT = True
+IGNORE_TEST = False
+IS_PLOT = False
 DIR = os.path.dirname(os.path.abspath(__file__))
 TEST_DATA_PATH = os.path.join(DIR, "tst_data.txt")
 DEFAULT_NUM_ROW = 2
@@ -75,7 +75,8 @@ class TestTimeseriesPlotter(unittest.TestCase):
         self.plotter.plotTimeSingle(self.timeseries, columns=["S1", "S2"])
 
     def testPlotSingle5(self):
-        # TESTING
+        if IGNORE_TEST:
+            return
         timeseries = self.timeseries.subsetColumns(["S1"])
         dct = {}
         indices = [i for i in range(len(timeseries)) if i % 4 == 0]
