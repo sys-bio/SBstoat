@@ -14,6 +14,7 @@ from SBstoat import timeseriesPlotter as tp
 
 import numpy as np
 import os
+import pandas as pd
 import unittest
 import matplotlib
 import matplotlib.pyplot as plt
@@ -57,7 +58,7 @@ class TestTimeseriesPlotter(unittest.TestCase):
 
     def testPlotSingle1(self):
         if IGNORE_TEST:
-          return
+            return
         self.plotter.plotTimeSingle(self.timeseries,
               timeseries2=self.timeseries,
               numCol=4,
@@ -72,6 +73,29 @@ class TestTimeseriesPlotter(unittest.TestCase):
         self.plotter.plotTimeSingle(self.timeseries, numCol=2)
         self.plotter.plotTimeSingle(self.timeseries, numRow=2, numCol=3, ylabel="xxx")
         self.plotter.plotTimeSingle(self.timeseries, columns=["S1", "S2"])
+
+    def testPlotSingle1(self):
+        if IGNORE_TEST:
+            return
+        timeseries = self.timeseries.subsetColumns(["S1"])
+        dct = {}
+        indices = [i for i in range(len(timeseries)) if i % 4 == 0]
+        for col in timeseries.allColnames:
+            dct[col] = timeseries[col][indices]
+        df = pd.DataFrame(dct)
+        meanTS = NamedTimeseries(dataframe=df)
+        meanTS[meanTS.colnames] = 1.1*meanTS[meanTS.colnames]
+        stdTS = meanTS.copy()
+        for col in meanTS.colnames:
+            stdTS[col] = 1
+        self.plotter.plotTimeSingle(timeseries, meanTS=meanTS, stdTS=stdTS)
+        #
+        self.plotter.plotTimeSingle(timeseries, timeseries2=self.timeseries,
+              marker='*')
+        #
+        self.plotter.plotTimeSingle(timeseries, timeseries2=self.timeseries,
+              meanTS=meanTS, stdTS=stdTS, marker=[None, '*'])
+
 
     def mkTimeseries(self):
         ts2 = self.timeseries.copy()

@@ -120,7 +120,8 @@ class ModelFitter(ModelFitterReport):
             exec(statement)
         else:
             self._updateFit(params, numPoint)
-            analyzer = ResidualsAnalyzer(self.observedTS, self.fittedTS,
+            analyzer = ResidualsAnalyzer(self.observedTS, self.plotFittedTS,
+                  residualsTS=self.residualsTS,
                   isPlot=self._isPlot)
             statement = "analyzer.plot%s(**kwargs)" % kind
             exec(statement)
@@ -137,7 +138,8 @@ class ModelFitter(ModelFitterReport):
         #@expand
         """
         self._updateFit(params, numPoint)
-        analyzer = ResidualsAnalyzer(self.observedTS, self.fittedTS,
+        analyzer = ResidualsAnalyzer(self.observedTS, self.plotFittedTS,
+              residualsTS=self.residualsTS,
               isPlot=self._isPlot)
         analyzer.plotAll(**kwargs)
 
@@ -153,7 +155,8 @@ class ModelFitter(ModelFitterReport):
         #@expand
         """
         self._updateFit(params, numPoint)
-        analyzer = ResidualsAnalyzer(self.observedTS, self.fittedTS,
+        analyzer = ResidualsAnalyzer(self.observedTS, self.plotFittedTS,
+              residualsTS=self.residualsTS,
               isPlot=self._isPlot)
         analyzer.plotResidualsOverTime(**kwargs)
 
@@ -170,8 +173,10 @@ class ModelFitter(ModelFitterReport):
         #@expand
         """
         self._updateFit(params, numPoint)
-        analyzer = ResidualsAnalyzer(self.observedTS, self.fittedTS,
+        analyzer = ResidualsAnalyzer(self.observedTS, self.plotFittedTS,
               residualsTS=self.residualsTS,
+              meanFittedTS=self.bootstrapResult.meanFittedTS,
+              stdFittedTS=self.bootstrapResult.stdFittedTS,
               isPlot=self._isPlot)
         analyzer.plotFittedObservedOverTime(**kwargs)
 
@@ -241,4 +246,4 @@ class ModelFitter(ModelFitterReport):
         """
         self._checkFit()
         data = self.simulate(params=params, numPoint=numPoint)
-        self.fittedTS = NamedTimeseries(namedArray=data)
+        self.plotFittedTS = NamedTimeseries(namedArray=data)

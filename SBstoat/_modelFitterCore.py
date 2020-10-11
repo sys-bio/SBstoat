@@ -97,6 +97,7 @@ class ModelFitterCore(object):
         self._method = method
         self._isPlot = isPlot
         self._plotter = tp.TimeseriesPlotter(isPlot=self._isPlot)
+        self._plotFittedTS = None  # Timeseries that is plotted
         # The following are calculated during fitting
         self.roadrunnerModel = None
         self.minimizer = None  # lmfit.minimizer

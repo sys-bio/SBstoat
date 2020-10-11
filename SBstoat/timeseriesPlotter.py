@@ -147,14 +147,17 @@ class TimeseriesPlotter(object):
 
     @Expander(po.KWARGS, po.BASE_OPTIONS, excludes=[po.TITLE], indent=8,
            header=po.HEADER)
-    def plotTimeSingle(self, timeseries1, **kwargs):
+    def plotTimeSingle(self, timeseries1:NamedTimeseries,
+           meanTS:NamedTimeseries=None, stdTS:NamedTimeseries=None, **kwargs):
         """
         Constructs plots of single columns, possibly with a second
         timeseries.
 
         Parameters
         ---------
-        timeseries1: NamedTimeseries
+        timeseries1: timeseries to plot
+        meanTS: mean values of timeseries to plot
+        stdTS: standard deviations of meanTS (same times)
         #@expand
                
         Example
@@ -163,20 +166,23 @@ class TimeseriesPlotter(object):
         plotter.plotTimeSingle(timeseries)
         """
         options = self._mkPlotOptionsMatrix(timeseries1, **kwargs)
-        def mkStatement(ax, timeseries:NamedTimeseries, variable:str, lineIdx:int):
-            markers = options.get(po.MARKER, lineIdx=lineIdx)
-            if markers is not None:
-                if isinstance(markers, list):
-                    marker = markers[lineIdx]
-                else:
-                    marker = markers
-            else:
-                marker = None
-            if marker is None:
-                statement = StatementManager(ax.plot)
-            else:
-                statement = StatementManager(ax.scatter)
-            #
+        #
+        def mkStatement(ax, statement:StatementManager,
+            timeseries:NamedTimeseries, variable:str):
+            """
+            Creates a plotting statement.
+   
+            Parameters
+            ----------
+            ax: plotting axes
+            initialStatement: statement if initialized
+            timeseries: what to plot
+            variable: variable to plot
+            
+            Returns
+            -------
+            StatementManager
+            """
             statement.addPosarg(timeseries[TIME])
             statement.addPosarg(timeseries[variable])
             return statement
@@ -205,12 +211,40 @@ class TimeseriesPlotter(object):
                 options.set(po.XLABEL, "", isOverride=True)
             # Construct the plot
             lineIdx = 0
-            statement = mkStatement(ax, timeseries1, variable, lineIdx)
+            initialStatement = StatementManager(ax.plot)
+            statement = mkStatement(ax, initialStatement, timeseries1, variable)
             options.do(ax, statement=statement, plotIdx=plotIdx, lineIdx=lineIdx)
+            legends = []
             if options.timeseries2 is not None:
                 lineIdx = 1
-                statement = mkStatement(ax, options.timeseries2, variable, lineIdx)
-                options.set(po.LEGEND, [LABEL1, LABEL2])
+                initialStatement = StatementManager(ax.plot)
+                if options.marker is not None:
+                    if len(options.marker) > 1:
+                        if options.marker[lineIdx] is not None:
+                            initialStatement = StatementManager(ax.scatter)
+                    elif options.marker is not None:
+                        initialStatement = StatementManager(ax.scatter)
+                statement = mkStatement(ax, initialStatement, options.timeseries2, variable)
+                legends = [LABEL1, LABEL2]
+                options.lengends = legends
+                options.do(ax, statement=statement, plotIdx=plotIdx, lineIdx=lineIdx)
+            if  meanTS is not None:
+                if stdTS is None:
+                    stdTS = meanTS.copy(isInitialize=True)
+                lineIdx = 1
+                initialStatement = StatementManager(ax.scatter)
+                statement = mkStatement(ax, initialStatement, meanTS, variable)
+                options.marker = "^"
+                statement.addKwargs(facecolors="none")
+                options.do(ax, statement=statement, plotIdx=plotIdx, lineIdx=lineIdx)
+                #
+                initialStatement = StatementManager(ax.errorbar)
+                statement = mkStatement(ax, initialStatement, meanTS, variable)
+                statement.addKwargs(yerr=stdTS[variable])
+                statement.addKwargs(linestyle="none")
+                legends.append("Bootstrap mean")
+                options.color = "green"
+                options.lengends = legends
                 options.do(ax, statement=statement, plotIdx=plotIdx, lineIdx=lineIdx)
         if self.isPlot:
             plt.show()

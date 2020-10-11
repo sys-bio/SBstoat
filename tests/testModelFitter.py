@@ -15,7 +15,7 @@ import unittest
 
 
 IGNORE_TEST = False
-IS_PLOT = True
+IS_PLOT = False
 TIMESERIES = th.getTimeseries()
 FITTER = th.getFitter(cls=ModelFitter, isPlot=IS_PLOT)
 FITTER.fitModel()

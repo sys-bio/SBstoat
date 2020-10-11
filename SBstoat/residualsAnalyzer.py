@@ -28,10 +28,23 @@ PLOT = "plot"
 class ResidualsAnalyzer(object):
 
     def __init__(self, observedTS:NamedTimeseries, fittedTS:NamedTimeseries,
-              residualsTS:NamedTimeseries=None,
+              residualsTS:NamedTimeseries=None, meanFittedTS=None,
+              stdFittedTS=None,
               isPlot:bool=True):
+        """
+        Parameters
+        ----------
+        observedTS: Observed values
+        residualsTS: same time values as observedTS
+        fittedTS: fitted values
+            may have different times than observedTS
+        meanFittedTS: fitted values with same times as observedTS
+        stdFittedTS: fitted values with same times as observedTS
+        """
         self.observedTS = observedTS
         self.fittedTS = fittedTS
+        self.meanFittedTS = meanFittedTS
+        self.stdFittedTS = stdFittedTS
         if residualsTS is None:
             self.residualsTS = self.observedTS.copy()
             cols = self.residualsTS.colnames
