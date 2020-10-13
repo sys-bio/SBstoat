@@ -148,7 +148,8 @@ class TimeseriesPlotter(object):
     @Expander(po.KWARGS, po.BASE_OPTIONS, excludes=[po.TITLE], indent=8,
            header=po.HEADER)
     def plotTimeSingle(self, timeseries1:NamedTimeseries,
-           meanTS:NamedTimeseries=None, stdTS:NamedTimeseries=None, ax_spec=None, **kwargs):
+           meanTS:NamedTimeseries=None, stdTS:NamedTimeseries=None, ax_spec=None,
+           position=None,  **kwargs):
         """
         Constructs plots of single columns, possibly with a second
         timeseries.
@@ -159,6 +160,7 @@ class TimeseriesPlotter(object):
         meanTS: mean values of timeseries to plot
         stdTS: standard deviations of meanTS (same times)
         ax_spec: Optionally specified axis for all lines
+        position: (int, int) - position of ax_spec
         #@expand
                
         Example
@@ -167,6 +169,18 @@ class TimeseriesPlotter(object):
         plotter.plotTimeSingle(timeseries)
         """
         options = self._mkPlotOptionsMatrix(timeseries1, **kwargs)
+        # Adjust rows and columns
+        numPlot = len(options.columns)  # Number of plots
+        if po.NUM_COL in kwargs.keys():
+            options.numRow = int(np.ceil(numPlot/options.numCol))
+        else:
+            options.numCol = int(np.ceil(numPlot/options.numRow))
+        options.set(po.XLABEL, TIME)
+        # Create the LayoutManager
+        if ax_spec is None:
+            layout = self._mkManager(options, numPlot)
+        else:
+            layout = None
         #
         def mkStatement(ax, statement:StatementManager,
             timeseries:NamedTimeseries, variable:str):
@@ -188,15 +202,25 @@ class TimeseriesPlotter(object):
             statement.addPosarg(timeseries[variable])
             return statement
         #
-        # Adjust rows and columns
-        numPlot = len(options.columns)  # Number of plots
-        if po.NUM_COL in kwargs.keys():
-            options.numRow = int(np.ceil(numPlot/options.numCol))
-        else:
-            options.numCol = int(np.ceil(numPlot/options.numRow))
-        options.set(po.XLABEL, TIME)
-        # Create the LayoutManager
-        layout = self._mkManager(options, numPlot)
+        def isFirstColumn(plotIdx):
+            if layout is not None:
+                return layout.isFirstColumn(plotIdx)
+            else:
+                if position is not None:
+                    return position[1]  == 0
+                else:
+                    return True
+        #
+        def isLastRow(plotIdx):
+            if layout is not None:
+                return layout.isLastRow(plotIdx)
+            else:
+                if po.NUM_ROW in kwargs.keys():
+                    numRow = kwargs[po.NUM_ROW]
+                else:
+                    return True
+                return position[0] + 1 == numRow
+        #
         # Construct the plots
         baseOptions = copy.deepcopy(options)
         for plotIdx, variable in enumerate(options.columns):
@@ -208,10 +232,10 @@ class TimeseriesPlotter(object):
             #ax = axes[row, col]
             options.set(po.YLABEL, "concentration")
             options.set(po.TITLE, variable)
-            if not layout.isFirstColumn(plotIdx):
+            if not isFirstColumn(plotIdx):
                 options.ylabel =  NULL_STR
                 options.set(po.YLABEL, "", isOverride=True)
-            if not layout.isLastRow(plotIdx):
+            if not isLastRow(plotIdx):
                 options.set(po.XLABEL, "", isOverride=True)
             # Construct the plot
             lineIdx = 0

@@ -98,6 +98,27 @@ class TestTimeseriesPlotter(unittest.TestCase):
         self.plotter.plotTimeSingle(timeseries, timeseries2=self.timeseries,
               marker='*')
 
+    def testPlotSingle6(self):
+        if IGNORE_TEST:
+            return
+        numCol = 3
+        numRow = 2
+        fig, axes = plt.subplots(numRow, numCol)
+        self.plotter.isPlot = False
+        for idx in range(numCol*numRow):
+            if idx < numCol:
+                row = 0
+                col = idx
+            else:
+                row = 1
+                col = idx - numCol
+            position = [row, col]
+            ax = axes[row, col]
+            ts = self.timeseries.subsetColumns(self.timeseries.colnames[idx])
+            self.plotter.plotTimeSingle(ts, ax_spec=ax, position=position,
+                  numRow=2)
+        if IS_PLOT:
+            plt.show()
 
     def mkTimeseries(self):
         ts2 = self.timeseries.copy()
