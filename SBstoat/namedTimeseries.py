@@ -157,6 +157,7 @@ class NamedTimeseries(object):
             timeIdxs = [i for i, c in enumerate(allColnames) if c.lower() == TIME]
             if len(timeIdxs) != 1:
                 raise ValueError("Must have exactly one time column")
+            self.values = np.array(self.values)  # Ensure not NamedArray
             self.values = self.values.astype(float)
             allColnames[timeIdxs[0]] = TIME
             self.allColnames = []  # all column names
@@ -167,7 +168,7 @@ class NamedTimeseries(object):
             self.start = min(times)
             self.end = max(times)
 
-    def __str__(self):
+    def __repr__(self):
         df = self.to_dataframe()
         return str(df)
 

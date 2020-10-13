@@ -120,7 +120,7 @@ class ModelFitter(ModelFitterReport):
             exec(statement)
         else:
             self._updateFit(params, numPoint)
-            analyzer = ResidualsAnalyzer(self.observedTS, self.plotFittedTS,
+            analyzer = ResidualsAnalyzer(self.observedTS, self._plotFittedTS,
                   meanFittedTS=self.bootstrapResult.meanFittedTS,
                   stdFittedTS=self.bootstrapResult.stdFittedTS,
                   residualsTS=self.residualsTS,
@@ -140,7 +140,7 @@ class ModelFitter(ModelFitterReport):
         #@expand
         """
         self._updateFit(params, numPoint)
-        analyzer = ResidualsAnalyzer(self.observedTS, self.plotFittedTS,
+        analyzer = ResidualsAnalyzer(self.observedTS, self._plotFittedTS,
               residualsTS=self.residualsTS,
               isPlot=self._isPlot)
         analyzer.plotAll(**kwargs)
@@ -157,7 +157,7 @@ class ModelFitter(ModelFitterReport):
         #@expand
         """
         self._updateFit(params, numPoint)
-        analyzer = ResidualsAnalyzer(self.observedTS, self.plotFittedTS,
+        analyzer = ResidualsAnalyzer(self.observedTS, self._plotFittedTS,
               residualsTS=self.residualsTS,
               isPlot=self._isPlot)
         analyzer.plotResidualsOverTime(**kwargs)
@@ -175,7 +175,7 @@ class ModelFitter(ModelFitterReport):
         #@expand
         """
         self._updateFit(params, numPoint)
-        analyzer = ResidualsAnalyzer(self.observedTS, self.plotFittedTS,
+        analyzer = ResidualsAnalyzer(self.observedTS, self._plotFittedTS,
               residualsTS=self.residualsTS,
               meanFittedTS=self.bootstrapResult.meanFittedTS,
               stdFittedTS=self.bootstrapResult.stdFittedTS,
@@ -247,5 +247,13 @@ class ModelFitter(ModelFitterReport):
         -------
         """
         self._checkFit()
-        data = self.simulate(params=params, numPoint=numPoint)
-        self.plotFittedTS = NamedTimeseries(namedArray=data)
+        if self.fittedTS is None:
+            self.fittedTS = self.simulate(
+                  params=params, numPoint=len(self.observedTS))
+            self.residualsTS = None
+        if self.residualsTS is None:
+            self.residualsTS = self.fittedTS.copy()
+            cols = self.observedTS.colnames
+            self.residualsTS[cols] = self.observedTS[cols] - self.fittedTS[cols]
+        self._plotFittedTS = self.simulate(params=params, numPoint=numPoint)
+        self._plotFittedTS = self._plotFittedTS.subsetColumns(self.selectedColumns)

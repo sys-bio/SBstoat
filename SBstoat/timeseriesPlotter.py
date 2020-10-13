@@ -148,7 +148,7 @@ class TimeseriesPlotter(object):
     @Expander(po.KWARGS, po.BASE_OPTIONS, excludes=[po.TITLE], indent=8,
            header=po.HEADER)
     def plotTimeSingle(self, timeseries1:NamedTimeseries,
-           meanTS:NamedTimeseries=None, stdTS:NamedTimeseries=None, **kwargs):
+           meanTS:NamedTimeseries=None, stdTS:NamedTimeseries=None, ax_spec=None, **kwargs):
         """
         Constructs plots of single columns, possibly with a second
         timeseries.
@@ -158,6 +158,7 @@ class TimeseriesPlotter(object):
         timeseries1: timeseries to plot
         meanTS: mean values of timeseries to plot
         stdTS: standard deviations of meanTS (same times)
+        ax_spec: Optionally specified axis for all lines
         #@expand
                
         Example
@@ -199,11 +200,14 @@ class TimeseriesPlotter(object):
         # Construct the plots
         baseOptions = copy.deepcopy(options)
         for plotIdx, variable in enumerate(options.columns):
-            ax = layout.getAxis(plotIdx)
+            if ax_spec is None:
+                ax = layout.getAxis(plotIdx)
+            else:
+                ax = ax_spec
             options = copy.deepcopy(baseOptions)
             #ax = axes[row, col]
             options.set(po.YLABEL, "concentration")
-            options.title = variable
+            options.set(po.TITLE, variable)
             if not layout.isFirstColumn(plotIdx):
                 options.ylabel =  NULL_STR
                 options.set(po.YLABEL, "", isOverride=True)

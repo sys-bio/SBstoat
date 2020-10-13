@@ -14,8 +14,8 @@ import os
 import unittest
 
 
-IGNORE_TEST = False
-IS_PLOT = False
+IGNORE_TEST = True
+IS_PLOT = True
 TIMESERIES = th.getTimeseries()
 FITTER = th.getFitter(cls=ModelFitter, isPlot=IS_PLOT)
 FITTER.fitModel()
@@ -45,8 +45,7 @@ class TestModelFitter(unittest.TestCase):
         self.fitter.plotResiduals(numCol=3, numRow=2, ylim=[-1.5, 1.5])
 
     def testPlotFitAll(self):
-        if IGNORE_TEST:
-            return
+        # TESTING
         self.fitter.plotFitAll(isMultiple=True, numPoint=3,
               params=self.fitter.params)
         self.fitter.plotFitAll()

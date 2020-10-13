@@ -13,10 +13,12 @@ from SBstoat.observationSynthesizer import  \
       ObservationSynthesizerRandomizedResiduals,  \
       ObservationSynthesizerRandomErrors
 
+import copy
 import lmfit
 import numpy as np
 import os
 import pandas as pd
+import pickle
 import time
 import unittest
 
@@ -136,9 +138,9 @@ class TestModelFitterBootstrap(unittest.TestCase):
         for std in stds:
             self.assertTrue(isinstance(std, float))
 
-    def testBootstrapSynthesizer(self):
+    def testBootstrap(self):
         if IGNORE_TEST:
-          return
+            return
         self.fitter.bootstrap(numIteration=500,
               synthesizerClass=ObservationSynthesizerRandomErrors,
               reportInterval=100, maxProcess=2, std=0.01)

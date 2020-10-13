@@ -108,7 +108,10 @@ class ResidualsAnalyzer(object):
                   timeseries2=self.observedTS, **kwargs)
         else:
             self._addKeyword(kwargs, po.MARKER, [None, "o", "^"])
-            self._addKeyword(kwargs, po.LEGEND, ["fitted", "observed"])
+            legends = ["fitted", "observed"]
+            if self.meanFittedTS is not None:
+                legends.append("bootstrap fitted")
+            self._addKeyword(kwargs, po.LEGEND, legends)
             self._addKeyword(kwargs, po.COLOR, ["b", "b", "r"])
             self._plotter.plotTimeSingle(self.fittedTS,
                   timeseries2=self.observedTS, meanTS=self.meanFittedTS,

@@ -117,17 +117,23 @@ class ModelFitterCore(object):
                   % str(excess)
             raise ValueError(excess)
 
-    def _updateFittedTS(self, data):
+    def _transformFittedTS(self, data):
         """
         Updates the fittedTS taking into account required transformations.
  
         Parameters
         ----------
         data: np.ndarray
+ 
+        Results
+        ----------
+        NamedTimeseries
         """
-        self.fittedTS[self.fittedTS.allColnames] = data
+        fittedTS = NamedTimeseries(array=data[:, :],
+              colnames=self.fittedTS.allColnames)
         for column, func in self.fittedDataTransformDct.items():
-            self.fittedTS[column] = func(self.fittedTS)
+            fittedTS[column] = func(fittedTS)
+        return fittedTS
         
     @staticmethod
     def addParameter(parameterDct: dict,
@@ -224,7 +230,15 @@ class ModelFitterCore(object):
         if params is not None:
           # Parameters have been specified
           self._setupModel(params)
-        return self.roadrunnerModel.simulate(startTime, endTime, numPoint)
+        data = self.roadrunnerModel.simulate(startTime, endTime, numPoint)
+        # Select the required columns
+        columnIndices = [i for i in range(len(data.colnames))
+              if data.colnames[i][1:-1] in self.fittedTS.allColnames]
+        columnIndices.insert(0, 0)
+        data = data[:, columnIndices]
+        fittedTS = self._transformFittedTS(data)
+        return fittedTS
+        
 
     def _simulate(self, **kwargs):
         """
@@ -238,11 +252,7 @@ class ModelFitterCore(object):
         --------------------------
         self.fittedTS
         """
-        data = self.simulate(**kwargs)
-        columnIndices = [i for i in range(len(data.colnames))
-              if data.colnames[i][1:-1] in self.fittedTS.allColnames]
-        columnIndices.insert(0, 0)
-        self._updateFittedTS(data[:, columnIndices])
+        self.fittedTS = self.simulate(**kwargs)
 
     def _residuals(self, params)->np.ndarray:
         """
