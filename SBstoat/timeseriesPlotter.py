@@ -219,6 +219,8 @@ class TimeseriesPlotter(object):
                     numRow = kwargs[po.NUM_ROW]
                 else:
                     return True
+                if position is None:
+                    return True
                 return position[0] + 1 == numRow
         #
         # Construct the plots
