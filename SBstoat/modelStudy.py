@@ -29,13 +29,13 @@ import shutil
 import typing
 
 
-OUT_PATH = "study_results"
+DIR_PATH = "study_results"
 
 
 class ModelStudy(object):
 
     def __init__(self, modelSpecification, dataSources, parametersToFit,
-          **kwargs):
+          dirPath=DIR_PATH, **kwargs):
         """
         Parameters
         ---------
@@ -46,30 +46,91 @@ class ModelStudy(object):
         parametersToFit: list-str/None
             parameters in the model that you want to fit
             if None, no parameters are fit
-        kwargs: dict
-            arguments passed to ModelFitter
-        """
-        self.fitters = {d: ModelFitter(modelSpecification, d, parametersToFit,
-               **kwargs) for d in dataSources}
-
-    def bootstrap(self, outPath=OUT_PATH, **kwargs):
-        """
-        Does bootstrap fits for the models.
-        
-        Parameters
-        ----------
-        outPath: str
+        dirPath: str
             Path to the output directory containing the serialized fitters
             for the study.
         kwargs: dict
+            arguments passed to ModelFitter
+        """
+        self.dirPath = dirPath  # Path to the directory for serialization
+        if not os.path.isdir(outPath):
+            os.mkdir(dirPath, "rw")
+        self.fitterPathDct = {}  # Path to serialized fitters
+        self.fitters = {}  # Fitters
+        for source in dataSources:
+            ffile = "%s.pcl" % os.path.split(source)[0]
+            filePath = os.path.join(dirPath, ffile)
+            self.fitterPathDct[source] = filePath
+            if os.path.isfile(filePath):
+                self.fitters[source] = modelFitter.deserialize(filePath)
+            else:
+                self.fitters[source] ModelFitter(modelSpecification, source,
+                       parametersToFit, **kwargs)
+
+    def fitModel(self):
+        """
+        Does fits for the models and serializes the results.
+        """
+        for source in self.fitters.keys():
+            print("\n***Fit for data %s" % source)
+            self.fitters[source].fitModel()
+            filePath = self.fitterPathDct[source]
+            self.fitters[source].serialize(filePath)
+            self.fitters[source].reportFit()
+
+    def bootstrap(self, **kwargs):
+        """
+        Does bootstrap the models and serializes the results.
+        
+        Parameters
+        ----------
+        kwargs: dict
             arguments passed to ModelFitter.bootstrap
         """
-        if os.path.isdir(outPath):
-            shutil.rmtree(outPath)
+        if not os.path.isdir(outPath):
+            os.mkdir(dirPath, "rw")
+        for source in self.fitters.keys():
+            print("Bootstrapping for data %s" % key)
+            self.fitters[key].fitModel()
+            self.fitters[key].bootstrapResult(**kwargs)
+            self.fitters[key].serialize(filePath)
 
-    def rerport(self):
+    def plotFitAll(self, **kwargs):
         """
-        Plots from the study.
-            1. Plot of observed and fitted values
-            2. Plot of parameter values
+        Parameters
+        ----------
+        kwargs: dict
+            arguments passed to ModelFitter plots
         """
+        for source in self.fitters.keys():
+            print("Report for data %s" % key)
+            self.fitters[source].plotFitAll(**kwargs)
+
+    def plotParametersEstimates(self):
+        """
+        Parameters
+        ----------
+        kwargs: dict
+            arguments passed to ModelFitter plots
+        """
+        trues = [f.bootstrapResult is None for f in self.fitters.values()]
+        if not all(trues):
+            raise ValueError("\n***Must do bootstrap before getting report.")
+        fitter = self.fitters.values()[0]
+        parameters = fitter.parametersToFit
+        fig, axes = plt.subplots(len(parameters),1, figsize=(12,10))
+        for pos, param in enumerate(PARAMS):
+            ax = axes[pos]
+            param = PARAMS[pos]
+            means = [f.bootstrapResult.meanDct[param] for f in fitters]
+            stds = [f.bootstrapResult.stdDct[param] for f in fitters]
+            y_upper = max([s + m for s, m in zip(stds, means)])*1.1
+            ax.errorbar(parameters, means, yerr=stds, linestyle="")
+            ax.scatter(parameters, means, s=18.0)
+            values = np.repeat(parameterDct[param].value, len(parameters))
+            ax.plot(parameters, values, linestyle="dashed", color="grey")
+            ax.set_title(param)
+            ax.set_ylim([0, y_upper])
+            if pos == len(PARAMS) - 1:
+                ax.set_xlabel("Patient")
+        _ = plt.suptitle("Bootstrap Parameters With 1-Standard")
