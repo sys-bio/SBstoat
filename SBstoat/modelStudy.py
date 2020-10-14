@@ -35,7 +35,7 @@ DIR_PATH = "study_results"
 class ModelStudy(object):
 
     def __init__(self, modelSpecification, dataSources, parametersToFit,
-          dirPath=DIR_PATH, **kwargs):
+          dirPath=DIR_PATH, instanceNames=None, **kwargs):
         """
         Parameters
         ---------
@@ -49,34 +49,41 @@ class ModelStudy(object):
         dirPath: str
             Path to the output directory containing the serialized fitters
             for the study.
+        instanceNames: list-str
+            Names of study instances
         kwargs: dict
             arguments passed to ModelFitter
         """
         self.dirPath = dirPath  # Path to the directory for serialization
-        if not os.path.isdir(outPath):
-            os.mkdir(dirPath, "rw")
+        if not os.path.isdir(dirPath):
+            os.mkdir(dirPath)
+        if instanceNames is None:
+            self.instanceNames = ["study_%d" %d for d in range(1, len(dataSources)+1)]
+        else:
+            self.instanceNames = instanceNames
         self.fitterPathDct = {}  # Path to serialized fitters
         self.fitters = {}  # Fitters
-        for source in dataSources:
+        for idx, name in enumerate(self.instanceNames):
+            source = dataSources[idx]
             ffile = "%s.pcl" % os.path.split(source)[0]
             filePath = os.path.join(dirPath, ffile)
-            self.fitterPathDct[source] = filePath
+            self.fitterPathDct[name] = filePath
             if os.path.isfile(filePath):
-                self.fitters[source] = modelFitter.deserialize(filePath)
+                self.fitters[name] = modelFitter.deserialize(filePath)
             else:
-                self.fitters[source] ModelFitter(modelSpecification, source,
+                self.fitters[name] = ModelFitter(modelSpecification, source,
                        parametersToFit, **kwargs)
 
     def fitModel(self):
         """
         Does fits for the models and serializes the results.
         """
-        for source in self.fitters.keys():
-            print("\n***Fit for data %s" % source)
+        for name in self.instanceNames:
+            print("\n***Fit for data %s" % name)
             self.fitters[source].fitModel()
-            filePath = self.fitterPathDct[source]
-            self.fitters[source].serialize(filePath)
-            self.fitters[source].reportFit()
+            filePath = self.fitterPathDct[name]
+            self.fitters[name].serialize(filePath)
+            self.fitters[name].reportFit()
 
     def bootstrap(self, **kwargs):
         """
@@ -87,13 +94,12 @@ class ModelStudy(object):
         kwargs: dict
             arguments passed to ModelFitter.bootstrap
         """
-        if not os.path.isdir(outPath):
-            os.mkdir(dirPath, "rw")
-        for source in self.fitters.keys():
-            print("Bootstrapping for data %s" % key)
-            self.fitters[key].fitModel()
-            self.fitters[key].bootstrapResult(**kwargs)
-            self.fitters[key].serialize(filePath)
+        for name in self.instanceNames:
+            print("Bootstrapping for instance %s" % name)
+            fitter = self.fitters[name]
+            fitter.fitModel()
+            fitter.bootstrapResult(**kwargs)
+            fitter.serialize(filePath)
 
     def plotFitAll(self, **kwargs):
         """
@@ -102,9 +108,10 @@ class ModelStudy(object):
         kwargs: dict
             arguments passed to ModelFitter plots
         """
-        for source in self.fitters.keys():
-            print("Report for data %s" % key)
-            self.fitters[source].plotFitAll(**kwargs)
+        for name in self.instanceNames:
+            print("Plots for instance %s" % name)
+            fitter = self.fitters[name]
+            fitter.plotFitAll()
 
     def plotParametersEstimates(self):
         """
@@ -132,5 +139,5 @@ class ModelStudy(object):
             ax.set_title(param)
             ax.set_ylim([0, y_upper])
             if pos == len(PARAMS) - 1:
-                ax.set_xlabel("Patient")
+                ax.set_xticklabels(self.instanceNames)
         _ = plt.suptitle("Bootstrap Parameters With 1-Standard")
