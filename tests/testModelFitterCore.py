@@ -202,12 +202,17 @@ class TestModelFitterCore(unittest.TestCase):
     def testSerialize(self):
         if IGNORE_TEST:
             return
+        def test():
+            self.assertFalse(os.path.isfile(FILE_SERIALIZE))
+            self.fitter.serialize(FILE_SERIALIZE)
+            self.assertTrue(os.path.isfile(FILE_SERIALIZE))
+            os.remove(FILE_SERIALIZE)
+        test()
+        #
         self.fitter.fitModel()
-        self.assertFalse(os.path.isfile(FILE_SERIALIZE))
-        self.fitter.serialize(FILE_SERIALIZE)
-        self.assertTrue(os.path.isfile(FILE_SERIALIZE))
+        test()
 
-    def testSerialize(self):
+    def testDeserialize(self):
         if IGNORE_TEST:
             return
         self.fitter.fitModel()

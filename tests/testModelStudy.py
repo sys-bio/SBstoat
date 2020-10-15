@@ -8,13 +8,14 @@ Created on Tue Aug 19, 2020
 from SBstoat.modelStudy import ModelStudy
 import tests._testHelpers as th
 
+import matplotlib
 import numpy as np
 import os
 import shutil
 import unittest
 
 
-IGNORE_TEST = False
+IGNORE_TEST = True
 TIMESERIES = th.getTimeseries()
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 SERIALIZE_DIR = os.path.join(THIS_DIR, "modelStudy")
@@ -28,8 +29,10 @@ class TestModelFitterCore(unittest.TestCase):
 
     def setUp(self):
         self._remove()
+        parametersToFit = list(th.PARAMETER_DCT.keys())
         self.study = ModelStudy(th.ANTIMONY_MODEL,
-              [DATA_FILE, DATA_FILE2], th.PARAMETER_DCT.keys())
+              [DATA_FILE, DATA_FILE2], parametersToFit,
+              dirPath=SERIALIZE_DIR)
     
     def tearDown(self):
         self._remove()
@@ -42,11 +45,35 @@ class TestModelFitterCore(unittest.TestCase):
             if os.path.isdir(ddir):
                 shutil.rmtree(ddir)
 
-    def testConstructor(self):
+    def testConstructor1(self):
         if IGNORE_TEST:
             return
-        self.assertGreater(len(self.study.fitters), 0)
+        self.assertGreater(len(self.study.fitterDct.values()), 0)
+        self.assertTrue(os.path.isfile(DATA_FILE))
+        self.assertTrue(os.path.isfile(DATA_FILE2))
+
+    def testFitModel(self):
+        if IGNORE_TEST:
+            return
+        # Smoke test
+        self.study.fitModel()
+
+    def testFitBootstrap(self):
+        if IGNORE_TEST:
+            return
+        self.study.bootstrap(numIteration=10)
+        for fitter in self.study.fitterDct.values():
+            self.assertIsNotNone(fitter.bootstrapResult)
+
+    def testPlotFitAll(self):
+        # TESTING
+        self.study.fitModel()
+        self.study.plotFitAll()
+        #
+        self.study.bootstrap()
+        self.study.plotFitAll()
         
 
 if __name__ == '__main__':
+    matplotlib.use('TkAgg')
     unittest.main()

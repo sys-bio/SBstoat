@@ -175,10 +175,16 @@ class ModelFitter(ModelFitterReport):
         #@expand
         """
         self._updateFit(params, numPoint)
+        if self.bootstrapResult is not None:
+            meanFittedTS = self.bootstrapResult.meanFittedTS
+            stdFittedTS = self.bootstrapResult.stdFittedTS
+        else:
+            meanFittedTS = None
+            stdFittedTS = None
         analyzer = ResidualsAnalyzer(self.observedTS, self._plotFittedTS,
               residualsTS=self.residualsTS,
-              meanFittedTS=self.bootstrapResult.meanFittedTS,
-              stdFittedTS=self.bootstrapResult.stdFittedTS,
+              meanFittedTS=meanFittedTS,
+              stdFittedTS=stdFittedTS,
               isPlot=self._isPlot)
         analyzer.plotFittedObservedOverTime(**kwargs)
 

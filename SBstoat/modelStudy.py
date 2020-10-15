@@ -29,13 +29,13 @@ import shutil
 import typing
 
 
-DIR_PATH = "study_results"
+DIR_PATH = "modelStudyFitters"
 
 
 class ModelStudy(object):
 
     def __init__(self, modelSpecification, dataSources, parametersToFit,
-          dirPath=DIR_PATH, instanceNames=None, **kwargs):
+          dirPath=DIR_PATH, instanceNames=None, useSerialized=True, **kwargs):
         """
         Parameters
         ---------
@@ -51,6 +51,8 @@ class ModelStudy(object):
             for the study.
         instanceNames: list-str
             Names of study instances
+        useSerialized: bool
+            Use the serialized file if it exiss
         kwargs: dict
             arguments passed to ModelFitter
         """
@@ -58,21 +60,29 @@ class ModelStudy(object):
         if not os.path.isdir(dirPath):
             os.mkdir(dirPath)
         if instanceNames is None:
-            self.instanceNames = ["study_%d" %d for d in range(1, len(dataSources)+1)]
+            self.instanceNames = ["dataset_%d" %d
+                  for d in range(1, len(dataSources)+1)]
         else:
             self.instanceNames = instanceNames
         self.fitterPathDct = {}  # Path to serialized fitters
-        self.fitters = {}  # Fitters
+        self.fitterDct = {}  # Fitters
         for idx, name in enumerate(self.instanceNames):
             source = dataSources[idx]
-            ffile = "%s.pcl" % os.path.split(source)[0]
-            filePath = os.path.join(dirPath, ffile)
+            filePath = self._getSerializePath(name)
             self.fitterPathDct[name] = filePath
-            if os.path.isfile(filePath):
-                self.fitters[name] = modelFitter.deserialize(filePath)
+            if os.path.isfile(filePath) and useSerialized:
+                self.fitterDct[name] = ModelFitter.deserialize(filePath)
             else:
-                self.fitters[name] = ModelFitter(modelSpecification, source,
+                self.fitterDct[name] = ModelFitter(modelSpecification, source,
                        parametersToFit, **kwargs)
+                self.fitterDct[name].serialize(filePath)
+
+    def _getSerializePath(self, name):
+        return os.path.join(self.dirPath, "%s.pcl" % name)
+
+    def _serializeFitter(self, name):
+        filePath = self._getSerializePath(name)
+        self.fitterDct[name].serialize(filePath)
 
     def fitModel(self):
         """
@@ -80,10 +90,10 @@ class ModelStudy(object):
         """
         for name in self.instanceNames:
             print("\n***Fit for data %s" % name)
-            self.fitters[source].fitModel()
-            filePath = self.fitterPathDct[name]
-            self.fitters[name].serialize(filePath)
-            self.fitters[name].reportFit()
+            fitter = self.fitterDct[name]
+            fitter.fitModel()
+            self._serializeFitter(name)
+            print(fitter.reportFit())
 
     def bootstrap(self, **kwargs):
         """
@@ -96,13 +106,15 @@ class ModelStudy(object):
         """
         for name in self.instanceNames:
             print("Bootstrapping for instance %s" % name)
-            fitter = self.fitters[name]
+            fitter = self.fitterDct[name]
             fitter.fitModel()
-            fitter.bootstrapResult(**kwargs)
-            fitter.serialize(filePath)
+            fitter.bootstrap(**kwargs)
+            self._serializeFitter(name)
 
     def plotFitAll(self, **kwargs):
         """
+        Constructs plots using parameters from bootstrap if available.
+
         Parameters
         ----------
         kwargs: dict
@@ -110,8 +122,12 @@ class ModelStudy(object):
         """
         for name in self.instanceNames:
             print("Plots for instance %s" % name)
-            fitter = self.fitters[name]
-            fitter.plotFitAll()
+            fitter = self.fitterDct[name]
+            if fitter.bootstrapResult is not None:
+                params = fitter.bootstrapResult.params
+            else:
+                params = fitter.params
+            fitter.plotFitAll(params=params)
 
     def plotParametersEstimates(self):
         """
@@ -120,17 +136,17 @@ class ModelStudy(object):
         kwargs: dict
             arguments passed to ModelFitter plots
         """
-        trues = [f.bootstrapResult is None for f in self.fitters.values()]
+        trues = [f.bootstrapResult is None for f in self.fitterDct.values()]
         if not all(trues):
             raise ValueError("\n***Must do bootstrap before getting report.")
-        fitter = self.fitters.values()[0]
+        fitter = self.fitterDct.values()[0]
         parameters = fitter.parametersToFit
         fig, axes = plt.subplots(len(parameters),1, figsize=(12,10))
         for pos, param in enumerate(PARAMS):
             ax = axes[pos]
             param = PARAMS[pos]
-            means = [f.bootstrapResult.meanDct[param] for f in fitters]
-            stds = [f.bootstrapResult.stdDct[param] for f in fitters]
+            means = [f.bootstrapResult.meanDct[param] for f in fitterDct.values()]
+            stds = [f.bootstrapResult.stdDct[param] for f in fitterDct.values()]
             y_upper = max([s + m for s, m in zip(stds, means)])*1.1
             ax.errorbar(parameters, means, yerr=stds, linestyle="")
             ax.scatter(parameters, means, s=18.0)
