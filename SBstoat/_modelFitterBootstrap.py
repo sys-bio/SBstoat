@@ -13,6 +13,7 @@ Several considerations are made;
 """
 
 from SBstoat.namedTimeseries import NamedTimeseries, TIME, mkNamedTimeseries
+from SBstoat._bootstrapResult import BootstrapResult, COL_SUM, COL_SSQ
 from SBstoat.observationSynthesizer import  \
       ObservationSynthesizerRandomizedResiduals
 from SBstoat import _modelFitterCore as mfc
@@ -31,12 +32,9 @@ IS_REPORT = False
 ITERATION_MULTIPLIER = 10  # Multiplier to calculate max bootsrap iterations
 ITERATION_PER_PROCESS = 200  # Numer of iterations handled by a process
 MAX_TRIES = 10  # Maximum number of tries to fit
-# Timeseries columns
-COL_SUM = "sum"  # sum of fitted values
-COL_SSQ = "ssq"  # sum of squares
 
 
-##############################
+###############  HELPER CLASSES ###############
 class _Arguments():
     """ Arguments passed to _runBootstrap. """
 
@@ -54,161 +52,9 @@ class _Arguments():
         self.processIdx = processIdx
         self.synthesizerClass = synthesizerClass
         self.kwargs = kwargs
-
-
-class BootstrapResult():
-
-    def __init__(self, numIteration: int,
-          parameterDct: typing.Dict[str, np.ndarray],
-          statisticDct:dict):
-        """
-        Results from bootstrap
-
-        Parameters
-        ----------
-        numIteration: number of successful iterations
-        parameterDct: dict
-            key: parameter name
-            value: list of values
-        statisticsDct: dict
-            COL_SUM: timeseries of sum of values
-            COL_SSQ: timeseries of sum of squares
-        """
-        self.numIteration = numIteration
-        # population of parameter values
-        self.parameterDct = dict(parameterDct)
-        # list of parameters
-        self.parameters = list(self.parameterDct.keys())
-        # Number of simulations
-        self.numSimulation =  \
-              len(self.parameterDct[self.parameters[0]])
-        # means of parameter values
-        self.meanDct = {p: np.mean(parameterDct[p])
-              for p in self.parameters}
-        # standard deviation of parameter values
-        self.stdDct = {p: np.std(parameterDct[p])
-              for p in self.parameters}
-        # 95% Confidence limits for parameter values
-        self.percentileDct = {
-              p: np.percentile(self.parameterDct[p],
-              PERCENTILES) for p in self.parameterDct}
-        # Timeseries statistics for fits
-        self.statisticDct = statisticDct
-        ### PRIVATE
-        # Fitting parameters from result
-        self._params = None
-        self._meanFittedTS = None
-        self._stdFittedTS = None
-
-    def __str__(self) -> str:
-        """
-        Bootstrap report.       
-        """
-        report = _helpers.Report()
-        report.addHeader("Bootstrap Report.")
-        report.addTerm("Total iterations", self.numIteration)
-        report.addTerm("Total simulation", self.numSimulation)
-        for par in self.parameters:
-            report.addHeader(par)
-            report.indent(1)
-            report.addTerm("mean", self.meanDct[par])
-            report.addTerm("std", self.stdDct[par])
-            report.addTerm("%s Percentiles" % str(PERCENTILES),
-                  self.percentileDct[par])
-            report.indent(-1)
-        return report.get()
-
-    @property
-    def params(self)->lmfit.Parameters:
-        """
-        Constructs parameters from bootstrap result.
-        
-        Returns
-        -------
-        """
-        if not "_params" in self.__dict__.keys():
-            self._params = None
-        if self._params is None:
-            self._params = lmfit.Parameters()
-            for name in self.meanDct.keys():
-                value = self.meanDct[name]
-                self._params.add(name, value=value, min=value*0.99,
-                      max=value*1.01)
-        return self._params
-
-    @property
-    def meanFittedTS(self)->NamedTimeseries:
-        """
-        Mean of fitted values.
-        """
-        if self._meanFittedTS is None:
-            self._meanFittedTS = self.statisticDct[COL_SUM].copy()
-            for col in self._meanFittedTS.colnames:
-                self._meanFittedTS[col] = (1.0*self._meanFittedTS[col])  \
-                      /self.numIteration
-        return self._meanFittedTS
-
-    @property
-    def stdFittedTS(self)->NamedTimeseries:
-        """
-        Mean of fitted values.
-        """
-        if self._meanFittedTS is None:
-            self._meanFittedTS = self.statisticDct[COL_SUM].copy()
-            for col in self._meanFittedTS.colnames:
-                self._meanFittedTS[col] =  \
-                      self.statisticDct[COL_SUM][col]/self.numIteration
-        return self._meanFittedTS
-
-    @property
-    def stdFittedTS(self)->NamedTimeseries:
-        """
-        Standard deviation of fitted values.
-        """
-        if self._stdFittedTS is None:
-            self._stdFittedTS = self.statisticDct[COL_SUM].copy(isInitialize=True)
-            if self.numIteration > 1:
-                for col in self._stdFittedTS.colnames:
-                    self._stdFittedTS[col] = self.statisticDct[COL_SSQ][col]  \
-                          - self.numIteration*(self.meanFittedTS[col]**2)
-                    self._stdFittedTS[col] =  \
-                          self._stdFittedTS[col]/(self.numIteration - 1) 
-                    self._stdFittedTS[col] =  np.sqrt(self._stdFittedTS[col])
-        return self._stdFittedTS
-
-    @classmethod
-    def merge(cls, bootstrapResults):
-        """
-        Combines a list of BootstrapResult.
-
-        Parameter
-        ---------
-        bootstrapResults: list-BootstrapResult
-
-        Return
-        ------
-        BootstrapResult
-        """
-        if len(bootstrapResults) == 0:
-            raise ValueError("Must provide a non-empty list")
-        statisticDct = bootstrapResults[0].statisticDct
-        numIteration = sum([r.numIteration for r in bootstrapResults])
-        # Accumulate the results
-        parameterDct = {p: [] for p in bootstrapResults[0].parameterDct}
-        zeroTS = statisticDct[COL_SUM].copy(isInitialize=True)
-        colnames = zeroTS.colnames
-        statisticDct = {c: zeroTS.copy() for c in [COL_SUM, COL_SSQ]}       
-        for bootstrapResult in bootstrapResults:
-            for parameter in parameterDct.keys():
-                parameterDct[parameter].extend(
-                      bootstrapResult.parameterDct[parameter])
-            for key in [COL_SUM, COL_SSQ]:
-                statisticDct[key][colnames] +=  \
-                      bootstrapResult.statisticDct[key][colnames]
-        return BootstrapResult(numIteration, parameterDct, statisticDct)
             
 
-
+################# FUNCTIONS ####################
 def _runBootstrap(arguments:_Arguments)->BootstrapResult:
     """
     Executes bootstrapping.
