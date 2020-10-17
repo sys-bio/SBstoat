@@ -391,7 +391,7 @@ class ModelFitterCore(object):
                 return value
             return base_value*multiplier
         #
-        if dct is None:
+        if parameterDct is None:
             parameterDct = self.parameterDct
         params = lmfit.Parameters()
         for parameterName in self.parametersToFit:

@@ -5,7 +5,7 @@ from SBstoat.namedTimeseries import NamedTimeseries, TIME
 import numpy as np
 
 
-class TimeseriesStatistics(object):
+class TimeseriesStatistic(object):
 
     def __init__(self, prototypeTS:NamedTimeseries):
         """
@@ -16,7 +16,7 @@ class TimeseriesStatistics(object):
         self.colnames = prototypeTS.colnames
         self.sumTS = prototypeTS.copy(isInitialize=True)
         self.ssqTS = prototypeTS.copy(isInitialize=True)
-        # Statistics
+        # Statistic
         self.count = 0  # Count of timeseries accumulated
         self.meanTS = prototypeTS.copy(isInitialize=True) # means
         self.stdTS = prototypeTS.copy(isInitialize=True)  # standard deviations
@@ -45,3 +45,26 @@ class TimeseriesStatistics(object):
             self.stdTS[col] = self.ssqTS[col] - self.count*self.meanTS[col]**2
             self.stdTS[col] = self.stdTS[col] / (self.count - 1)
             self.stdTS[col] = np.sqrt(self.stdTS[col])
+
+    @classmethod
+    def merge(cls, others):
+        """
+        Merges a colection of TimeseriesStatistic for the same
+        shape of timeseries.
+
+        Parameters
+        ----------
+        others: list-TimeseriesStatistic
+
+        Returns
+        -------
+        TimeseriesStatistic
+        """
+        ts = others[0].self.sumTS
+        result = TimeseriesStatistic(ts)
+        for other in others:
+            result.count += other.count
+            result.sumTS += other.sumTS
+            result.ssqTS += other.ssqTS
+        return result
+        

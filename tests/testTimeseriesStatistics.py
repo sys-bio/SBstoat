@@ -6,7 +6,7 @@ Created on Tue Jul  7 14:24:09 2020
 """
 
 from SBstoat.namedTimeseries import NamedTimeseries, TIME
-from SBstoat.timeseriesStatistics import TimeseriesStatistics
+from SBstoat.timeseriesStatistics import TimeseriesStatistic
 
 import numpy as np
 import os
@@ -30,7 +30,7 @@ class TestNamedTimeseries(unittest.TestCase):
 
     def setUp(self):
         self.timeseries = TIMESERIES
-        self.statistics = TimeseriesStatistics(self.timeseries)
+        self.statistics = TimeseriesStatistic(self.timeseries)
 
     def testConstructor(self):
         if IGNORE_TEST:
@@ -56,6 +56,12 @@ class TestNamedTimeseries(unittest.TestCase):
         self.assertTrue(self.statistics.meanTS.equals(TIMESERIES))
         stdTS = TIMESERIES.copy(isInitialize=True)
         self.assertTrue(self.statistics.stdTS.equals(stdTS))
+
+    # TODO: implement
+    def testMerge(self):
+        if IGNORE_TEST:
+            return
+        pass
             
 
 if __name__ == '__main__':
