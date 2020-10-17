@@ -36,12 +36,15 @@ NULL_STR = ""
 IS_REPORT = False
 
 
-ParameterSpecification = collections.namedtuple("ParameterSpecification",
-      "lower upper value")
-
-
-
 ##############################
+class ParameterSpecification(object):
+
+    def __init__(self, lower=None, value=None, upper=None):
+        self.lower = lower
+        self.value = value
+        self.upper = upper
+
+
 class ModelFitterCore(object):
 
     def __init__(self, modelSpecification, observedData, parametersToFit,
@@ -212,7 +215,7 @@ class ModelFitterCore(object):
 
         Return
         ------
-        NamedArray
+        NamedTimeseries
         """
         def set(default, parameter):
             # Sets to default if parameter unspecified
@@ -301,7 +304,7 @@ class ModelFitterCore(object):
             self.params = None
         else:
             if params is None:
-                params = self._initializeParams()
+                params = self.mkParams()
             residuals_DE = self.observedTS.flatten()
             residuals_LS = residuals_DE
             params_DE = None
@@ -371,20 +374,37 @@ class ModelFitterCore(object):
         for parameter in self.parametersToFit:
             self.roadrunnerModel.model[parameter] = pp[parameter]
 
-    def _initializeParams(self):
+    def mkParams(self, parameterDct:dict=None)->lmfit.Parameters:
+        """
+        Constructs lmfit parameters based on specifications.
+
+        Parameters
+        ----------
+        parameterDct: key=name, value=ParameterSpecification
+        
+        Returns
+        -------
+        lmfit.Parameters
+        """
+        def get(value, base_value, multiplier):
+            if value is not None:
+                return value
+            return base_value*multiplier
+        #
+        if dct is None:
+            parameterDct = self.parameterDct
         params = lmfit.Parameters()
-        value = np.mean([self.lowerBound, self.upperBound])
         for parameterName in self.parametersToFit:
-            if parameterName in self.parameterDct.keys():
-              specification = self.parameterDct[parameterName]
-              params.add(parameterName,
-                    value=specification.value,
-                    min=specification.lower,
-                    max=specification.upper,
-                    )
+            if parameterName in parameterDct.keys():
+              specification = parameterDct[parameterName]
+              value = get(specification.value, specification.value, 1.0)
+              lower = get(specification.lower, specification.value, 0.9)
+              upper = get(specification.upper, specification.value, 1.1)
+              params.add(parameterName, value=value, min=lower, max=upper)
             else:
-              params.add(parameterName, value=value,
-                    min=self.lowerBound, max=self.upperBound)
+                value = np.mean([self.lowerBound, self.upperBound])
+                params.add(parameterName, value=value,
+                      min=self.lowerBound, max=self.upperBound)
         return params
 
     def _checkFit(self):

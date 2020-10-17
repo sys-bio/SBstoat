@@ -118,10 +118,10 @@ class TestModelFitterCore(unittest.TestCase):
               self.fitter.parametersToFit,
               parameterDct={"k1": NEW_SPECIFICATION},
               )
-        params = fitter._initializeParams()
+        params = fitter.mkParams()
         test(params, exceptions=["k1"])
         #
-        params = self.fitter._initializeParams()
+        params = self.fitter.mkParams()
         test(params, [])
 
     def testFit1(self):

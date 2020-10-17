@@ -9,6 +9,7 @@ metrics that are calculated from the results.
 """
 
 from SBstoat.namedTimeseries import NamedTimeseries, TIME, mkNamedTimeseries
+import SBstoat._modelFitterCore as mfc
 
 import lmfit
 import numpy as np
@@ -43,7 +44,7 @@ def sampleDct(dct:dict, numSample:int):
 ######### CLASSES ###############
 class BootstrapResult():
 
-    def __init__(self, numIteration: int,
+    def __init__(self, fitter, numIteration: int,
           parameterDct: typing.Dict[str, np.ndarray],
           statisticDct:dict):
         """
@@ -59,6 +60,7 @@ class BootstrapResult():
             COL_SUM: timeseries of sum of values
             COL_SSQ: timeseries of sum of squares
         """
+        self.fitter = fitter.copy()
         self.numIteration = numIteration
         # population of parameter values
         self.parameterDct = dict(parameterDct)
@@ -129,27 +131,40 @@ class BootstrapResult():
         if self._meanBootstrapFittedTS is None:
             self._meanBootstrapFittedTS = self.statisticDct[COL_SUM].copy()
             for col in self._meanBootstrapFittedTS.colnames:
-                self._meanBootstrapFittedTS[col] = (1.0*self._meanBootstrapFittedTS[col])  \
+                self._meanBootstrapFittedTS[col] = (
+                      1.0*self._meanBootstrapFittedTS[col])  \
                       /self.numIteration
         return self._meanBootstrapFittedTS
 
-    @property
-    def stdSimulatedFittedTS(self)->NamedTimeseries:
+    def getStdSimulatedFittedTS(self, numSample:int=1000,
+           numPoint:int=100)->NamedTimeseries:
         """
-        Mean of fitted values from bootstrap.
+        Standard deviation of fitted values using the bootstrap estimates.
+        This is obtained by doing simulations with different sampled parameters.
+        
+        Parameters
+        ----------
+        numSample: number of fitted parameters to sample
+        numPoint: number of points in the simulation
+        
+        Returns
+        -------
+        NamedTimeseries - values are standard deviations at the timepoints
         """
-
-    @property
-    def stdBootstrapFittedTS(self)->NamedTimeseries:
-        """
-        Mean of fitted values from bootstrap.
-        """
-        if self._meanBootstrapFittedTS is None:
-            self._meanBootstrapFittedTS = self.statisticDct[COL_SUM].copy()
-            for col in self._meanBootstrapFittedTS.colnames:
-                self._meanBootstrapFittedTS[col] =  \
-                      self.statisticDct[COL_SUM][col]/self.numIteration
-        return self._meanBootstrapFittedTS
+        dct = sampleDct(self.parameterDct, numSample)
+        sumTS = fitter.observedTS.copy(isInitialize=True)
+        ssqTS = fitter.observedTS.copy(isInitialize=True)
+        cols = sumTS.colnames
+        for idx in range(numSample):
+            parameterDct = {}
+            for name in dct.keys():
+                value = dct[name][idx]
+                parameterDct[name] = mfb.ParameterSpecification(
+                      value = dct[name][idx])
+            params = mfb.mkParms(parameterDct=parameterDct)
+            fittedTS = mfb.simulate(params=params, numPoint=numPoint)
+            sumTS[cols] = sumTS[cols] + fittedTS[cols]
+            ssqTS[cols] = ssqTS[cols] + fittedTS[cols]**2
 
     @property
     def stdBootstrapFittedTS(self)->NamedTimeseries:
@@ -186,6 +201,7 @@ class BootstrapResult():
         if len(bootstrapResults) == 0:
             raise ValueError("Must provide a non-empty list")
         statisticDct = bootstrapResults[0].statisticDct
+        fitter = bootstrapResults[0].fitter
         numIteration = sum([r.numIteration for r in bootstrapResults])
         # Accumulate the results
         parameterDct = {p: [] for p in bootstrapResults[0].parameterDct}
@@ -199,4 +215,4 @@ class BootstrapResult():
             for key in [COL_SUM, COL_SSQ]:
                 statisticDct[key][colnames] +=  \
                       bootstrapResult.statisticDct[key][colnames]
-        return BootstrapResult(numIteration, parameterDct, statisticDct)
+        return BootstrapResult(fitter, numIteration, parameterDct, statisticDct)

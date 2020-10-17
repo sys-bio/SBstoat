@@ -134,7 +134,7 @@ def _runBootstrap(arguments:_Arguments)->BootstrapResult:
               newFitter.fittedTS[cols]*newFitter.fittedTS[cols]
         newFitter.observedTS = synthesizer.calculate()
     print("Completed bootstrap process %d." % (processIdx + 1))
-    return BootstrapResult(numSuccessIteration, parameterDct, statisticDct)
+    return BootstrapResult(self, numSuccessIteration, parameterDct, statisticDct)
 
 
 ##################### CLASSES #########################
