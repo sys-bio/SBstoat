@@ -58,6 +58,12 @@ class TestNamedTimeseries(unittest.TestCase):
         self.assertTrue(self.statistics.stdTS.equals(stdTS))
 
     # TODO: implement
+    def testCacluateConfidenceLimits(self):
+        if IGNORE_TEST:
+            return
+        pass
+
+    # TODO: implement
     def testMerge(self):
         if IGNORE_TEST:
             return

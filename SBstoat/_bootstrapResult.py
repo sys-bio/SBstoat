@@ -10,6 +10,7 @@ metrics that are calculated from the results.
 
 from SBstoat.namedTimeseries import NamedTimeseries, TIME, mkNamedTimeseries
 import SBstoat._modelFitterCore as mfc
+from SBstoat import _helpers
 
 import lmfit
 import numpy as np
