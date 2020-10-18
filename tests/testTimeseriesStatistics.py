@@ -13,9 +13,39 @@ import numpy as np
 import os
 import pandas as pd
 import tellurium as te
+import typing
 import unittest
 
-def mkTimeseries(length, colnames, isRandom=False):
+
+# Independent constants
+IGNORE_TEST = True
+IS_PLOT = True
+NUM_COL = 5
+LENGTH = 5
+UNIFORM_LEN = 1000
+COLNAMES = ["S%d" % d for d in range(NUM_COL-1)]
+COLNAMES.insert(0, TIME)
+UNIFORM_MEAN = 0.5
+UNIFORM_STD = np.sqrt(1/12.0)
+SIMPLE_CNT = 5
+UNIFORM_CNT = 100
+
+
+def mkTimeseries(length:int, colnames:typing.List[str],
+      isRandom:bool=False)->NamedTimeseries:
+    """
+    Creates a time series of the desired shape.
+ 
+    Parameters
+    ----------
+    length: number of time periods
+    colnames: names of the columns, excluding TIME
+    isRandom: generate uniform random numbers
+    
+    Returns
+    -------
+    NamedTimeseries
+    """
     num_col = len(colnames)
     if isRandom:
         arr = np.random.random(num_col*length)
@@ -25,20 +55,10 @@ def mkTimeseries(length, colnames, isRandom=False):
     timeseries = NamedTimeseries(array=matrix, colnames=colnames)
     timeseries[TIME] = np.array(range(length))
     return timeseries
-#
-IGNORE_TEST = True
-IS_PLOT = True
-NUM_COL = 5
-LENGTH = 5
-UNIFORM_LEN = 1000
-COLNAMES = ["S%d" % d for d in range(NUM_COL-1)]
-COLNAMES.insert(0, TIME)
+
+# Constructed Constants
 SIMPLE_TS = mkTimeseries(LENGTH, COLNAMES)
 UNIFORM_TS = mkTimeseries(UNIFORM_LEN, COLNAMES, isRandom=True)
-UNIFORM_MEAN = 0.5
-UNIFORM_STD = np.sqrt(1/12.0)
-SIMPLE_CNT = 5
-UNIFORM_CNT = 100
 
 
 class TestNamedTimeseries(unittest.TestCase):
