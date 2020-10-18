@@ -6,7 +6,8 @@ Created on Tue Jul  7 14:24:09 2020
 """
 
 from SBstoat.namedTimeseries import NamedTimeseries, TIME
-from SBstoat.timeseriesStatistics import TimeseriesStatistic
+from SBstoat import timeseriesStatistic as tss
+from SBstoat.timeseriesStatistic import TimeseriesStatistic
 
 import numpy as np
 import os
@@ -14,60 +15,116 @@ import pandas as pd
 import tellurium as te
 import unittest
 
-
-IGNORE_TEST = False
-NUM_COL = 3
+def mkTimeseries(length, colnames, isRandom=False):
+    num_col = len(colnames)
+    if isRandom:
+        arr = np.random.random(num_col*length)
+    else:
+        arr = np.array(range(num_col*length))
+    matrix = np.reshape(arr, (length, len(colnames)))
+    timeseries = NamedTimeseries(array=matrix, colnames=colnames)
+    timeseries[TIME] = np.array(range(length))
+    return timeseries
+#
+IGNORE_TEST = True
+IS_PLOT = True
+NUM_COL = 5
 LENGTH = 5
+UNIFORM_LEN = 1000
 COLNAMES = ["S%d" % d for d in range(NUM_COL-1)]
 COLNAMES.insert(0, TIME)
-ARR = np.reshape(np.array(range(NUM_COL*LENGTH)), (LENGTH, NUM_COL))
-TIMESERIES = NamedTimeseries(array=ARR, colnames=COLNAMES)
-TIMESERIES[TIME] = np.array(range(LENGTH))
-COUNT = 5
+SIMPLE_TS = mkTimeseries(LENGTH, COLNAMES)
+UNIFORM_TS = mkTimeseries(UNIFORM_LEN, COLNAMES, isRandom=True)
+UNIFORM_MEAN = 0.5
+UNIFORM_STD = np.sqrt(1/12.0)
+SIMPLE_CNT = 5
+UNIFORM_CNT = 100
 
 
 class TestNamedTimeseries(unittest.TestCase):
 
     def setUp(self):
-        self.timeseries = TIMESERIES
-        self.statistics = TimeseriesStatistic(self.timeseries)
+        self.timeseries = SIMPLE_TS
+        self.statistic = TimeseriesStatistic(self.timeseries)
 
     def testConstructor(self):
         if IGNORE_TEST:
             return
         colnames = list(COLNAMES)
         colnames.remove(TIME)
-        diff = set(self.statistics.colnames).symmetric_difference(colnames)
+        diff = set(self.statistic.colnames).symmetric_difference(colnames)
         self.assertEqual(len(diff), 0)
 
     def testAccumulate(self):
         if IGNORE_TEST:
             return
-        self.statistics.accumulate(TIMESERIES)
-        self.assertTrue(self.statistics.sumTS.equals(TIMESERIES))
+        self.statistic.accumulate(SIMPLE_TS)
+        self.assertTrue(self.statistic.sumTS.equals(SIMPLE_TS))
 
-    def testCalculate(self):
+    def testCalculate1(self):
         if IGNORE_TEST:
             return
-        for _ in range(COUNT):
-            self.statistics.accumulate(TIMESERIES)
-        self.statistics.calculate()
-        self.assertEqual(self.statistics.count, COUNT)
-        self.assertTrue(self.statistics.meanTS.equals(TIMESERIES))
-        stdTS = TIMESERIES.copy(isInitialize=True)
-        self.assertTrue(self.statistics.stdTS.equals(stdTS))
+        for _ in range(SIMPLE_CNT):
+            self.statistic.accumulate(SIMPLE_TS)
+        self.statistic.calculate()
+        self.assertEqual(self.statistic.count, SIMPLE_CNT)
+        self.assertTrue(self.statistic.meanTS.equals(SIMPLE_TS))
+        stdTS = SIMPLE_TS.copy(isInitialize=True)
+        self.assertTrue(self.statistic.stdTS.equals(stdTS))
 
-    # TODO: implement
-    def testCacluateConfidenceLimits(self):
+    def mkStatistics(self, count):
+        result = []
+        for _ in range(count):
+            statistic = TimeseriesStatistic(UNIFORM_TS, isCollectTimeseries=True)
+            for _ in range(UNIFORM_CNT):
+                statistic.accumulate(
+                      mkTimeseries(UNIFORM_LEN, COLNAMES, isRandom=True))
+            result.append(statistic)
+        return result
+
+    def evaluateStatistic(self, statistic, count=1):
+        statistic.calculate()
+        self.assertEqual(statistic.count, count*UNIFORM_CNT)
+        mean = np.mean(statistic.meanTS.flatten())
+        self.assertLess(np.abs(mean - UNIFORM_MEAN), 0.1)
+        std = np.mean(statistic.stdTS.flatten())
+        self.assertLess(np.abs(std - UNIFORM_STD), 0.1)
+        lower = np.mean(statistic.lowerPercentileTS.flatten())
+        self.assertLess(np.abs(lower - 0.01*tss.PERCENTILES[0]), 0.01)
+        upper = np.mean(statistic.upperPercentileTS.flatten())
+        self.assertLess(np.abs(upper - 0.01*tss.PERCENTILES[1]), 0.01)
+
+    def testCalculate2(self):
         if IGNORE_TEST:
             return
-        pass
+        statistic = self.mkStatistics(1)[0]
+        self.evaluateStatistic(statistic)
 
-    # TODO: implement
+    def testEquals(self):
+        if IGNORE_TEST:
+            return
+        statistic = TimeseriesStatistic(self.timeseries)
+        self.assertTrue(self.statistic.equals(statistic))
+        #
+        statistic.accumulate(SIMPLE_TS)
+        self.assertFalse(self.statistic.equals(statistic))
+
+    def testCopy(self):
+        if IGNORE_TEST:
+            return
+        statistic = self.statistic.copy()
+        self.assertTrue(self.statistic.equals(statistic))
+        #
+        statistic = self.mkStatistics(1)[0]
+        self.assertTrue(statistic.equals(statistic))
+
     def testMerge(self):
-        if IGNORE_TEST:
-            return
-        pass
+        # TESTING
+        NUM = 4
+        statistics = self.mkStatistics(NUM)
+        statistic = TimeseriesStatistic.merge(statistics)
+        statistic.calculate()
+        self.evaluateStatistic(statistic, count=NUM)
             
 
 if __name__ == '__main__':
