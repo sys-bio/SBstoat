@@ -18,39 +18,33 @@ import numpy as np
 import typing
 
 
-PERCENTILES = [5.0, 95.0]  # Percentiles calculated: lower, upper
+PERCENTILES = [5.0, 50.0, 95.0]  # Percentiles calculated
 
 
 class TimeseriesStatistic(object):
 
     def __init__(self, prototypeTS:NamedTimeseries,
-          confidenceLimits:typing.Tuple[float,float]=PERCENTILES,
-          isCollectTimeseries:bool=True):
+          percentiles:list=PERCENTILES):
         """
         Parameters
         ----------
         prototypeTS: same length and columns as desired
-        confidenceLimits: Lower and upper limits of confidence limits
-            for the timeseries accumulated)
-        isCollectTimeseries: Must be enabled to calculate confidence limits
+        percentiles: percentiles to calculate for accumulated Timeseries
         """
         self.prototypeTS = prototypeTS
         self.colnames = self.prototypeTS.colnames
         self.sumTS = self.prototypeTS.copy(isInitialize=True)
         self.ssqTS = self.prototypeTS.copy(isInitialize=True)
-        self.confidenceLimits = confidenceLimits
-        self._isCollectTimeseries = isCollectTimeseries
-        self._timeseries_list = []
+        self.percentiles = percentiles
+        self._timeseries_list = []  # List of timeseries accumulated
         # Statistics
         self.count = 0  # Count of timeseries accumulated
         # Means
         self.meanTS = prototypeTS.copy(isInitialize=True) # means
         # Standard deviations
         self.stdTS = prototypeTS.copy(isInitialize=True)  # standard deviations
-        # Lower bound of confidence interval
-        self.lowerPercentileTS = prototypeTS.copy(isInitialize=True)
-        # Upper bound of confidence interval
-        self.upperPercentileTS = prototypeTS.copy(isInitialize=True)
+        # Percentiles
+        self.percentileDct = None  # Key: percentile; Value: Timeseries
 
     def copy(self):
         """
@@ -61,8 +55,7 @@ class TimeseriesStatistic(object):
         TimeseriesStatistic
         """
         newStatistic = TimeseriesStatistic(self.prototypeTS,
-              confidenceLimits=self.confidenceLimits,
-              isCollectTimeseries=self._isCollectTimeseries)
+              percentiles=self.percentiles)
         # Update internal state
         for attr in self.__dict__.keys():
             if "__" in attr:
@@ -100,8 +93,6 @@ class TimeseriesStatistic(object):
             isEqual = isEqual and eval(expression)
         return isEqual
 
-            
-
     def accumulate(self, newTS:NamedTimeseries):
         """
         Accumulates statistics for a new timeseries.
@@ -110,7 +101,7 @@ class TimeseriesStatistic(object):
                + newTS[self.colnames]
         self.ssqTS[self.colnames] = self.ssqTS[self.colnames]  \
                + newTS[self.colnames]**2
-        if self._isCollectTimeseries:
+        if len(self.percentiles) > 0:
             self._timeseries_list.append(newTS)
         self.count += 1
 
@@ -122,7 +113,7 @@ class TimeseriesStatistic(object):
             raise ValueError("Must accumulate at leat 2 timeseries before calculating statistics.")
         self._calculateMean()
         self._calculateStd()
-        self._calculatePercentileLimits()
+        self._calculatePercentiles()
 
     def _calculateMean(self):
         for col in self.colnames:
@@ -134,19 +125,19 @@ class TimeseriesStatistic(object):
             self.stdTS[col] = self.stdTS[col] / (self.count - 1)
             self.stdTS[col] = np.sqrt(self.stdTS[col])
 
-    def _calculatePercentileLimits(self):
-        if len(self._timeseries_list) == 0:
-            print("***Cannot generate confidence limits unless isCollectTimeseries == True.")
-            return
-        for col in self.colnames:
-            lowers = []
-            uppers = []
-            for i in range(len(self.lowerPercentileTS)):
-                values = [t[col][i]  for t in self._timeseries_list]
-                lowers.append(np.percentile(values, self.confidenceLimits[0]))
-                uppers.append(np.percentile(values, self.confidenceLimits[1]))
-            self.lowerPercentileTS[col] = np.array(lowers)
-            self.upperPercentileTS[col] = np.array(uppers)
+    def _calculatePercentiles(self):
+        self.percentileDct = {}
+        refTS = self._timeseries_list[0]
+        indices = range(len(refTS))
+        for percentile in self.percentiles:
+            percentileTS = refTS.copy(isInitialize=True)
+            for col in self.colnames:
+                col_values = []
+                for idx in indices:
+                    time_values = [t[col][idx]  for t in self._timeseries_list]
+                    col_values.append(np.percentile(time_values, percentile))
+                percentileTS[col] = np.array(col_values)
+            self.percentileDct[percentile] = percentileTS
 
     def _merge(self, others):
         """
@@ -166,8 +157,7 @@ class TimeseriesStatistic(object):
             result.count += other.count
             result.sumTS[result.colnames] += other.sumTS[result.colnames]
             result.ssqTS[result.colnames] += other.ssqTS[result.colnames]
-            if result._isCollectTimeseries:
-                result._timeseries_list.extend(other._timeseries_list)
+            result._timeseries_list.extend(other._timeseries_list)
         return result
 
     @classmethod

@@ -18,8 +18,8 @@ import unittest
 
 
 # Independent constants
-IGNORE_TEST = True
-IS_PLOT = True
+IGNORE_TEST = False
+IS_PLOT = False
 NUM_COL = 5
 LENGTH = 5
 UNIFORM_LEN = 1000
@@ -95,7 +95,7 @@ class TestNamedTimeseries(unittest.TestCase):
     def mkStatistics(self, count):
         result = []
         for _ in range(count):
-            statistic = TimeseriesStatistic(UNIFORM_TS, isCollectTimeseries=True)
+            statistic = TimeseriesStatistic(UNIFORM_TS)
             for _ in range(UNIFORM_CNT):
                 statistic.accumulate(
                       mkTimeseries(UNIFORM_LEN, COLNAMES, isRandom=True))
@@ -109,10 +109,9 @@ class TestNamedTimeseries(unittest.TestCase):
         self.assertLess(np.abs(mean - UNIFORM_MEAN), 0.1)
         std = np.mean(statistic.stdTS.flatten())
         self.assertLess(np.abs(std - UNIFORM_STD), 0.1)
-        lower = np.mean(statistic.lowerPercentileTS.flatten())
-        self.assertLess(np.abs(lower - 0.01*tss.PERCENTILES[0]), 0.01)
-        upper = np.mean(statistic.upperPercentileTS.flatten())
-        self.assertLess(np.abs(upper - 0.01*tss.PERCENTILES[1]), 0.01)
+        for percentile in self.statistic.percentiles:
+            value = np.mean(statistic.percentileDct[percentile].flatten())
+            self.assertLess(np.abs(value - 0.01*percentile), 0.01)
 
     def testCalculate2(self):
         if IGNORE_TEST:
@@ -139,7 +138,8 @@ class TestNamedTimeseries(unittest.TestCase):
         self.assertTrue(statistic.equals(statistic))
 
     def testMerge(self):
-        # TESTING
+        if IGNORE_TEST:
+            return
         NUM = 4
         statistics = self.mkStatistics(NUM)
         statistic = TimeseriesStatistic.merge(statistics)
