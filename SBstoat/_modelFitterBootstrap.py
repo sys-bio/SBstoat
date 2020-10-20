@@ -13,7 +13,8 @@ Several considerations are made;
 """
 
 from SBstoat.namedTimeseries import NamedTimeseries, TIME, mkNamedTimeseries
-from SBstoat._bootstrapResult import BootstrapResult, COL_SUM, COL_SSQ
+from SBstoat.timeseriesStatistic import TimeseriesStatistic
+from SBstoat._bootstrapResult import BootstrapResult
 from SBstoat.observationSynthesizer import  \
       ObservationSynthesizerRandomizedResiduals
 from SBstoat import _modelFitterCore as mfc
@@ -99,8 +100,7 @@ def _runBootstrap(arguments:_Arguments)->BootstrapResult:
           parameterUpperBound=fitter.upperBound,
           fittedDataTransformDct=fitter.fittedDataTransformDct,
           isPlot=fitter._isPlot)
-    statisticDct = {c: newObservedTS.copy(isInitialize=True)
-          for c in [COL_SUM, COL_SSQ]}
+    fittedStatistic = TimeseriesStatistic(newFitter.observedTS)
     # Do the bootstrap iterations
     for iteration in range(numIteration*ITERATION_MULTIPLIER):
         if (iteration > 0) and (numSuccessIteration != lastReport)  \
@@ -129,12 +129,10 @@ def _runBootstrap(arguments:_Arguments)->BootstrapResult:
         dct = newFitter.params.valuesdict()
         [parameterDct[p].append(dct[p]) for p in fitter.parametersToFit]
         cols = newFitter.fittedTS.colnames
-        statisticDct[COL_SUM][cols] += newFitter.fittedTS[cols]
-        statisticDct[COL_SSQ][cols] +=   \
-              newFitter.fittedTS[cols]*newFitter.fittedTS[cols]
+        fittedStatistic.accumulate(newFitter.fittedTS)
         newFitter.observedTS = synthesizer.calculate()
     print("Completed bootstrap process %d." % (processIdx + 1))
-    return BootstrapResult(fitter, numSuccessIteration, parameterDct, statisticDct)
+    return BootstrapResult(fitter, numSuccessIteration, parameterDct, fittedStatistic)
 
 
 ##################### CLASSES #########################
@@ -162,8 +160,8 @@ class ModelFitterBootstrap(mfc.ModelFitterCore):
         Example
         -------
             f.bootstrap()
-            f.getFittedParameters()  # Mean values
-            f.getFittedParameterStds()  # Standard deviations of values
+            f.getParameterMeans()  # Mean values
+            f.getParameterStds()  # standard deviations
 
         Notes
         ----
@@ -189,29 +187,39 @@ class ModelFitterBootstrap(mfc.ModelFitterCore):
         if serializePath is not None:
             self.serialize(serializePath)
 
-    def getFittedParameters(self)->typing.List[float]:
+    def getParameterMeans(self)->typing.List[float]:
         """
-        Returns a list of values for fitted parameters from bootstrap.
+        Returns a list of values mean values of parameters from bootstrap.
+      
+        Return
+        ------
+        NamedTimeseries
               
         Example
         -------
-              f.getFittedParameters()
+              f.getParameterMeans()
         """
         if self._checkBootstrap(isError=False):
-            return self.bootstrapResult.meanDct.values()
+            return self.bootstrapResult.parameterMeanDct.values()
         else:
             return [self.params[p].value for p in self.parametersToFit]
 
-    def getFittedParameterStds(self)->typing.List[float]:
+    def getParameterStds(self)->typing.List[float]:
         """
-        Returns the standard deviations for fitted values.
+        Returns a list of values std values of parameters from bootstrap.
+      
+        Return
+        ------
+        NamedTimeseries
               
         Example
         -------
-              f.getFittedParameterStds()
+              f.getParameterStds()
         """
-        self._checkBootstrap()
-        return list(self.bootstrapResult.stdDct.values())
+        if self._checkBootstrap(isError=False):
+            return self.bootstrapResult.parameterStdDct.values()
+        else:
+            raise ValueError("***Must run bootstrap to get parameter stds.")
 
     def _checkBootstrap(self, isError:bool=True)->bool:
         """

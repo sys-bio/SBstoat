@@ -10,8 +10,8 @@ metrics that are calculated from the results.
 
 from SBstoat.namedTimeseries import NamedTimeseries, TIME, mkNamedTimeseries
 from SBstoat.timeseriesStatistic import TimeseriesStatistic
-import SBstoat._modelFitterCore as mfc
 from SBstoat import _helpers
+from SBstoat import _modelFitterCore as mfc
 
 import lmfit
 import numpy as np
@@ -24,30 +24,11 @@ COL_SUM = "sum"  # sum of fitted values
 COL_SSQ = "ssq"  # sum of squares
 
 
-######### FUNCTIONS ###############
-def sampleDct(dct:dict, numSample:int):
-    """
-    Samples the values in a dictionary with lists of the same length.
-
-    Parameters
-    ----------
-    dct: dictionary of values to sample
-    numSample: number of samples returned
-    
-    Returns
-    -------
-    dict
-    """
-    df = pd.DataFrame(dct)
-    df_sample = df.sample(numSample, replace=True, axis=0)
-    return df_sample.to_dict()
-
-
 ######### CLASSES ###############
 class BootstrapResult():
 
     def __init__(self, fitter, numIteration: int, parameterDct:dict,
-          timeseriesStatistic: TimeseriesStatistic):
+          fittedStatistic: TimeseriesStatistic):
         """
         Results from bootstrap
 
@@ -57,7 +38,7 @@ class BootstrapResult():
         parameterDct: dict
             key: parameter name
             value: list of values
-        timeseriesStatistic: statistics for fitted timeseries
+        fittedStatistic: statistics for fitted timeseries
         """
         self.fitter = fitter.copy()
         self.numIteration = numIteration
@@ -69,17 +50,17 @@ class BootstrapResult():
         self.numSimulation =  \
               len(self.parameterDct[self.parameters[0]])
         # means of parameter values
-        self.meanDct = {p: np.mean(parameterDct[p])
+        self.parameterMeanDct = {p: np.mean(parameterDct[p])
               for p in self.parameters}
         # standard deviation of parameter values
-        self.stdDct = {p: np.std(parameterDct[p])
+        self.parameterStdDct = {p: np.std(parameterDct[p])
               for p in self.parameters}
         # 95% Confidence limits for parameter values
         self.percentileDct = {
               p: np.percentile(self.parameterDct[p],
               PERCENTILES) for p in self.parameterDct}
         # Timeseries statistics for fits
-        self.timeseriesStatistic = timeseriesStatistic
+        self.fittedStatistic = fittedStatistic
         ### PRIVATE
         # Fitting parameters from result
         self._params = None
@@ -97,8 +78,8 @@ class BootstrapResult():
         for par in self.parameters:
             report.addHeader(par)
             report.indent(1)
-            report.addTerm("mean", self.meanDct[par])
-            report.addTerm("std", self.stdDct[par])
+            report.addTerm("mean", self.parameterMeanDct[par])
+            report.addTerm("std", self.parameterStdDct[par])
             report.addTerm("%s Percentiles" % str(PERCENTILES),
                   self.percentileDct[par])
             report.indent(-1)
@@ -116,8 +97,8 @@ class BootstrapResult():
             self._params = None
         if self._params is None:
             self._params = lmfit.Parameters()
-            for name in self.meanDct.keys():
-                value = self.meanDct[name]
+            for name in self.parameterMeanDct.keys():
+                value = self.parameterMeanDct[name]
                 self._params.add(name, value=value, min=value*0.99,
                       max=value*1.01)
         return self._params
@@ -128,16 +109,13 @@ class BootstrapResult():
         Mean of fitted values.
         """
         if self._meanBootstrapFittedTS is None:
-            self.timeseriesStatistic.calculate()
-            self._meanBootsrapFittedTS = self.timeseriesStatistic.meanTS
-            self._stdBootsrapFittedTS = self.timeseriesStatistic.stdTS
+            self.fittedStatistic.calculate()
+            self._meanBootstrapFittedTS = self.fittedStatistic.meanTS.copy()
         return self._meanBootstrapFittedTS
 
-    def getSimulatedStatistic(self, numSample:int=1000,
-           numPoint:int=100)->TimeseriesStatistic:
+    def simulate(self, numSample:int=1000, numPoint:int=100)->TimeseriesStatistic:
         """
-        Standard deviation of fitted values using the bootstrap estimates.
-        This is obtained by doing simulations with different sampled parameters.
+        Runs a simulation using the parameters from the bootstrap.
         
         Parameters
         ----------
@@ -148,10 +126,13 @@ class BootstrapResult():
         -------
         TimeseriesStatistic
         """
-        timeseriesStatistic = TimeseriesStatistic(self.fitter.observedTS,
-              isCollectTimeseries=True)
-        for idx in range(numSample):
-            fittedTS = mfb.simulate(params=params, numPoint=numPoint)
+        params_list = self._sampleParams(numSample)
+        fittedTS = self.fitter.simulate(params=params_list[0], numPoint=numPoint)
+        timeseriesStatistic = TimeseriesStatistic(fittedTS)
+        timeseriesStatistic.accumulate(fittedTS)
+        # Do the simulation
+        for params in params_list[1:]:
+            fittedTS = self.fitter.simulate(params=params, numPoint=numPoint)
             timeseriesStatistic.accumulate(fittedTS)
         timeseriesStatistic.calculate()
         return timeseriesStatistic
@@ -162,10 +143,35 @@ class BootstrapResult():
         Standard deviation of fitted values.
         """
         if self._stdBootstrapFittedTS is None:
-            self.timeseriesStatistic.calculate()
-            self._stdBootsrapFittedTS = self.timeseriesStatistic.stdTS
-            self._meanBootsrapFittedTS = self.timeseriesStatistic.meanTS
+            self.fittedStatistic.calculate()
+            self._stdBootstrapFittedTS = self.fittedStatistic.stdTS.copy()
         return self._stdBootstrapFittedTS
+
+    def _sampleParams(self, numSample:int):
+        """
+        Samples the parameters obtained in bootstrapping.
+    
+        Parameters
+        ----------
+        numSample: number of samples returned
+        
+        Returns
+        -------
+        list-lmfit.Parameters
+        """
+        df = pd.DataFrame(self.parameterDct)
+        df_sample = df.sample(numSample, replace=True, axis=0)
+        dcts = df_sample.to_dict('records')
+        results = []
+        for dct in dcts:
+            parameterDct = {}
+            for name in dct.keys():
+                value = dct[name]
+                parameterDct[name] = mfc.ParameterSpecification(
+                      lower=value*0.9, value=value, upper=value*1.1)
+            params = self.fitter.mkParams(parameterDct=parameterDct)
+            results.append(params)
+        return results
 
     @classmethod
     def merge(cls, bootstrapResults):
@@ -182,18 +188,16 @@ class BootstrapResult():
         """
         if len(bootstrapResults) == 0:
             raise ValueError("Must provide a non-empty list")
-        statisticDct = bootstrapResults[0].statisticDct
         fitter = bootstrapResults[0].fitter
         numIteration = sum([r.numIteration for r in bootstrapResults])
+        # Merge the statistics for fitted timeseries
+        fittedStatistics = [b.fittedStatistic for b in bootstrapResults]
+        fittedStatistic = TimeseriesStatistic.merge(fittedStatistics)
         # Accumulate the results
         parameterDct = {p: [] for p in bootstrapResults[0].parameterDct}
-        zeroTS = statisticDct[COL_SUM].copy(isInitialize=True)
-        colnames = zeroTS.colnames
-        statisticDct = {c: zeroTS.copy() for c in [COL_SUM, COL_SSQ]}       
         for bootstrapResult in bootstrapResults:
             for parameter in parameterDct.keys():
                 parameterDct[parameter].extend(
                       bootstrapResult.parameterDct[parameter])
-        timeseriesStatistic = TimeseriesStatistic.merge(
-              [r.timeseriesStatistic for r in bootstrapResults])
-        return BootstrapResult(fitter, numIteration, parameterDct, timeseriesStatistic)
+        #
+        return BootstrapResult(fitter, numIteration, parameterDct, fittedStatistic)

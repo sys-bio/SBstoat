@@ -11,7 +11,7 @@ Calculation of statistics for time series. Usage:
     print(statistic.upperPercentileTS)  # Timeseries of lower 95% at each time
 """
 
-from SBstoat.namedTimeseries import NamedTimeseries, TIME
+from SBstoat.namedTimeseries import NamedTimeseries
 
 import copy
 import numpy as np
@@ -121,9 +121,14 @@ class TimeseriesStatistic(object):
 
     def _calculateStd(self):
         for col in self.colnames:
-            self.stdTS[col] = self.ssqTS[col] - self.count*self.meanTS[col]**2
-            self.stdTS[col] = self.stdTS[col] / (self.count - 1)
-            self.stdTS[col] = np.sqrt(self.stdTS[col])
+            if self.count > 1:
+                self.stdTS[col] = self.ssqTS[col] - self.count*self.meanTS[col]**2
+                self.stdTS[col] = self.stdTS[col] / (self.count - 1)
+                self.stdTS[col] = np.array([
+                      0.0 if np.isclose(v, 0.0) else v for v in self.stdTS[col]])
+                self.stdTS[col] = np.sqrt(self.stdTS[col])
+            else:
+                pass
 
     def _calculatePercentiles(self):
         self.percentileDct = {}

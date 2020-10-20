@@ -7,6 +7,7 @@ Created on Aug 19, 2020
 """
 
 from SBstoat import _bootstrapResult as br
+from SBstoat.timeseriesStatistic import TimeseriesStatistic
 from SBstoat import _modelFitterBootstrap as mfb
 from SBstoat.namedTimeseries import NamedTimeseries, TIME
 from tests import _testHelpers as th
@@ -18,55 +19,44 @@ import unittest
 
 
 IGNORE_TEST = False
+IS_PLOT = False
 NUM_ITERATION = 50
-MEAN_UNIFORM = 0.5  # Mean of uniform distribution
-STD_UNIFORM = np.sqrt(1.0/12)  # Standard deviation of uniform
 TIMESERIES = th.getTimeseries()
 FITTER = th.getFitter(cls=mfb.ModelFitterBootstrap)
 FITTER.fitModel()
+FITTER.bootstrap()
         
 
 class TestBootstrapResult(unittest.TestCase):
 
     def setUp(self):
         self.fitter = FITTER
-        self.names = ["A", "B"]
+        self.speciesNames = list(th.VARIABLE_NAMES)
+        self.parameterNames = list(th.PARAMETER_DCT.keys())
         self.parameterDct = {n: np.random.randint(10, 20, NUM_ITERATION)
-              for n in self.names}
-        timeseriesDF = pd.DataFrame(self.parameterDct)
-        timeseriesDF.index = range(NUM_ITERATION)
-        timeseriesDF.index.name = TIME
-        self.ts = NamedTimeseries(dataframe=timeseriesDF)
-        self.sumTS = self.ts.copy(isInitialize=True)
-        self.ssqTS = self.ts.copy(isInitialize=True)
+              for n in self.parameterNames}
+        self.fittedStatistic = TimeseriesStatistic(self.fitter.fittedTS)
         for _ in range(NUM_ITERATION):
-            for name in self.names:
-                vec = np.random.random(NUM_ITERATION)
-                self.sumTS[name] = vec + self.sumTS[name]
-                self.ssqTS[name] = vec**2 + self.ssqTS[name]
-        self.statisticDct = {
-              br.COL_SUM: self.sumTS,
-              br.COL_SSQ: self.ssqTS,
-              }
+            ts = self.fitter.fittedTS.copy()
+            for name in self.speciesNames:
+                arr = 3*np.random.random(len(self.fitter.fittedTS))
+                ts[name] += arr
+            self.fittedStatistic.accumulate(ts)
         self.bootstrapResult = br.BootstrapResult(self.fitter, NUM_ITERATION,
-              self.parameterDct, self.statisticDct)
+              self.parameterDct, self.fittedStatistic)
 
     def testConstructor(self):
         if IGNORE_TEST:
             return
-        diff = set(self.parameterDct.keys()).symmetric_difference(
-              self.bootstrapResult.parameters)
-        self.assertEqual(len(diff), 0)
-        #
-        diff = set(self.bootstrapResult.statisticDct.keys()).symmetric_difference(
-              [br.COL_SSQ, br.COL_SUM])
+        keys = self.bootstrapResult.parameterStdDct.keys()
+        diff = set(keys).symmetric_difference(self.bootstrapResult.parameters)
         self.assertEqual(len(diff), 0)
 
     def testParams(self):
         if IGNORE_TEST:
             return
         params = self.bootstrapResult.params
-        name = self.names[0]
+        name = self.parameterNames[0]
         self.assertEqual(params.valuesdict()[name],
               np.mean(self.parameterDct[name]))
 
@@ -74,26 +64,35 @@ class TestBootstrapResult(unittest.TestCase):
         if IGNORE_TEST:
             return
         bootstrapResult = br.BootstrapResult(self.fitter, NUM_ITERATION,
-              self.parameterDct, self.statisticDct)
+              self.parameterDct, self.fittedStatistic)
         mergedResult = br.BootstrapResult.merge(
               [self.bootstrapResult, bootstrapResult])
         self.assertEqual(mergedResult.numIteration, 2*NUM_ITERATION)
-        self.assertEqual(len(mergedResult.parameterDct[self.names[0]]),
+        self.assertEqual(len(mergedResult.parameterDct[self.parameterNames[0]]),
               mergedResult.numIteration)
 
     def testMeanFittedTS(self):
         if IGNORE_TEST:
             return
         meanFittedTS = self.bootstrapResult.meanBootstrapFittedTS
-        overallMean = np.mean(meanFittedTS[self.names].flatten())
-        self.assertLess(np.abs(overallMean - MEAN_UNIFORM), 0.1)
+        overallMean = np.mean(meanFittedTS[self.speciesNames].flatten())
+        self.assertGreater(overallMean, 0)
 
     def testStdFittedTS(self):
         if IGNORE_TEST:
             return
         stdFittedTS = self.bootstrapResult.stdBootstrapFittedTS
-        overallStd = np.mean(stdFittedTS[self.names].flatten())
-        self.assertLess(np.abs(overallStd - STD_UNIFORM), 0.01)
+        overallStd = np.mean(stdFittedTS[self.speciesNames].flatten())
+        self.assertGreater(overallStd, 0)
+
+    def testSimulate(self):
+        if IGNORE_TEST:
+            return
+        statistic = self.bootstrapResult.simulate()
+        lowers = statistic.percentileDct[5].flatten()
+        uppers = statistic.percentileDct[95].flatten()
+        trues = [l <= u for l, u in zip(lowers, uppers)]
+        self.assertTrue(all(trues))
 
 
 if __name__ == '__main__':

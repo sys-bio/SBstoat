@@ -79,14 +79,14 @@ class TestModelFitterBootstrap(unittest.TestCase):
             self.assertTrue(isinstance(value, float))
         return dct
         
-    def testGetFittedParameters(self):
+    def testGetMeanParameters(self):
         if IGNORE_TEST:
             return
-        values = self.fitter.getFittedParameters()
+        values = self.fitter.getParameterMeans()
         _ = self.checkParameterValues()
         #
         self.fitter.bootstrap(numIteration=5)
-        values = self.fitter.getFittedParameters()
+        values = self.fitter.getParameterMeans()
         _ = self.checkParameterValues()
 
     def testBoostrapTimeMultiprocessing(self):
@@ -115,11 +115,11 @@ class TestModelFitterBootstrap(unittest.TestCase):
         NUM_STD = 10
         result = self.fitter.bootstrapResult
         for p in self.fitter.parametersToFit:
-            isLowerOk = result.meanDct[p]  \
-                  - NUM_STD*result.stdDct[p]  \
+            isLowerOk = result.parameterMeanDct[p]  \
+                  - NUM_STD*result.parameterStdDct[p]  \
                   < th.PARAMETER_DCT[p]
-            isUpperOk = result.meanDct[p]  \
-                  + NUM_STD*result.stdDct[p]  \
+            isUpperOk = result.parameterMeanDct[p]  \
+                  + NUM_STD*result.parameterStdDct[p]  \
                   > th.PARAMETER_DCT[p]
             self.assertTrue(isLowerOk)
             self.assertTrue(isUpperOk)
@@ -127,14 +127,20 @@ class TestModelFitterBootstrap(unittest.TestCase):
         fitter = mfb.ModelFitterBootstrap.deserialize(FILE_SERIALIZE)
         self.assertIsNotNone(fitter.bootstrapResult)
 
-    def testGetFittedParameterStds(self):
+    def testGetParameter(self):
         if IGNORE_TEST:
             return
-        with self.assertRaises(ValueError):
-            _ = self.fitter.getFittedParameterStds()
+        # Smoke test
+        self.fitter.bootstrap(numIteration=3)
+        _ = self.fitter.getParameterMeans()
+        _ = self.fitter.getParameterStds()
+
+    def testFittedStd(self):
+        if IGNORE_TEST:
+            return
         #
         self.fitter.bootstrap(numIteration=3)
-        stds = self.fitter.getFittedParameterStds()
+        stds = self.fitter.bootstrapResult.fittedStatistic.stdTS.flatten()
         for std in stds:
             self.assertTrue(isinstance(std, float))
 
