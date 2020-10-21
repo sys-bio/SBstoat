@@ -217,7 +217,7 @@ class ModelFitterBootstrap(mfc.ModelFitterCore):
               f.getParameterStds()
         """
         if self._checkBootstrap(isError=False):
-            return self.bootstrapResult.parameterStdDct.values()
+            return list(self.bootstrapResult.parameterStdDct.values())
         else:
             raise ValueError("***Must run bootstrap to get parameter stds.")
 
