@@ -14,8 +14,8 @@ import os
 import unittest
 
 
-IGNORE_TEST = True
-IS_PLOT = True
+IGNORE_TEST = False
+IS_PLOT = False
 TIMESERIES = th.getTimeseries()
 FITTER = th.getFitter(cls=ModelFitter, isPlot=IS_PLOT)
 FITTER.fitModel()
@@ -45,7 +45,8 @@ class TestModelFitter(unittest.TestCase):
         self.fitter.plotResiduals(numCol=3, numRow=2, ylim=[-1.5, 1.5])
 
     def testPlotFitAll(self):
-        # TESTING
+        if IGNORE_TEST:
+            return
         self.fitter.plotFitAll(isMultiple=True, numPoint=3,
               params=self.fitter.params)
         self.fitter.plotFitAll()
@@ -97,20 +98,20 @@ class TestModelFitter(unittest.TestCase):
         #fitter.plotResiduals (numCol=3, numRow=1, figsize=(17,5))
         #fitter.plotFit (numCol=3, numRow=1, figsize=(18, 6))
         
-        print (fitter.getFittedParameters())  
+        print (fitter.getParameterMeans())  
         
         fitter.bootstrap(numIteration=2000,
               reportInterval=500)
               #calcObservedFunc=ModelFitter.calcObservedTSNormal, std=0.01)
         fitter.plotParameterEstimatePairs(['k1', 'k2'],
               markersize=2)
-        print("Mean: %s" % str(fitter.getFittedParameters()))
-        print("Std: %s" % str(fitter.getFittedParameterStds()))
+        print("Mean: %s" % str(fitter.getParameterMeans()))
+        print("Std: %s" % str(fitter.getParameterStds()))
         fitter.reportBootstrap()
 
     def testPlot(self):
         if IGNORE_TEST:
-          return
+            return
         with self.assertRaises(ValueError):
             self.fitter.plot("dummy")
         pass

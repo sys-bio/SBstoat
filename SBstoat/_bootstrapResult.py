@@ -64,8 +64,6 @@ class BootstrapResult():
         ### PRIVATE
         # Fitting parameters from result
         self._params = None
-        self._meanBootstrapFittedTS = None
-        self._stdBootstrapFittedTS = None
 
     def __str__(self) -> str:
         """
@@ -103,16 +101,6 @@ class BootstrapResult():
                       max=value*1.01)
         return self._params
 
-    @property
-    def meanBootstrapFittedTS(self)->NamedTimeseries:
-        """
-        Mean of fitted values.
-        """
-        if self._meanBootstrapFittedTS is None:
-            self.fittedStatistic.calculate()
-            self._meanBootstrapFittedTS = self.fittedStatistic.meanTS.copy()
-        return self._meanBootstrapFittedTS
-
     def simulate(self, numSample:int=1000, numPoint:int=100)->TimeseriesStatistic:
         """
         Runs a simulation using the parameters from the bootstrap.
@@ -136,16 +124,6 @@ class BootstrapResult():
             timeseriesStatistic.accumulate(fittedTS)
         timeseriesStatistic.calculate()
         return timeseriesStatistic
-
-    @property
-    def stdBootstrapFittedTS(self)->NamedTimeseries:
-        """
-        Standard deviation of fitted values.
-        """
-        if self._stdBootstrapFittedTS is None:
-            self.fittedStatistic.calculate()
-            self._stdBootstrapFittedTS = self.fittedStatistic.stdTS.copy()
-        return self._stdBootstrapFittedTS
 
     def _sampleParams(self, numSample:int):
         """

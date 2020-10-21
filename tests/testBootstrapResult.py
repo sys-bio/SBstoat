@@ -71,20 +71,6 @@ class TestBootstrapResult(unittest.TestCase):
         self.assertEqual(len(mergedResult.parameterDct[self.parameterNames[0]]),
               mergedResult.numIteration)
 
-    def testMeanFittedTS(self):
-        if IGNORE_TEST:
-            return
-        meanFittedTS = self.bootstrapResult.meanBootstrapFittedTS
-        overallMean = np.mean(meanFittedTS[self.speciesNames].flatten())
-        self.assertGreater(overallMean, 0)
-
-    def testStdFittedTS(self):
-        if IGNORE_TEST:
-            return
-        stdFittedTS = self.bootstrapResult.stdBootstrapFittedTS
-        overallStd = np.mean(stdFittedTS[self.speciesNames].flatten())
-        self.assertGreater(overallStd, 0)
-
     def testSimulate(self):
         if IGNORE_TEST:
             return

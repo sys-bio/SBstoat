@@ -121,8 +121,8 @@ class ModelFitter(ModelFitterReport):
         else:
             self._updateFit(params, numPoint)
             analyzer = ResidualsAnalyzer(self.observedTS, self._plotFittedTS,
-                  meanFittedTS=self.bootstrapResult.meanBootstrapFittedTS,
-                  stdFittedTS=self.bootstrapResult.stdBootstrapFittedTS,
+                  meanFittedTS=self.bootstrapResult.fittedStatistic.meanTS,
+                  stdFittedTS=self.bootstrapResult.fittedStatistic.stdTS,
                   residualsTS=self.residualsTS,
                   isPlot=self._isPlot)
             statement = "analyzer.plot%s(**kwargs)" % kind
@@ -176,8 +176,8 @@ class ModelFitter(ModelFitterReport):
         """
         self._updateFit(params, numPoint)
         if self.bootstrapResult is not None:
-            meanFittedTS = self.bootstrapResult.meanBootstrapFittedTS
-            stdFittedTS = self.bootstrapResult.stdBootstrapFittedTS
+            meanFittedTS = self.bootstrapResult.fittedStatistic.meanTS
+            stdFittedTS = self.bootstrapResult.fittedStatistic.stdTS
         else:
             meanFittedTS = None
             stdFittedTS = None
