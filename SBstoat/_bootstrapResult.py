@@ -13,6 +13,7 @@ from SBstoat.timeseriesStatistic import TimeseriesStatistic
 from SBstoat import _helpers
 from SBstoat import _modelFitterCore as mfc
 
+import copy
 import lmfit
 import numpy as np
 import pandas as pd
@@ -64,6 +65,9 @@ class BootstrapResult():
         ### PRIVATE
         # Fitting parameters from result
         self._params = None
+
+    def copy(self):
+        return copy.deepcopy(self)
 
     def __str__(self) -> str:
         """

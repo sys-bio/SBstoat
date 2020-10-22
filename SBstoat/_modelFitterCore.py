@@ -13,6 +13,7 @@ from SBstoat import namedTimeseries
 from SBstoat import _helpers
 
 import collections
+import copy
 import lmfit
 import numpy as np
 import pandas as pd
@@ -170,20 +171,21 @@ class ModelFitterCore(object):
         else:
             modelSpecification = self.modelSpecification
         newModelFitter = self.__class__(
-              modelSpecification,
-              self.observedTS,
-              self.parametersToFit,
-              selectedColumns=self.selectedColumns,
+              copy.deepcopy(modelSpecification),
+              self.observedTS.copy(),
+              copy.deepcopy(self.parametersToFit),
+              selectedColumns=copy.deepcopy(self.selectedColumns),
               method=self._method,
               parameterLowerBound=self.lowerBound,
               parameterUpperBound=self.upperBound,
-              parameterDct=self.parameterDct,
-              fittedDataTransformDct=self.fittedDataTransformDct,
+              parameterDct=copy.deepcopy(self.parameterDct),
+              fittedDataTransformDct=copy.deepcopy(self.fittedDataTransformDct),
               isPlot=self._isPlot)
-        newModelFitter.bootstrapResult = self.bootstrapResult
-        if newModelFitter.bootstrapResult is not None:
+        if self.bootstrapResult is not None:
+            newModelFitter.bootstrapResult = self.bootstrapResult.copy()
             newModelFitter.params = newModelFitter.bootstrapResult.params
         else:
+            newModelFitter.bootstrapResult = None
             newModelFitter.params = self.params
         return newModelFitter
 
