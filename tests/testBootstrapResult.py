@@ -9,6 +9,7 @@ Created on Aug 19, 2020
 from SBstoat import _bootstrapResult as br
 from SBstoat.timeseriesStatistic import TimeseriesStatistic
 from SBstoat import _modelFitterBootstrap as mfb
+from SBstoat import _bootstrapResult as bsr
 from SBstoat.namedTimeseries import NamedTimeseries, TIME
 from tests import _testHelpers as th
 
@@ -75,8 +76,8 @@ class TestBootstrapResult(unittest.TestCase):
         if IGNORE_TEST:
             return
         statistic = self.bootstrapResult.simulate()
-        lowers = statistic.percentileDct[5].flatten()
-        uppers = statistic.percentileDct[95].flatten()
+        lowers = statistic.percentileDct[bsr.PERCENTILES[0]].flatten()
+        uppers = statistic.percentileDct[bsr.PERCENTILES[-1]].flatten()
         trues = [l <= u for l, u in zip(lowers, uppers)]
         self.assertTrue(all(trues))
 

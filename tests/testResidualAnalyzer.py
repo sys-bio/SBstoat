@@ -15,8 +15,8 @@ import os
 import unittest
 
 
-IGNORE_TEST = True
-IS_PLOT = True
+IGNORE_TEST = False
+IS_PLOT = False
 OBSERVED_TS, FITTED_TS = th.getObservedFitted()
 FITTER = th.getFitter(cls=ModelFitter)
 FITTER.fitModel()
@@ -43,7 +43,8 @@ class TestReidualAnalyzer(unittest.TestCase):
               ylim=[-1.5, 1.5])
 
     def testPlotFittedObservedOverTime1(self):
-        # TESTING
+        if IGNORE_TEST:
+            return
         analyzer = ResidualsAnalyzer(self.observedTS, self.statistic.meanTS,
               bandLowTS=self.statistic.percentileDct[LOW_PERCENTILE],
               bandHighTS=self.statistic.percentileDct[HIGH_PERCENTILE],

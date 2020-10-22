@@ -183,10 +183,10 @@ class ModelFitter(ModelFitterReport):
         bandLowTS = None
         bandHighTS = None
         if self.bootstrapResult is not None:
-            if len(self.bootstrapResult.fittedStatistic.percentileDct) > 0:
-                self._plotFittedTS = self.bootstrapResult.fittedStatistic.meanTS
-                bandLowTS = self.bootstrapResult.percentileDct[LOW_PERCENTILE]
-                bandHighTS = self.bootstrapResult.percentileDct[HIGH_PERCENTILE]
+            statistic = self.bootstrapResult.simulate(numPoint=100, numSample=1000)
+            self._plotFittedTS = statistic.meanTS
+            bandLowTS = statistic.percentileDct[LOW_PERCENTILE]
+            bandHighTS = statistic.percentileDct[HIGH_PERCENTILE]
         analyzer = ResidualsAnalyzer(self.observedTS, self._plotFittedTS,
               residualsTS=self.residualsTS,
               bandLowTS=bandLowTS, bandHighTS=bandHighTS,

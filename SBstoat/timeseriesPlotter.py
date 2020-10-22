@@ -231,7 +231,7 @@ class TimeseriesPlotter(object):
             initialStatement = StatementManager(ax.fill_between)
             statement = mkStatement(ax, initialStatement, timeseries1, variable)
             statement.addPosarg(ts[variable])
-            statement.addKwargs(alpha=0.1)
+            statement.addKwargs(alpha=0.2)
             options.do(ax, statement=statement, plotIdx=plotIdx, lineIdx=lineIdx)
         #
         # Construct the plots
