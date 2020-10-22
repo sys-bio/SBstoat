@@ -36,6 +36,7 @@ The code is arranged as a hierarchy of classes that use the previous class:
 """
 
 from SBstoat.namedTimeseries import NamedTimeseries, TIME, mkNamedTimeseries
+import SBstoat._bootstrapResult as bsr
 import SBstoat._plotOptions as po
 from SBstoat import timeseriesPlotter as tp
 from SBstoat import _helpers
@@ -47,6 +48,10 @@ import lmfit
 import numpy as np
 import pandas as pd
 import typing
+
+
+LOW_PERCENTILE = bsr.PERCENTILES[0]
+HIGH_PERCENTILE = bsr.PERCENTILES[-1]
 
 
 class ModelFitter(ModelFitterReport):
@@ -175,16 +180,16 @@ class ModelFitter(ModelFitterReport):
         #@expand
         """
         self._updateFit(params, numPoint)
+        bandLowTS = None
+        bandHighTS = None
         if self.bootstrapResult is not None:
-            meanFittedTS = self.bootstrapResult.fittedStatistic.meanTS
-            stdFittedTS = self.bootstrapResult.fittedStatistic.stdTS
-        else:
-            meanFittedTS = None
-            stdFittedTS = None
+            if len(self.bootstrapResult.fittedStatistic.percentileDct) > 0:
+                self._plotFittedTS = self.bootstrapResult.fittedStatistic.meanTS
+                bandLowTS = self.bootstrapResult.percentileDct[LOW_PERCENTILE]
+                bandHighTS = self.bootstrapResult.percentileDct[HIGH_PERCENTILE]
         analyzer = ResidualsAnalyzer(self.observedTS, self._plotFittedTS,
               residualsTS=self.residualsTS,
-              meanFittedTS=meanFittedTS,
-              stdFittedTS=stdFittedTS,
+              bandLowTS=bandLowTS, bandHighTS=bandHighTS,
               isPlot=self._isPlot)
         analyzer.plotFittedObservedOverTime(**kwargs)
 

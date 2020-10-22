@@ -148,7 +148,9 @@ class TimeseriesPlotter(object):
     @Expander(po.KWARGS, po.BASE_OPTIONS, excludes=[po.TITLE], indent=8,
            header=po.HEADER)
     def plotTimeSingle(self, timeseries1:NamedTimeseries,
-           meanTS:NamedTimeseries=None, stdTS:NamedTimeseries=None, ax_spec=None,
+           meanTS:NamedTimeseries=None, stdTS:NamedTimeseries=None,
+           bandLowTS:NamedTimeseries=None, bandHighTS:NamedTimeseries=None,
+           ax_spec=None,
            position=None,  **kwargs):
         """
         Constructs plots of single columns, possibly with a second
@@ -159,6 +161,8 @@ class TimeseriesPlotter(object):
         timeseries1: timeseries to plot
         meanTS: mean values of timeseries to plot
         stdTS: standard deviations of meanTS (same times)
+        bandLowTS: timeseries that describes the lower band for timeseries1
+        bandhighTS: timeseries that describes the higher band for timeseries1
         ax_spec: Optionally specified axis for all lines
         position: (int, int) - position of ax_spec
         #@expand
@@ -223,6 +227,13 @@ class TimeseriesPlotter(object):
                     return True
                 return position[0] + 1 == numRow
         #
+        def mkBand(ts, variable, plotIdx, lineIdx):
+            initialStatement = StatementManager(ax.fill_between)
+            statement = mkStatement(ax, initialStatement, timeseries1, variable)
+            statement.addPosarg(ts[variable])
+            statement.addKwargs(alpha=0.1)
+            options.do(ax, statement=statement, plotIdx=plotIdx, lineIdx=lineIdx)
+        #
         # Construct the plots
         baseOptions = copy.deepcopy(options)
         for plotIdx, variable in enumerate(options.columns):
@@ -254,7 +265,8 @@ class TimeseriesPlotter(object):
                             initialStatement = StatementManager(ax.scatter)
                     elif options.marker is not None:
                         initialStatement = StatementManager(ax.scatter)
-                statement = mkStatement(ax, initialStatement, options.timeseries2, variable)
+                statement = mkStatement(ax, initialStatement,
+                      options.timeseries2, variable)
                 legends = [LABEL1, LABEL2]
                 options.lengends = legends
                 options.do(ax, statement=statement, plotIdx=plotIdx, lineIdx=lineIdx)
@@ -275,6 +287,12 @@ class TimeseriesPlotter(object):
                 legends.append("Bootstrap mean")
                 options.lengends = legends
                 options.do(ax, statement=statement, plotIdx=plotIdx, lineIdx=lineIdx)
+            if  bandLowTS is not None:
+                lineIdx = 0
+                mkBand(bandLowTS, variable, plotIdx, lineIdx)
+            if  bandHighTS is not None:
+                lineIdx = 0
+                mkBand(bandHighTS, variable, plotIdx, lineIdx)
         if self.isPlot:
             plt.show()
 

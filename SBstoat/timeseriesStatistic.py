@@ -44,7 +44,7 @@ class TimeseriesStatistic(object):
         # Standard deviations
         self.stdTS = prototypeTS.copy(isInitialize=True)  # standard deviations
         # Percentiles
-        self.percentileDct = None  # Key: percentile; Value: Timeseries
+        self.percentileDct = {}  # Key: percentile; Value: Timeseries
 
     def copy(self):
         """

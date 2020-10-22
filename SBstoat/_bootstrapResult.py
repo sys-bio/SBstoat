@@ -18,7 +18,7 @@ import numpy as np
 import pandas as pd
 import typing
 
-PERCENTILES = [2.5, 97.55]  # Percentile for confidence limits
+PERCENTILES = [2.5, 50, 97.55]  # Percentile for confidence limits
 # Timeseries columns
 COL_SUM = "sum"  # sum of fitted values
 COL_SSQ = "ssq"  # sum of squares
@@ -55,7 +55,7 @@ class BootstrapResult():
         # standard deviation of parameter values
         self.parameterStdDct = {p: np.std(parameterDct[p])
               for p in self.parameters}
-        # 95% Confidence limits for parameter values
+        # Confidence limits for parameter values
         self.percentileDct = {
               p: np.percentile(self.parameterDct[p],
               PERCENTILES) for p in self.parameterDct}
@@ -116,7 +116,8 @@ class BootstrapResult():
         """
         params_list = self._sampleParams(numSample)
         fittedTS = self.fitter.simulate(params=params_list[0], numPoint=numPoint)
-        timeseriesStatistic = TimeseriesStatistic(fittedTS)
+        timeseriesStatistic = TimeseriesStatistic(fittedTS,
+              percentiles=PERCENTILES)
         timeseriesStatistic.accumulate(fittedTS)
         # Do the simulation
         for params in params_list[1:]:

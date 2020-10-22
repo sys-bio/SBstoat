@@ -120,6 +120,37 @@ class TestTimeseriesPlotter(unittest.TestCase):
         if IS_PLOT:
             plt.show()
 
+    def testPlotSingle7(self):
+        if IGNORE_TEST:
+            return
+        def setTS(ts, frac):
+            ts = self.timeseries.copy()
+            for col in ts.colnames:
+                ts[col] = frac*ts[col]
+            return ts
+        #
+        numCol = 3
+        numRow = 2
+        fig, axes = plt.subplots(numRow, numCol)
+        self.plotter.isPlot = False
+        tsLower = setTS(self.timeseries, 0.7)
+        tsUpper = setTS(self.timeseries, 1.5)
+        for idx in range(numCol*numRow):
+            if idx < numCol:
+                row = 0
+                col = idx
+            else:
+                row = 1
+                col = idx - numCol
+            position = [row, col]
+            ax = axes[row, col]
+            ts = self.timeseries.subsetColumns(self.timeseries.colnames[idx])
+            self.plotter.plotTimeSingle(ts, ax_spec=ax, position=position,
+                  bandLowTS=tsLower, bandHighTS=tsUpper,
+                  numRow=2)
+        if IS_PLOT:
+            plt.show()
+
     def mkTimeseries(self):
         ts2 = self.timeseries.copy()
         ts2[ts2.colnames] = ts2[ts2.colnames] + np.multiply(ts2[ts2.colnames], ts2[ts2.colnames])

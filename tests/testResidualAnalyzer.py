@@ -6,6 +6,7 @@ Created on Aug 20, 2020
 """
 
 from SBstoat.modelFitter import ModelFitter
+import SBstoat._bootstrapResult as bsr
 from SBstoat.residualsAnalyzer import ResidualsAnalyzer
 import tests._testHelpers as th
 
@@ -14,9 +15,14 @@ import os
 import unittest
 
 
-IGNORE_TEST = False
-IS_PLOT = False
+IGNORE_TEST = True
+IS_PLOT = True
 OBSERVED_TS, FITTED_TS = th.getObservedFitted()
+FITTER = th.getFitter(cls=ModelFitter)
+FITTER.fitModel()
+FITTER.bootstrap(numIteration=10)
+LOW_PERCENTILE = bsr.PERCENTILES[0]
+HIGH_PERCENTILE = bsr.PERCENTILES[-1]
         
 
 class TestReidualAnalyzer(unittest.TestCase):
@@ -24,6 +30,9 @@ class TestReidualAnalyzer(unittest.TestCase):
     def setUp(self):
         self.observedTS = OBSERVED_TS
         self.fittedTS = FITTED_TS
+        self.fitter = FITTER
+        self.statistic = self.fitter.bootstrapResult.simulate(numPoint=30,
+              numSample=300)
         self.analyzer = ResidualsAnalyzer(self.observedTS, self.fittedTS,
               isPlot=IS_PLOT)
 
@@ -34,8 +43,13 @@ class TestReidualAnalyzer(unittest.TestCase):
               ylim=[-1.5, 1.5])
 
     def testPlotFittedObservedOverTime1(self):
-        if IGNORE_TEST:
-            return
+        # TESTING
+        analyzer = ResidualsAnalyzer(self.observedTS, self.statistic.meanTS,
+              bandLowTS=self.statistic.percentileDct[LOW_PERCENTILE],
+              bandHighTS=self.statistic.percentileDct[HIGH_PERCENTILE],
+              isPlot=IS_PLOT)
+        analyzer.plotFittedObservedOverTime(numCol=3, numRow=2)
+        #
         self.analyzer.plotFittedObservedOverTime(numCol=3, numRow=2)
 
     def testPlotFittedObservedOverTime2(self):

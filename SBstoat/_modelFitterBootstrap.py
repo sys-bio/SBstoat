@@ -100,7 +100,8 @@ def _runBootstrap(arguments:_Arguments)->BootstrapResult:
           parameterUpperBound=fitter.upperBound,
           fittedDataTransformDct=fitter.fittedDataTransformDct,
           isPlot=fitter._isPlot)
-    fittedStatistic = TimeseriesStatistic(newFitter.observedTS)
+    fittedStatistic = TimeseriesStatistic(newFitter.observedTS,
+          percentiles=[])
     # Do the bootstrap iterations
     for iteration in range(numIteration*ITERATION_MULTIPLIER):
         if (iteration > 0) and (numSuccessIteration != lastReport)  \
@@ -132,7 +133,8 @@ def _runBootstrap(arguments:_Arguments)->BootstrapResult:
         fittedStatistic.accumulate(newFitter.fittedTS)
         newFitter.observedTS = synthesizer.calculate()
     print("Completed bootstrap process %d." % (processIdx + 1))
-    return BootstrapResult(fitter, numSuccessIteration, parameterDct, fittedStatistic)
+    return BootstrapResult(fitter, numSuccessIteration, parameterDct,
+          fittedStatistic)
 
 
 ##################### CLASSES #########################

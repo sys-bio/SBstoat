@@ -30,6 +30,7 @@ class ResidualsAnalyzer(object):
     def __init__(self, observedTS:NamedTimeseries, fittedTS:NamedTimeseries,
               residualsTS:NamedTimeseries=None, meanFittedTS=None,
               stdFittedTS=None,
+              bandLowTS:NamedTimeseries=None, bandHighTS:NamedTimeseries=None,
               isPlot:bool=True):
         """
         Parameters
@@ -40,11 +41,15 @@ class ResidualsAnalyzer(object):
             may have different times than observedTS
         meanFittedTS: fitted values with same times as observedTS
         stdFittedTS: fitted values with same times as observedTS
+        bandLowTS: timeseries that describes the lower band for timeseries1
+        bandhighTS: timeseries that describes the higher band for timeseries1
         """
         self.observedTS = observedTS
         self.fittedTS = fittedTS
         self.meanFittedTS = meanFittedTS
         self.stdFittedTS = stdFittedTS
+        self.bandLowTS = bandLowTS
+        self.bandHighTS = bandHighTS
         if residualsTS is None:
             self.residualsTS = self.observedTS.copy()
             cols = self.residualsTS.colnames
@@ -113,9 +118,12 @@ class ResidualsAnalyzer(object):
                 legends.append("bootstrap fitted")
             self._addKeyword(kwargs, po.LEGEND, legends)
             self._addKeyword(kwargs, po.COLOR, ["b", "b", "r"])
-            self._plotter.plotTimeSingle(self.fittedTS,
-                  timeseries2=self.observedTS, meanTS=self.meanFittedTS,
-                  stdTS=self.stdFittedTS, 
+            self._plotter.plotTimeSingle(
+                  self.fittedTS,
+                  timeseries2=self.observedTS,
+                  meanTS=self.meanFittedTS, stdTS=self.stdFittedTS, 
+                  bandLowTS=self.bandLowTS,
+                  bandHighTS=self.bandHighTS,
                   **kwargs)
 
     @Expander(po.KWARGS, po.BASE_OPTIONS, includes=[po.BINS], indent=8,
