@@ -191,7 +191,7 @@ class ModelFitter(ModelFitterReport):
               residualsTS=self.residualsTS,
               bandLowTS=bandLowTS, bandHighTS=bandHighTS,
               isPlot=self._isPlot)
-        analyzer.plotFittedObservedOverTime(**kwargs)
+        analyzer.plotFittedObservedOverTime(numRow=2, **kwargs)
 
     def _addKeyword(self, kwargs, key, value):
         if not key in kwargs:
