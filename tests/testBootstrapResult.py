@@ -11,6 +11,7 @@ from SBstoat.timeseriesStatistic import TimeseriesStatistic
 from SBstoat import _modelFitterBootstrap as mfb
 from SBstoat import _bootstrapResult as bsr
 from SBstoat.namedTimeseries import NamedTimeseries, TIME
+from SBstoat import rpickle
 from tests import _testHelpers as th
 
 import copy
@@ -80,6 +81,14 @@ class TestBootstrapResult(unittest.TestCase):
         uppers = statistic.percentileDct[bsr.PERCENTILES[-1]].flatten()
         trues = [l <= u for l, u in zip(lowers, uppers)]
         self.assertTrue(all(trues))
+
+    def testRpickleInterface(self):
+        if IGNORE_TEST:
+            return
+        serialization = rpickle.Serialization(self.bootstrapResult)
+        bootstrapResult = serialization.deserialize()
+        self.assertTrue(len(bootstrapResult.fittedStatistic.meanTS),
+              len(self.bootstrapResult.fittedStatistic.meanTS))
 
 
 if __name__ == '__main__':

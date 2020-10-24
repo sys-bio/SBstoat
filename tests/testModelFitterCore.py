@@ -20,6 +20,7 @@ import unittest
 
 
 IGNORE_TEST = False
+IS_PLOT = False
 TIMESERIES = th.getTimeseries()
 DIR = os.path.dirname(os.path.abspath(__file__))
 FILE_SERIALIZE = os.path.join(DIR, "modelFitterCore.pcl")
@@ -49,6 +50,13 @@ class TestModelFitterCore(unittest.TestCase):
         #
         for variable in self.fitter.selectedColumns:
             self.assertTrue(variable in th.VARIABLE_NAMES)
+
+    def testrpConstruct(self):
+        if IGNORE_TEST:
+            return
+        fitter = ModelFitterCore.rpConstruct()
+        self.assertIsNone(self.fitter.roadrunnerModel)
+        self.assertIsNone(fitter.observedTS)
 
     def testCopy(self):
         if IGNORE_TEST:
@@ -199,27 +207,31 @@ class TestModelFitterCore(unittest.TestCase):
         self.assertTrue(np.isclose(np.var(fitter1.residualsTS.flatten()),
               np.var(fitter2.residualsTS.flatten())))
 
+    def getFitter(self):
+        fitter = th.getFitter(cls=ModelFitter)
+        fitter.fitModel()
+        fitter.bootstrap(numIteration=10)
+        return fitter
+
     def testSerialize(self):
         if IGNORE_TEST:
             return
-        def test():
-            self.assertFalse(os.path.isfile(FILE_SERIALIZE))
-            self.fitter.serialize(FILE_SERIALIZE)
-            self.assertTrue(os.path.isfile(FILE_SERIALIZE))
-            os.remove(FILE_SERIALIZE)
-        test()
-        #
-        self.fitter.fitModel()
-        test()
+        fitter = self.getFitter()
+        self.assertFalse(os.path.isfile(FILE_SERIALIZE))
+        fitter.serialize(FILE_SERIALIZE)
+        self.assertTrue(os.path.isfile(FILE_SERIALIZE))
+        os.remove(FILE_SERIALIZE)
 
     def testDeserialize(self):
         if IGNORE_TEST:
             return
-        self.fitter.fitModel()
-        self.fitter.serialize(FILE_SERIALIZE)
-        fitter = ModelFitter.deserialize(FILE_SERIALIZE)
+        fitter = self.getFitter()
+        fitter.serialize(FILE_SERIALIZE)
+        deserializedFitter = ModelFitter.deserialize(FILE_SERIALIZE)
         self.assertEqual(fitter.modelSpecification,
-              self.fitter.modelSpecification)
+              deserializedFitter.modelSpecification)
+        self.assertEqual(len(fitter.bootstrapResult.fittedStatistic.meanTS),
+              len(deserializedFitter.bootstrapResult.fittedStatistic.meanTS))
         
 
 if __name__ == '__main__':

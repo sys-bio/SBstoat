@@ -10,6 +10,7 @@ Core logic of model fitter. Does not include plots.
 from SBstoat.namedTimeseries import NamedTimeseries, TIME, mkNamedTimeseries
 import SBstoat.timeseriesPlotter as tp
 from SBstoat import namedTimeseries
+from SBstoat import rpickle
 from SBstoat import _helpers
 
 import collections
@@ -17,7 +18,6 @@ import copy
 import lmfit
 import numpy as np
 import pandas as pd
-import pickle
 import random
 import roadrunner
 import tellurium as te
@@ -46,7 +46,7 @@ class ParameterSpecification(object):
         self.upper = upper
 
 
-class ModelFitterCore(object):
+class ModelFitterCore(rpickle.RPickler):
 
     def __init__(self, modelSpecification, observedData, parametersToFit,
                  selectedColumns=None, method=METHOD_BOTH,
@@ -93,9 +93,11 @@ class ModelFitterCore(object):
         self.lowerBound = parameterLowerBound
         self.upperBound = parameterUpperBound
         self.parameterDct = dict(parameterDct)
-        self.observedTS = mkNamedTimeseries(observedData)
+        self.observedTS = observedData
+        if self.observedTS is not None:
+            self.observedTS = mkNamedTimeseries(observedData)
         self.fittedDataTransformDct = fittedDataTransformDct
-        if selectedColumns is None:
+        if (selectedColumns is None) and (self.observedTS is not None):
             selectedColumns = self.observedTS.colnames
         self.selectedColumns = selectedColumns
         self._method = method
@@ -107,11 +109,31 @@ class ModelFitterCore(object):
         self.minimizer = None  # lmfit.minimizer
         self.minimizerResult = None  # Results of minimization
         self.params = None  # params property in lmfit.minimizer
-        self.fittedTS = self.observedTS.copy()  # Initialization of columns
+        if self.observedTS is not None:
+            self.fittedTS = self.observedTS.copy()  # Initialization of columns
         self.residualsTS = None  # Residuals for selectedColumns
         self.bootstrapResult = None  # Result from bootstrapping
         # Validation checks
         self._validateFittedDataTransformDct()
+    
+    @classmethod
+    def rpConstruct(cls):
+        """
+        Overrides rpickler.rpConstruct to create a method that
+        constructs an instance without arguments.
+        
+        Returns
+        -------
+        Instance of cls
+        """
+        return cls(None, None, None)
+
+    def rpRevise(self):
+        """
+        Provides a hook to modify instance variables after they have
+        been initialized by RPickle.
+        """
+        pass
 
     def _validateFittedDataTransformDct(self):
         excess = set(self.fittedDataTransformDct.keys()).difference(
@@ -425,7 +447,7 @@ class ModelFitterCore(object):
         """
         newModelFitter = self.copy()
         with open(path, "wb") as fd:
-            pickle.dump(newModelFitter, fd)
+            rpickle.dump(newModelFitter, fd)
 
     @classmethod
     def deserialize(cls, path):
@@ -443,7 +465,7 @@ class ModelFitterCore(object):
             Model is initialized.
         """
         with open(path, "rb") as fd:
-            fitter = pickle.load(fd)
+            fitter = rpickle.load(fd)
         fitter._initializeRoadrunnerModel()
         return fitter
 

@@ -10,6 +10,7 @@ metrics that are calculated from the results.
 
 from SBstoat.namedTimeseries import NamedTimeseries, TIME, mkNamedTimeseries
 from SBstoat.timeseriesStatistic import TimeseriesStatistic
+from SBstoat import rpickle
 from SBstoat import _helpers
 from SBstoat import _modelFitterCore as mfc
 
@@ -26,7 +27,7 @@ COL_SSQ = "ssq"  # sum of squares
 
 
 ######### CLASSES ###############
-class BootstrapResult():
+class BootstrapResult(rpickle.RPickler):
 
     def __init__(self, fitter, numIteration: int, parameterDct:dict,
           fittedStatistic: TimeseriesStatistic):
@@ -41,30 +42,45 @@ class BootstrapResult():
             value: list of values
         fittedStatistic: statistics for fitted timeseries
         """
-        self.fitter = fitter.copy()
+        self.fitter = fitter
         self.numIteration = numIteration
-        # population of parameter values
-        self.parameterDct = dict(parameterDct)
-        # list of parameters
-        self.parameters = list(self.parameterDct.keys())
-        # Number of simulations
-        self.numSimulation =  \
-              len(self.parameterDct[self.parameters[0]])
-        # means of parameter values
-        self.parameterMeanDct = {p: np.mean(parameterDct[p])
-              for p in self.parameters}
-        # standard deviation of parameter values
-        self.parameterStdDct = {p: np.std(parameterDct[p])
-              for p in self.parameters}
-        # Confidence limits for parameter values
-        self.percentileDct = {
-              p: np.percentile(self.parameterDct[p],
-              PERCENTILES) for p in self.parameterDct}
+        self.parameterDct = parameterDct
         # Timeseries statistics for fits
         self.fittedStatistic = fittedStatistic
+        if fitter is not None:
+            self.fitter = self.fitter.copy()
+            # population of parameter values
+            self.parameterDct = dict(self.parameterDct)
+            # list of parameters
+            self.parameters = list(self.parameterDct.keys())
+            # Number of simulations
+            self.numSimulation =  \
+                  len(self.parameterDct[self.parameters[0]])
+            # means of parameter values
+            self.parameterMeanDct = {p: np.mean(parameterDct[p])
+                  for p in self.parameters}
+            # standard deviation of parameter values
+            self.parameterStdDct = {p: np.std(parameterDct[p])
+                  for p in self.parameters}
+            # Confidence limits for parameter values
+            self.percentileDct = {
+                  p: np.percentile(self.parameterDct[p],
+                  PERCENTILES) for p in self.parameterDct}
         ### PRIVATE
         # Fitting parameters from result
         self._params = None
+    
+    @classmethod
+    def rpConstruct(cls):
+        """
+        Overrides rpickler.rpConstruct to create a method that
+        constructs an instance without arguments.
+        
+        Returns
+        -------
+        Instance of cls
+        """
+        return cls(None, None, None, None)
 
     def copy(self):
         return copy.deepcopy(self)

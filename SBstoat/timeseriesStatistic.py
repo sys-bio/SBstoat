@@ -131,6 +131,8 @@ class TimeseriesStatistic(object):
                 pass
 
     def _calculatePercentiles(self):
+        if len(self.percentiles) == 0:
+            return
         self.percentileDct = {}
         refTS = self._timeseries_list[0]
         indices = range(len(refTS))

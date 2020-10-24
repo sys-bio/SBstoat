@@ -186,6 +186,7 @@ class ModelFitterBootstrap(mfc.ModelFitterCore):
             results = pool.map(_runBootstrap, args_list)
         pool.join()
         self.bootstrapResult = BootstrapResult.merge(results)
+        self.bootstrapResult.fittedStatistic.calculate()
         if serializePath is not None:
             self.serialize(serializePath)
 
