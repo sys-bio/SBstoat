@@ -123,6 +123,7 @@ class TestModelFitterBootstrap(unittest.TestCase):
                   > th.PARAMETER_DCT[p]
             self.assertTrue(isLowerOk)
             self.assertTrue(isUpperOk)
+        self.assertIsNotNone(self.fitter.bootstrapResult)
         #
         fitter = mfb.ModelFitterBootstrap.deserialize(FILE_SERIALIZE)
         self.assertIsNotNone(fitter.bootstrapResult)
