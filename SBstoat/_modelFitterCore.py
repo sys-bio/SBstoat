@@ -136,12 +136,12 @@ class ModelFitterCore(rpickle.RPickler):
         pass
 
     def _validateFittedDataTransformDct(self):
-        excess = set(self.fittedDataTransformDct.keys()).difference(
-              self.selectedColumns)
-        if len(excess) > 0:
-            msg = "fittedDataTransformDct columns not in selectedColumns: %s"  \
-                  % str(excess)
-            raise ValueError(excess)
+         if self.fittedDataTransformDct is not None:
+            excess = set(self.fittedDataTransformDct.keys()).difference(
+                  self.selectedColumns)
+            if len(excess) > 0:
+                msg = "Columns not in selectedColumns: %s"  % str(excess)
+                raise ValueError(excess)
 
     def _transformFittedTS(self, data):
         """
