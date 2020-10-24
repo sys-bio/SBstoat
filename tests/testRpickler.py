@@ -8,6 +8,7 @@ from SBstoat import rpickle
 
 import copy
 import os
+import pickle
 import unittest
 
 
@@ -15,11 +16,16 @@ IGNORE_TEST = False
 IS_PLOT = False
 DIR = os.path.dirname(os.path.abspath(__file__))
 FILE_SERIALIZE = os.path.join(DIR, "testRpickler.pcl")
-FILES = [FILE_SERIALIZE]
+FILE_SERIALIZE2 = os.path.join(DIR, "testRpickler2.pcl")
+FILES = [FILE_SERIALIZE, FILE_SERIALIZE2]
 LIST = list(range(10))
 A_VALUE = 10
 B_VALUE = 100
 C_VALUE = 500
+# Crude way to test that can evolve a class and rpickle works
+# Run the tests first with IS_SERIALIZE = True and then with IS_SERIALIZE = False
+IS_TEST_PICKLE = False # Set to True if doing these tests
+IS_SERIALIZE = False
 
 
 ############ SUPPORT CLASSES ################
@@ -69,13 +75,40 @@ class DClassRevise(rpickle.RPickler):
 
     @classmethod
     def rpConstruct(cls):
-        return cls(C_VALUE)
+        return cls(None)
 
     def rpRevise(self):
         self.a = A_VALUE
 
     def equals(self, other):
        return(self, other)
+
+
+if IS_SERIALIZE:
+    class _DClass(rpickle.RPickler):
+    
+        def __init__(self):
+            self.a = A_VALUE
+    
+        def equals(self, other):
+           return(self, other)
+else:
+    class _DClass(rpickle.RPickler):
+    
+        def __init__(self, a):
+            self.a = a
+            self.b = B_VALUE
+            self.list = LIST
+    
+        @classmethod
+        def rpConstruct(cls):
+            return cls(None)
+
+        def get(self):
+            return self.b
+    
+        def equals(self, other):
+           return(self, other)
         
 
 #####################################
@@ -168,6 +201,8 @@ class TestFunctions(unittest.TestCase):
         self._remove()
 
     def _remove(self):
+        if IS_TEST_PICKLE:
+            return
         for ffile in FILES:
             if os.path.isfile(ffile):
                 os.remove(ffile)
@@ -199,6 +234,42 @@ class TestFunctions(unittest.TestCase):
         test(self.cls_noarg())
         test(self.cls_onearg(C_VALUE))
         test(self.cls_revise(C_VALUE))
+
+    def testPickleFails(self):
+        if IGNORE_TEST:
+            return
+        if not IS_TEST_PICKLE:
+            return
+        if IS_SERIALIZE:
+            obj = _DClass()
+            with (open(FILE_SERIALIZE, "wb")) as fd:
+                pickle.dump(obj, fd)
+        else:
+            with (open(FILE_SERIALIZE, "rb")) as fd:
+                new_obj = pickle.load(fd)
+            try:
+                _ = new_obj.get()
+                self.assertTrue(False)  # Should not get here fail
+            except:
+                self.assertTrue(True)  # Should get here
+
+    def testRPickleSucceeds(self):
+        if IGNORE_TEST:
+            return
+        if not IS_TEST_PICKLE:
+            return
+        if IS_SERIALIZE:
+            obj = _DClass()
+            with (open(FILE_SERIALIZE2, "wb")) as fd:
+                rpickle.dump(obj, fd)
+        else:
+            with (open(FILE_SERIALIZE2, "rb")) as fd:
+                new_obj = rpickle.load(fd)
+            try:
+                _ = new_obj.get()
+                self.assertTrue(True)  # Should get here
+            except:
+                self.assertTrue(False)  # Should not fail
 
 
 if __name__ == '__main__':
