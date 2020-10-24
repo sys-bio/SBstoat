@@ -136,7 +136,8 @@ class ModelFitterCore(object):
         fittedTS = NamedTimeseries(array=data[:, :],
               colnames=self.fittedTS.allColnames)
         for column, func in self.fittedDataTransformDct.items():
-            fittedTS[column] = func(fittedTS)
+            if func is not None:
+                fittedTS[column] = func(fittedTS)
         return fittedTS
         
     @staticmethod
