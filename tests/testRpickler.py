@@ -230,6 +230,12 @@ class TestFunctions(unittest.TestCase):
             with (open(FILE_SERIALIZE, "rb")) as fd:
                 new_obj = rpickle.load(fd)
             self.assertTrue(new_obj.equals(obj))
+            for key, value in new_obj.__dict__.items():
+                is_primitive = any([isinstance(value, t)
+                      for t in [int, str, float]])
+                if not is_primitive:
+                    false = id(new_obj.__dict__[key]) ==  id(obj.__dict__[key])
+                    self.assertFalse(false)
         #
         test(self.cls_noarg())
         test(self.cls_onearg(C_VALUE))

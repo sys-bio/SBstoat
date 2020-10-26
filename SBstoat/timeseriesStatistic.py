@@ -12,6 +12,7 @@ Calculation of statistics for time series. Usage:
 """
 
 from SBstoat.namedTimeseries import NamedTimeseries
+from SBstoat import rpickle
 
 import copy
 import numpy as np
@@ -21,7 +22,7 @@ import typing
 PERCENTILES = [5.0, 50.0, 95.0]  # Percentiles calculated
 
 
-class TimeseriesStatistic(object):
+class TimeseriesStatistic(rpickle.RPickler):
 
     def __init__(self, prototypeTS:NamedTimeseries,
           percentiles:list=PERCENTILES):
@@ -31,20 +32,36 @@ class TimeseriesStatistic(object):
         prototypeTS: same length and columns as desired
         percentiles: percentiles to calculate for accumulated Timeseries
         """
-        self.prototypeTS = prototypeTS
-        self.colnames = self.prototypeTS.colnames
-        self.sumTS = self.prototypeTS.copy(isInitialize=True)
-        self.ssqTS = self.prototypeTS.copy(isInitialize=True)
-        self.percentiles = percentiles
-        self._timeseries_list = []  # List of timeseries accumulated
         # Statistics
-        self.count = 0  # Count of timeseries accumulated
-        # Means
-        self.meanTS = prototypeTS.copy(isInitialize=True) # means
-        # Standard deviations
-        self.stdTS = prototypeTS.copy(isInitialize=True)  # standard deviations
-        # Percentiles
-        self.percentileDct = {}  # Key: percentile; Value: Timeseries
+        if prototypeTS is not None:
+            self.count = 0  # Count of timeseries accumulated
+            self.prototypeTS = prototypeTS
+            self.colnames = self.prototypeTS.colnames
+            self.sumTS = self.prototypeTS.copy(isInitialize=True)
+            self.ssqTS = self.prototypeTS.copy(isInitialize=True)
+            self.percentiles = percentiles
+            self._timeseries_list = []  # List of timeseries accumulated
+            # Means
+            self.meanTS = prototypeTS.copy(isInitialize=True) # means
+            # Standard deviations
+            self.stdTS = prototypeTS.copy(isInitialize=True)  # standard deviations
+            # Percentiles
+            self.percentileDct = {}  # Key: percentile; Value: Timeseries
+        else:
+            # rpConstruct initializations.
+            pass
+    
+    @classmethod
+    def rpConstruct(cls):
+        """
+        Overrides rpickler.rpConstruct to create a method that
+        constructs an instance without arguments.
+        
+        Returns
+        -------
+        Instance of cls
+        """
+        return cls(None)
 
     def copy(self):
         """

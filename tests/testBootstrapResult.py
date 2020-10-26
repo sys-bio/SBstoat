@@ -87,8 +87,8 @@ class TestBootstrapResult(unittest.TestCase):
             return
         serialization = rpickle.Serialization(self.bootstrapResult)
         bootstrapResult = serialization.deserialize()
-        self.assertTrue(len(bootstrapResult.fittedStatistic.meanTS),
-              len(self.bootstrapResult.fittedStatistic.meanTS))
+        self.assertTrue(bootstrapResult.fittedStatistic.meanTS.equals(
+              self.bootstrapResult.fittedStatistic.meanTS))
 
 
 if __name__ == '__main__':

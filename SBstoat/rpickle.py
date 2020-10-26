@@ -11,6 +11,7 @@ so that the method returns a default instance of the class.
 
 """
 
+import copy
 import os
 import pickle
 
@@ -51,7 +52,7 @@ class Serialization(object):
             if isinstance(value, Serialization):
                 obj.__dict__[key] = value.deserialize()
             else:
-                obj.__dict__[key] = value
+                obj.__dict__[key] = copy.deepcopy(value)
         # Revise the obj as required
         obj.rpRevise()
         #

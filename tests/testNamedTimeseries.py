@@ -7,6 +7,7 @@ Created on Tue Jul  7 14:24:09 2020
 """
 
 from SBstoat.namedTimeseries import NamedTimeseries, mkNamedTimeseries
+from SBstoat import rpickle
 import SBstoat.namedTimeseries as namedTimeseries
 
 import numpy as np
@@ -338,8 +339,14 @@ class TestNamedTimeseries(unittest.TestCase):
         values = (TIMES-5)**2
         test(values, 10)  # 2 times
         test(-values, 5)  # Single maxk
+
+    def testRpickleInterface(self):
+        if IGNORE_TEST:
+            return
+        serialization = rpickle.Serialization(self.timeseries)
+        timeseries = serialization.deserialize()
+        self.assertTrue(timeseries.equals(self.timeseries))
         
-            
 
 if __name__ == '__main__':
   unittest.main()

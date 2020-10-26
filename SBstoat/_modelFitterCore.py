@@ -128,13 +128,6 @@ class ModelFitterCore(rpickle.RPickler):
         """
         return cls(None, None, None)
 
-    def rpRevise(self):
-        """
-        Provides a hook to modify instance variables after they have
-        been initialized by RPickle.
-        """
-        pass
-
     def _validateFittedDataTransformDct(self):
         if self.fittedDataTransformDct is not None:
             keySet = set(self.fittedDataTransformDct.keys())

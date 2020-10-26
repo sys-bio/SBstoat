@@ -32,6 +32,8 @@ Usage:
    timeseries["S9"] = 10  # Assign a constant to all rows
 """
 
+from SBstoat import rpickle
+
 import collections
 import copy
 import csv
@@ -100,14 +102,15 @@ def cleanColnames(colnames):
 
 
 ################## CLASSES ########################
-class NamedTimeseries(object):
+class NamedTimeseries(rpickle.RPickler):
           
     def __init__(self,
           csvPath=None,
           colnames=None, array=None,
           namedArray=None,
           dataframe=None,
-          timeseries=None):
+          timeseries=None,
+          isNone=False):
         """
         Parameters
         ---------
@@ -120,6 +123,8 @@ class NamedTimeseries(object):
         dataframe: pd.DataFrame
             index: time
         timeseries: NamedTimeseries
+        isNone: bool
+            Initialization to None values
                
        Usage
        -----
@@ -130,6 +135,8 @@ class NamedTimeseries(object):
            At one of the following most be non-None:
              csvPath, colnames & array, dataframe, timeseries
         """
+        if isNone:
+            return
         if timeseries is not None:
             # Copy the existing object
             for k in timeseries.__dict__.keys():
@@ -167,6 +174,18 @@ class NamedTimeseries(object):
             times = self.values[:, self._indexDct[TIME]]
             self.start = min(times)
             self.end = max(times)
+    
+    @classmethod
+    def rpConstruct(cls):
+        """
+        Overrides rpickler.rpConstruct to create a method that
+        constructs an instance without arguments.
+        
+        Returns
+        -------
+        Instance of cls
+        """
+        return cls(isNone=True)
 
     def __repr__(self):
         df = self.to_dataframe()

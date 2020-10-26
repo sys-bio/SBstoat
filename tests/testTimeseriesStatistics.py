@@ -6,6 +6,7 @@ Created on Tue Jul  7 14:24:09 2020
 """
 
 from SBstoat.namedTimeseries import NamedTimeseries, TIME
+from SBstoat import rpickle
 from SBstoat import timeseriesStatistic as tss
 from SBstoat.timeseriesStatistic import TimeseriesStatistic
 
@@ -145,6 +146,13 @@ class TestNamedTimeseries(unittest.TestCase):
         statistic = TimeseriesStatistic.merge(statistics)
         statistic.calculate()
         self.evaluateStatistic(statistic, count=NUM)
+
+    def testRpickleInterface(self):
+        if IGNORE_TEST:
+            return
+        serialization = rpickle.Serialization(self.statistic)
+        statistic = serialization.deserialize()
+        self.assertTrue(statistic.meanTS.equals(self.statistic.meanTS))
             
 
 if __name__ == '__main__':
