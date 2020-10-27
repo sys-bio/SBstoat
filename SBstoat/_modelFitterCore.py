@@ -222,6 +222,23 @@ class ModelFitterCore(rpickle.RPickler):
             msg = msg + "an Antimony model."
             raise ValueError(msg)
 
+    def getDefaultParameterValues(self):
+        """
+        Obtain the original values of parameters.
+        
+        Returns
+        -------
+        dict:
+            key: parameter name
+            value: value of parameter
+        """
+        dct = {}
+        self. _initializeRoadrunnerModel()
+        self.roadrunnerModel.reset()
+        for parameterName in self.parametersToFit:
+            dct[parameterName] = self.roadrunnerModel.model[parameterName]
+        return dct
+
     def simulate(self, params=None, startTime=None, endTime=None, numPoint=None):
         """
         Runs a simulation. Defaults to parameter values in the simulation.

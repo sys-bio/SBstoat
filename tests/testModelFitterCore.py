@@ -232,6 +232,14 @@ class TestModelFitterCore(unittest.TestCase):
               deserializedFitter.modelSpecification)
         self.assertEqual(len(fitter.bootstrapResult.fittedStatistic.meanTS),
               len(deserializedFitter.bootstrapResult.fittedStatistic.meanTS))
+
+    def testGetDefaultParameterValues(self):
+        if IGNORE_TEST:
+            return
+        fitter = self.getFitter()
+        parameterDct = self.fitter.getDefaultParameterValues()
+        for name in parameterDct.keys():
+            self.assertEqual(parameterDct[name], th.PARAMETER_DCT[name])
         
 
 if __name__ == '__main__':
