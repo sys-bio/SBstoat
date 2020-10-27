@@ -5,14 +5,17 @@
 @author: joseph-hellerstein
 
 A model study is an application of a model to multiple sets of
-observed data with fitting the same model parameters.
+observed data (fitting the same model parameters). We refer to each
+collection of observed data as a data source.
+ModelStudy provides a way to create one ModelFitter for each
+data source, and provides access to these fitters.
 
 
 data_sets should be a list of data inputs as required by ModelFitter.
 
 Usage
 -----
-    modelStudy = ModelStudy(model, data_sets, parameters)
+    modelStudy = ModelStudy(model, dataSources, parameters)
     modelStudy.bootstrap()  # Create and save the bootstrap results
     modelStudy.report()  # Generates a standard report of the results
 """
@@ -22,6 +25,7 @@ import SBstoat._plotOptions as po
 from SBstoat.modelFitter import ModelFitter
 
 import lmfit
+import matplotlib.pylab as plt
 import numpy as np
 import os
 import pandas as pd
@@ -29,13 +33,15 @@ import shutil
 import typing
 
 
-DIR_PATH = "modelStudyFitters"
+FILE_NAME = os.path.splitext(__file__)[0]  # Extract the file name
+DIR_PATH = "%sFiters" % FILE_NAME
 
 
 class ModelStudy(object):
 
     def __init__(self, modelSpecification, dataSources, parametersToFit,
-          dirPath=DIR_PATH, instanceNames=None, useSerialized=True, **kwargs):
+          dirPath=DIR_PATH, instanceNames=None, isSerialized=True,
+          isPlot=True,  **kwargs):
         """
         Parameters
         ---------
@@ -50,34 +56,49 @@ class ModelStudy(object):
             Path to the output directory containing the serialized fitters
             for the study.
         instanceNames: list-str
-            Names of study instances
-        useSerialized: bool
-            Use the serialized file if it exiss
+            Names of study instances corresponds to the list of dataSources
+        isSerialized: bool
+            Use the serialization of each ModelFitter, if it exists
+        isPlot: bool
+            Do plots
         kwargs: dict
             arguments passed to ModelFitter
         """
-        self.dirPath = dirPath  # Path to the directory for serialization
+        self.dirPath = dirPath  # Path to the directory serialized ModelFitter
+        self.isPlot = isPlot
         if not os.path.isdir(dirPath):
             os.mkdir(dirPath)
         if instanceNames is None:
-            self.instanceNames = ["dataset_%d" %d
+            self.instanceNames = ["src_%d" %d
                   for d in range(1, len(dataSources)+1)]
         else:
-            self.instanceNames = instanceNames
+            self.instanceNames = [str(i) for i in instanceNames]
         self.fitterPathDct = {}  # Path to serialized fitters
         self.fitterDct = {}  # Fitters
         for idx, name in enumerate(self.instanceNames):
             source = dataSources[idx]
             filePath = self._getSerializePath(name)
             self.fitterPathDct[name] = filePath
-            if os.path.isfile(filePath) and useSerialized:
+            if os.path.isfile(filePath) and isSerialized:
                 self.fitterDct[name] = ModelFitter.deserialize(filePath)
             else:
                 self.fitterDct[name] = ModelFitter(modelSpecification, source,
-                       parametersToFit, **kwargs)
+                       parametersToFit, isPlot=self.isPlot, **kwargs)
                 self.fitterDct[name].serialize(filePath)
 
     def _getSerializePath(self, name):
+        """
+        Constructs to serialization file for fitter.
+
+        Parameters
+        ----------
+        name: str
+            Name of the fitter instance/data source
+        
+        Returns
+        -------
+        str
+        """
         return os.path.join(self.dirPath, "%s.pcl" % name)
 
     def _serializeFitter(self, name):
@@ -86,7 +107,7 @@ class ModelStudy(object):
 
     def fitModel(self):
         """
-        Does fits for the models and serializes the results.
+        Does fits for all models and serializes the results.
         """
         for name in self.instanceNames:
             print("\n***Fit for data %s" % name)
@@ -107,7 +128,8 @@ class ModelStudy(object):
         for name in self.instanceNames:
             print("Bootstrapping for instance %s" % name)
             fitter = self.fitterDct[name]
-            fitter.fitModel()
+            if fitter.params is None:
+                fitter.fitModel()
             fitter.bootstrap(**kwargs)
             self._serializeFitter(name)
 
@@ -123,13 +145,12 @@ class ModelStudy(object):
         for name in self.instanceNames:
             print("Plots for instance %s" % name)
             fitter = self.fitterDct[name]
-            if fitter.bootstrapResult is not None:
-                params = fitter.bootstrapResult.params
+            if fitter.params is None:
+                print("***Must do fitModel or bootstrap before plotting.")
             else:
-                params = fitter.params
-            fitter.plotFitAll(params=params)
+                fitter.plotFitAll()
 
-    def plotParametersEstimates(self):
+    def plotParameterEstimates(self, **kwargs):
         """
         Parameters
         ----------
@@ -137,23 +158,33 @@ class ModelStudy(object):
             arguments passed to ModelFitter plots
         """
         trues = [f.bootstrapResult is None for f in self.fitterDct.values()]
-        if not all(trues):
+        if any(trues):
             raise ValueError("\n***Must do bootstrap before getting report.")
-        fitter = self.fitterDct.values()[0]
+        fitter = [v for v in self.fitterDct.values()][0]
         parameters = fitter.parametersToFit
+        # Construct plot
         fig, axes = plt.subplots(len(parameters),1, figsize=(12,10))
-        for pos, param in enumerate(PARAMS):
+        for pos, param in enumerate(parameters):
             ax = axes[pos]
-            param = PARAMS[pos]
-            means = [f.bootstrapResult.meanDct[param] for f in fitterDct.values()]
-            stds = [f.bootstrapResult.stdDct[param] for f in fitterDct.values()]
+            means = [f.bootstrapResult.parameterMeanDct[param]
+                  for f in self.fitterDct.values()]
+            stds = [f.bootstrapResult.parameterStdDct[param]
+                  for f in self.fitterDct.values()]
             y_upper = max([s + m for s, m in zip(stds, means)])*1.1
-            ax.errorbar(parameters, means, yerr=stds, linestyle="")
-            ax.scatter(parameters, means, s=18.0)
-            values = np.repeat(parameterDct[param].value, len(parameters))
-            ax.plot(parameters, values, linestyle="dashed", color="grey")
+            ax.errorbar(self.instanceNames, means, yerr=stds, linestyle="")
+            ax.scatter(self.instanceNames, means, s=18.0)
+            # FIXME: need to get the intial values of parameters
+            if False:
+                values = np.repeat(parameterDct[param].value, len(self.instanceNames))
+                ax.plot(self.instanceNames, values, linestyle="dashed", color="grey")
             ax.set_title(param)
             ax.set_ylim([0, y_upper])
-            if pos == len(PARAMS) - 1:
+            if pos == len(parameters) - 1:
                 ax.set_xticklabels(self.instanceNames)
+                ax.set_xlabel("Observed Data")
+            else:
+                ax.set_xticklabels([])
+                ax.set_xlabel("")
         _ = plt.suptitle("Bootstrap Parameters With 1-Standard")
+        if self.isPlot:
+            plt.show()

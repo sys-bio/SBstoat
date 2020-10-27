@@ -15,12 +15,13 @@ import shutil
 import unittest
 
 
-IGNORE_TEST = True
+IGNORE_TEST = False
+IS_PLOT = False
 TIMESERIES = th.getTimeseries()
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 SERIALIZE_DIR = os.path.join(THIS_DIR, "modelStudy")
 DATA_FILE = os.path.join(THIS_DIR, "tst_data.txt")
-DATA_FILE2 = os.path.join(THIS_DIR, "tst_data2.txt")
+DATA_FILES = [DATA_FILE, DATA_FILE, DATA_FILE]
 FILES = []
 DIRS = [SERIALIZE_DIR]
         
@@ -29,10 +30,10 @@ class TestModelFitterCore(unittest.TestCase):
 
     def setUp(self):
         self._remove()
-        parametersToFit = list(th.PARAMETER_DCT.keys())
+        self.parametersToFit = list(th.PARAMETER_DCT.keys())
         self.study = ModelStudy(th.ANTIMONY_MODEL,
-              [DATA_FILE, DATA_FILE2], parametersToFit,
-              dirPath=SERIALIZE_DIR)
+              DATA_FILES, self.parametersToFit,
+              dirPath=SERIALIZE_DIR, isPlot=IS_PLOT)
     
     def tearDown(self):
         self._remove()
@@ -49,14 +50,25 @@ class TestModelFitterCore(unittest.TestCase):
         if IGNORE_TEST:
             return
         self.assertGreater(len(self.study.fitterDct.values()), 0)
-        self.assertTrue(os.path.isfile(DATA_FILE))
-        self.assertTrue(os.path.isfile(DATA_FILE2))
+        # Ensure that ModelFitters are serialized correctly
+        study = ModelStudy(th.ANTIMONY_MODEL, DATA_FILES,
+              self.parametersToFit,
+              dirPath=SERIALIZE_DIR, isPlot=IS_PLOT)
+        for name in self.study.instanceNames:
+            self.assertEqual(study.fitterDct[name].modelSpecification,
+                  self.study.fitterDct[name].modelSpecification)
 
     def testFitModel(self):
         if IGNORE_TEST:
             return
-        # Smoke test
         self.study.fitModel()
+        names = [v for v in self.study.fitterDct.keys()]
+        params0 = self.study.fitterDct[names[0]].params
+        params1 = self.study.fitterDct[names[1]].params
+        dct0 = params0.valuesdict()
+        dct1 = params1.valuesdict()
+        for key, value in dct0.items():
+            self.assertEqual(value, dct1[key]) 
 
     def testFitBootstrap(self):
         if IGNORE_TEST:
@@ -66,12 +78,19 @@ class TestModelFitterCore(unittest.TestCase):
             self.assertIsNotNone(fitter.bootstrapResult)
 
     def testPlotFitAll(self):
-        # TESTING
+        if IGNORE_TEST:
+            return
         self.study.fitModel()
         self.study.plotFitAll()
         #
         self.study.bootstrap()
         self.study.plotFitAll()
+
+    def testPlotParameterEstimates(self):
+        if IGNORE_TEST:
+            return
+        self.study.bootstrap(numIteration=10)
+        self.study.plotParameterEstimates()
         
 
 if __name__ == '__main__':
