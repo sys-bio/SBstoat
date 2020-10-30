@@ -159,13 +159,15 @@ def transformDataArr(timeseries):
     return np.log10(arr)
 
 
-# Parameter value ranges
-parameterDct = {}
-SBstoat.ModelFitter.addParameter(parameterDct, "beta", 0, 10e-5, 3.2e-5)
-SBstoat.ModelFitter.addParameter(parameterDct, "kappa", 0, 10, 4.0)
-SBstoat.ModelFitter.addParameter(parameterDct, "delta", 0, 10, 5.2)
-SBstoat.ModelFitter.addParameter(parameterDct, "p", 0, 1, 4.6e-2)
-SBstoat.ModelFitter.addParameter(parameterDct, "c", 0, 10, 5.2)
+# Parameter value ranges: lower, upper, initial value
+parameterDct = dict(
+      beta=(0, 10e-5, 3.2e-5),
+      kappa=(0, 10, 4.0),
+      delta=(0, 10, 5.2),
+      p=(0, 1, 4.6e-2),
+      c=(0, 10, 5.2)
+      )
+
 
 # Study of model fitting
 study = ModelStudy(ANTIMONY_MODEL, dataSources, PARAMS,
@@ -173,7 +175,7 @@ study = ModelStudy(ANTIMONY_MODEL, dataSources, PARAMS,
                   fittedDataTransformDct={"V": transformDataArr},
                   isSerialized=True)
 
-study.bootstrap(numIteration=1000)
+study.bootstrap(numIteration=10)
 matplotlib.use('TkAgg')
 study.plotParameterEstimates()
 study.plotFitAll()

@@ -48,7 +48,8 @@ class ParameterSpecification(object):
 
 class ModelFitterCore(rpickle.RPickler):
 
-    def __init__(self, modelSpecification, observedData, parametersToFit,
+    def __init__(self, modelSpecification, observedData,
+                 parametersToFit=None,
                  selectedColumns=None, method=METHOD_BOTH,
                  parameterLowerBound=PARAMETER_LOWER_BOUND,
                  parameterUpperBound=PARAMETER_UPPER_BOUND,
@@ -94,7 +95,9 @@ class ModelFitterCore(rpickle.RPickler):
             self.parametersToFit = parametersToFit
             self.lowerBound = parameterLowerBound
             self.upperBound = parameterUpperBound
-            self.parameterDct = dict(parameterDct)
+            self.parameterDct = self._updateParameterDct(parameterDct)
+            if self.parametersToFit is None:
+                self.parametersToFit = [p for p in self.parameterDct.keys()]
             self.observedTS = observedData
             if self.observedTS is not None:
                 self.observedTS = mkNamedTimeseries(observedData)
@@ -159,6 +162,17 @@ class ModelFitterCore(rpickle.RPickler):
             if func is not None:
                 fittedTS[column] = func(fittedTS)
         return fittedTS
+        
+    def _updateParameterDct(self, parameterDct):
+        """
+        Handles values that are tuples instead of ParameterSpecification.
+        """
+        dct = dict(parameterDct)
+        for name, value in parameterDct.items():
+            if isinstance(value, tuple):
+                dct[name] = ParameterSpecification(lower=value[0],
+                      upper=value[1], value=value[2])
+        return dct
         
     @staticmethod
     def addParameter(parameterDct: dict,

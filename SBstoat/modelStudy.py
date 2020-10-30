@@ -43,7 +43,7 @@ MIN_COUNT_BOOTSTRAP = 10
 
 class ModelStudy(object):
 
-    def __init__(self, modelSpecification, dataSources, parametersToFit,
+    def __init__(self, modelSpecification, dataSources,
           dirPath=None, instanceNames=None, isSerialized=True,
           isPlot=True,  **kwargs):
         """
@@ -169,7 +169,6 @@ class ModelStudy(object):
                 title = "%s: Fitted vs. Observed (with 95th percentile)"  \
                       % name
             newKwargs[po.SUPTITLE] = title
-            print("Plots for instance %s" % name)
             fitter = self.fitterDct[name]
             if fitter.params is None:
                 print("***Must do fitModel or bootstrap before plotting.")

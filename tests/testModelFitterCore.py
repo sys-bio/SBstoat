@@ -55,6 +55,12 @@ class TestModelFitterCore(unittest.TestCase):
         if IGNORE_TEST:
             return
         fitter = ModelFitterCore.rpConstruct()
+        def updateAttr(attr):
+            if not attr in fitter.__dict__.keys():
+                fitter.__setattr__(attr, None)
+        #
+        updateAttr("roadrunnerModel")
+        updateAttr("observedTS")
         self.assertIsNone(self.fitter.roadrunnerModel)
         self.assertIsNone(fitter.observedTS)
 
@@ -123,7 +129,7 @@ class TestModelFitterCore(unittest.TestCase):
         fitter = ModelFitterCore(
               self.fitter.modelSpecification,
               self.fitter.observedTS,
-              self.fitter.parametersToFit,
+              #self.fitter.parametersToFit,
               parameterDct={"k1": NEW_SPECIFICATION},
               )
         params = fitter.mkParams()
@@ -131,6 +137,14 @@ class TestModelFitterCore(unittest.TestCase):
         #
         params = self.fitter.mkParams()
         test(params, [])
+        #
+        fitter = ModelFitterCore(
+              self.fitter.modelSpecification,
+              self.fitter.observedTS,
+              parameterDct={"k1": (LOWER, UPPER, VALUE)},
+              )
+        params = fitter.mkParams()
+        test(params, exceptions=["k1"])
 
     def testFit1(self):
         if IGNORE_TEST:
