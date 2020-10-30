@@ -88,33 +88,36 @@ class ModelFitterCore(rpickle.RPickler):
         -----
         f = ModelFitter(roadrunnerModel, "observed.csv", ['k1', 'k2'])
         """
-        self.modelSpecification = modelSpecification
-        self.parametersToFit = parametersToFit
-        self.lowerBound = parameterLowerBound
-        self.upperBound = parameterUpperBound
-        self.parameterDct = dict(parameterDct)
-        self.observedTS = observedData
-        if self.observedTS is not None:
-            self.observedTS = mkNamedTimeseries(observedData)
-        self.fittedDataTransformDct = fittedDataTransformDct
-        if (selectedColumns is None) and (self.observedTS is not None):
-            selectedColumns = self.observedTS.colnames
-        self.selectedColumns = selectedColumns
-        self._method = method
-        self._isPlot = isPlot
-        self._plotter = tp.TimeseriesPlotter(isPlot=self._isPlot)
-        self._plotFittedTS = None  # Timeseries that is plotted
-        # The following are calculated during fitting
-        self.roadrunnerModel = None
-        self.minimizer = None  # lmfit.minimizer
-        self.minimizerResult = None  # Results of minimization
-        self.params = None  # params property in lmfit.minimizer
-        if self.observedTS is not None:
+        if modelSpecification is not None:
+            # Not the default constructor
+            self.modelSpecification = modelSpecification
+            self.parametersToFit = parametersToFit
+            self.lowerBound = parameterLowerBound
+            self.upperBound = parameterUpperBound
+            self.parameterDct = dict(parameterDct)
+            self.observedTS = observedData
+            if self.observedTS is not None:
+                self.observedTS = mkNamedTimeseries(observedData)
+            self.fittedDataTransformDct = fittedDataTransformDct
+            if (selectedColumns is None) and (self.observedTS is not None):
+                selectedColumns = self.observedTS.colnames
+            self.selectedColumns = selectedColumns
+            self._method = method
+            self._isPlot = isPlot
+            self._plotter = tp.TimeseriesPlotter(isPlot=self._isPlot)
+            self._plotFittedTS = None  # Timeseries that is plotted
+            # The following are calculated during fitting
+            self.roadrunnerModel = None
+            self.minimizer = None  # lmfit.minimizer
+            self.minimizerResult = None  # Results of minimization
+            self.params = None  # params property in lmfit.minimizer
             self.fittedTS = self.observedTS.copy()  # Initialization of columns
-        self.residualsTS = None  # Residuals for selectedColumns
-        self.bootstrapResult = None  # Result from bootstrapping
-        # Validation checks
-        self._validateFittedDataTransformDct()
+            self.residualsTS = None  # Residuals for selectedColumns
+            self.bootstrapResult = None  # Result from bootstrapping
+            # Validation checks
+            self._validateFittedDataTransformDct()
+        else:
+            pass
     
     @classmethod
     def rpConstruct(cls):

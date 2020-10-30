@@ -21,16 +21,14 @@ import pandas as pd
 import typing
 
 PERCENTILES = [2.5, 50, 97.55]  # Percentile for confidence limits
-# Timeseries columns
-COL_SUM = "sum"  # sum of fitted values
-COL_SSQ = "ssq"  # sum of squares
+MIN_COUNT_PERCENTILE = 100  # Minimum number of values required to get percentiles
 
 
 ######### CLASSES ###############
 class BootstrapResult(rpickle.RPickler):
 
     def __init__(self, fitter, numIteration: int, parameterDct:dict,
-          fittedStatistic: TimeseriesStatistic):
+          fittedStatistic: TimeseriesStatistic, bootstrapError=0):
         """
         Results from bootstrap
 
@@ -41,10 +39,12 @@ class BootstrapResult(rpickle.RPickler):
             key: parameter name
             value: list of values
         fittedStatistic: statistics for fitted timeseries
+        err: Error encountered
         """
         self.fitter = fitter
         self.numIteration = numIteration
         self.parameterDct = parameterDct
+        self.bootstrapError = bootstrapError
         # Timeseries statistics for fits
         self.fittedStatistic = fittedStatistic
         if fitter is not None:
@@ -63,9 +63,10 @@ class BootstrapResult(rpickle.RPickler):
             self.parameterStdDct = {p: np.std(parameterDct[p])
                   for p in self.parameters}
             # Confidence limits for parameter values
-            self.percentileDct = {
-                  p: np.percentile(self.parameterDct[p],
-                  PERCENTILES) for p in self.parameterDct}
+            self.percentileDct = {p: [] for p in self.parameterDct}
+            for name, values in self.parameterDct.items():
+                if len(values) > MIN_COUNT_PERCENTILE:
+                    self.percentileDct[name] = np.percentile(values, PERCENTILES)
         ### PRIVATE
         # Fitting parameters from result
         self._params = None
@@ -158,6 +159,7 @@ class BootstrapResult(rpickle.RPickler):
         -------
         list-lmfit.Parameters
         """
+        names = [k for k in self.parameterDct.keys()]
         df = pd.DataFrame(self.parameterDct)
         df_sample = df.sample(numSample, replace=True, axis=0)
         dcts = df_sample.to_dict('records')
@@ -191,7 +193,11 @@ class BootstrapResult(rpickle.RPickler):
         numIteration = sum([r.numIteration for r in bootstrapResults])
         # Merge the statistics for fitted timeseries
         fittedStatistics = [b.fittedStatistic for b in bootstrapResults]
-        fittedStatistic = TimeseriesStatistic.merge(fittedStatistics)
+        bootstrapError = sum([b.bootstrapError for b in bootstrapResults])
+        try:
+            fittedStatistic = TimeseriesStatistic.merge(fittedStatistics)
+        except ValueError:
+            import pdb; pdb.set_trace()
         # Accumulate the results
         parameterDct = {p: [] for p in bootstrapResults[0].parameterDct}
         for bootstrapResult in bootstrapResults:
@@ -199,4 +205,5 @@ class BootstrapResult(rpickle.RPickler):
                 parameterDct[parameter].extend(
                       bootstrapResult.parameterDct[parameter])
         #
-        return BootstrapResult(fitter, numIteration, parameterDct, fittedStatistic)
+        return BootstrapResult(fitter, numIteration, parameterDct,
+              fittedStatistic, bootstrapError=bootstrapError)

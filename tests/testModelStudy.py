@@ -33,7 +33,7 @@ class TestModelFitterCore(unittest.TestCase):
         self.parametersToFit = list(th.PARAMETER_DCT.keys())
         self.study = ModelStudy(th.ANTIMONY_MODEL,
               DATA_FILES, self.parametersToFit,
-              dirPath=SERIALIZE_DIR, isPlot=IS_PLOT)
+              dirPath=SERIALIZE_DIR, isPlot=IS_PLOT, isSerialized=True)
     
     def tearDown(self):
         self._remove()
@@ -89,7 +89,7 @@ class TestModelFitterCore(unittest.TestCase):
     def testPlotParameterEstimates(self):
         if IGNORE_TEST:
             return
-        self.study.bootstrap(numIteration=10)
+        self.study.bootstrap(numIteration=20)
         self.study.plotParameterEstimates()
         
 

@@ -259,8 +259,7 @@ class NamedTimeseries(rpickle.RPickler):
             if isinstance(reference, str):
                 indices = self._indexDct[reference]
             elif isinstance(reference, list):
-                indices = [v for k, v in self._indexDct.items()
-                      if k in reference]
+                indices = [v for k, v in self._indexDct.items() if k in reference]
             else:
                 raise (KeyKerror)
         except KeyError:

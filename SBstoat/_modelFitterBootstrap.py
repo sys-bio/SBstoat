@@ -31,7 +31,7 @@ MAX_CHISQ_MULT = 5
 PERCENTILES = [2.5, 97.55]  # Percentile for confidence limits
 IS_REPORT = False
 ITERATION_MULTIPLIER = 10  # Multiplier to calculate max bootsrap iterations
-ITERATION_PER_PROCESS = 200  # Numer of iterations handled by a process
+ITERATION_PER_PROCESS = 20  # Numer of iterations handled by a process
 MAX_TRIES = 10  # Maximum number of tries to fit
 
 
@@ -56,9 +56,14 @@ class _Arguments():
             
 
 ################# FUNCTIONS ####################
-def _runBootstrap(arguments:_Arguments)->BootstrapResult:
+def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
     """
     Executes bootstrapping.
+
+    Parameters
+    ----------
+    arguments: inputs to bootstrap
+    queue: multiprocessing.Queue
 
     Notes
     -----
@@ -103,38 +108,46 @@ def _runBootstrap(arguments:_Arguments)->BootstrapResult:
     fittedStatistic = TimeseriesStatistic(newFitter.observedTS,
           percentiles=[])
     # Do the bootstrap iterations
+    bootstrapError = 0
     for iteration in range(numIteration*ITERATION_MULTIPLIER):
-        if (iteration > 0) and (numSuccessIteration != lastReport)  \
-                and (processIdx == 0):
-            totalIteration = numSuccessIteration*processingRate
-            if totalIteration % reportInterval == 0:
-                print("bootstrap completed %d iterations."
-                      % totalIteration)
-                lastReport = numSuccessIteration
-        if numSuccessIteration >= numIteration:
-            # Performed the iterations
-            break
         try:
-            newFitter.fitModel(params=fitter.params)
-        except ValueError:
-            # Problem with the fit. Don't numSuccessIteration it.
-            if IS_REPORT:
-                print("Fit failed on iteration %d." % iteration)
-            continue
-        if newFitter.minimizerResult.redchi > MAX_CHISQ_MULT*baseChisq:
-            if IS_REPORT:
-                print("Fit has high chisq: %2.2f on iteration %d." % iteration 
-                      % newFitter.minimizerResult.redchi)
-            continue
-        numSuccessIteration += 1
-        dct = newFitter.params.valuesdict()
-        [parameterDct[p].append(dct[p]) for p in fitter.parametersToFit]
-        cols = newFitter.fittedTS.colnames
-        fittedStatistic.accumulate(newFitter.fittedTS)
-        newFitter.observedTS = synthesizer.calculate()
+            if (iteration > 0) and (numSuccessIteration != lastReport)  \
+                    and (processIdx == 0):
+                totalIteration = numSuccessIteration*processingRate
+                if totalIteration % reportInterval == 0:
+                    print("bootstrap completed %d iterations."
+                          % totalIteration)
+                    lastReport = numSuccessIteration
+            if numSuccessIteration >= numIteration:
+                # Performed the iterations
+                break
+            try:
+                newFitter.fitModel(params=fitter.params)
+            except ValueError:
+                # Problem with the fit. Don't numSuccessIteration it.
+                if IS_REPORT:
+                    print("Fit failed on iteration %d." % iteration)
+                continue
+            if newFitter.minimizerResult.redchi > MAX_CHISQ_MULT*baseChisq:
+                if IS_REPORT:
+                    print("Fit has high chisq: %2.2f on iteration %d." % iteration 
+                          % newFitter.minimizerResult.redchi)
+                continue
+            numSuccessIteration += 1
+            dct = newFitter.params.valuesdict()
+            [parameterDct[p].append(dct[p]) for p in fitter.parametersToFit]
+            cols = newFitter.fittedTS.colnames
+            fittedStatistic.accumulate(newFitter.fittedTS)
+            newFitter.observedTS = synthesizer.calculate()
+        except Exception as err:
+            bootstrapError += 1
     print("Completed bootstrap process %d." % (processIdx + 1))
-    return BootstrapResult(fitter, numSuccessIteration, parameterDct,
-          fittedStatistic)
+    bootstrapResult = BootstrapResult(fitter, numSuccessIteration, parameterDct,
+          fittedStatistic, bootstrapError=bootstrapError)
+    if queue is None:
+        return bootstrapResult
+    else:
+        queue.put(bootstrapResult)
 
 
 ##################### CLASSES #########################
@@ -170,6 +183,8 @@ class ModelFitterBootstrap(mfc.ModelFitterCore):
         """
         if maxProcess is None:
             maxProcess = multiprocessing.cpu_count()
+        if self.minimizerResult is None:
+            self.fitModel()
         base_redchi = self.minimizerResult.redchi
         # Run processes
         numProcess = max(int(numIteration/ITERATION_PER_PROCESS), 1)
@@ -182,9 +197,35 @@ class ModelFitterBootstrap(mfc.ModelFitterCore):
               **kwargs) for i in range(numProcess)]
         print("\n**Running bootstrap for %d iterations with %d processes."
               % (numIteration, numProcess))
-        with multiprocessing.Pool(numProcess) as pool:
-            results = pool.map(_runBootstrap, args_list)
-        pool.join()
+        if True:
+            # Run separate processes for each bootstrap
+            processes = []
+            queue = multiprocessing.Queue()
+            results = []
+            for args in args_list:
+                p = multiprocessing.Process(target=_runBootstrap,
+                      args=(args, queue,))
+                p.start()
+                processes.append(p)
+            try:
+                for process in processes:
+                    results.append(queue.get())
+                # Get rid of possible zombies
+                for process in processes:
+                    process.terminate()
+            except:
+                print ("Caught exception in main.")
+            finally:
+                pass
+        elif False:
+            with multiprocessing.Pool(numProcess) as pool:
+                try:
+                    results = pool.map(_runBootstrap, args_list)
+                except Exception as e:
+                    import pdb; pdb.set_trace()
+            pool.join()
+        else:
+            results = [_runBootstrap(a) for a in args_list]    
         self.bootstrapResult = BootstrapResult.merge(results)
         self.bootstrapResult.fittedStatistic.calculate()
         if serializePath is not None:

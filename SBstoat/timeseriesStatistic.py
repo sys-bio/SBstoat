@@ -126,10 +126,9 @@ class TimeseriesStatistic(rpickle.RPickler):
         """
         Calculates statistics.
         """
-        if self.count <= 1:
-            raise ValueError("Must accumulate at leat 2 timeseries before calculating statistics.")
         self._calculateMean()
-        self._calculateStd()
+        if self.count > 1:
+            self._calculateStd()
         self._calculatePercentiles()
 
     def _calculateMean(self):
