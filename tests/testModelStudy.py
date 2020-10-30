@@ -24,6 +24,7 @@ DATA_FILE = os.path.join(THIS_DIR, "tst_data.txt")
 DATA_FILES = [DATA_FILE, DATA_FILE, DATA_FILE]
 FILES = []
 DIRS = [SERIALIZE_DIR]
+PARAMETERS_TO_FIT = [v for v in th.PARAMETER_DCT.keys()]
         
 
 class TestModelFitterCore(unittest.TestCase):
@@ -31,9 +32,9 @@ class TestModelFitterCore(unittest.TestCase):
     def setUp(self):
         self._remove()
         self.parametersToFit = list(th.PARAMETER_DCT.keys())
-        self.study = ModelStudy(th.ANTIMONY_MODEL,
-              DATA_FILES, self.parametersToFit,
-              dirPath=SERIALIZE_DIR, isPlot=IS_PLOT, isSerialized=True)
+        self.study = ModelStudy(th.ANTIMONY_MODEL, DATA_FILES,
+              parametersToFit=PARAMETERS_TO_FIT,
+              dirStudyPath=SERIALIZE_DIR, isPlot=IS_PLOT, isSerialized=True)
     
     def tearDown(self):
         self._remove()
@@ -52,8 +53,8 @@ class TestModelFitterCore(unittest.TestCase):
         self.assertGreater(len(self.study.fitterDct.values()), 0)
         # Ensure that ModelFitters are serialized correctly
         study = ModelStudy(th.ANTIMONY_MODEL, DATA_FILES,
-              self.parametersToFit,
-              dirPath=SERIALIZE_DIR, isPlot=IS_PLOT)
+              parametersToFit=self.parametersToFit,
+              dirStudyPath=SERIALIZE_DIR, isPlot=IS_PLOT)
         for name in self.study.instanceNames:
             self.assertEqual(study.fitterDct[name].modelSpecification,
                   self.study.fitterDct[name].modelSpecification)

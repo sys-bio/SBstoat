@@ -44,7 +44,8 @@ MIN_COUNT_BOOTSTRAP = 10
 class ModelStudy(object):
 
     def __init__(self, modelSpecification, dataSources,
-          dirPath=None, instanceNames=None, isSerialized=True,
+          dirStudyPath=None,
+          instanceNames=None, isSerialized=True,
           isPlot=True,  **kwargs):
         """
         Parameters
@@ -56,7 +57,7 @@ class ModelStudy(object):
         parametersToFit: list-str/None
             parameters in the model that you want to fit
             if None, no parameters are fit
-        dirPath: str
+        dirStudyPath: str
             Path to the output directory containing the serialized fitters
             for the study.
         instanceNames: list-str
@@ -68,15 +69,15 @@ class ModelStudy(object):
         kwargs: dict
             arguments passed to ModelFitter
         """
-        self.dirPath = dirPath  # Path to the directory serialized ModelFitter
-        if self.dirPath is None:
+        self.dirStudyPath = dirStudyPath  # Path to the directory serialized ModelFitter
+        if self.dirStudyPath is None:
             length = len(inspect.stack())
             absPath = os.path.abspath((inspect.stack()[length-1])[1])
             dirCaller = os.path.dirname(absPath)
-            self.dirPath = os.path.join(dirCaller, DIR_NAME)
+            self.dirStudyPath = os.path.join(dirCaller, DIR_NAME)
         self.isPlot = isPlot
-        if not os.path.isdir(self.dirPath):
-            os.mkdir(self.dirPath)
+        if not os.path.isdir(self.dirStudyPath):
+            os.mkdir(self.dirStudyPath)
         if instanceNames is None:
             self.instanceNames = ["src_%d" %d
                   for d in range(1, len(dataSources)+1)]
@@ -92,7 +93,7 @@ class ModelStudy(object):
                 self.fitterDct[name] = ModelFitter.deserialize(filePath)
             else:
                 self.fitterDct[name] = ModelFitter(modelSpecification, dataSource,
-                       parametersToFit, isPlot=self.isPlot, **kwargs)
+                       isPlot=self.isPlot, **kwargs)
                 self.fitterDct[name].serialize(filePath)
 
     def _getSerializePath(self, name):
@@ -108,7 +109,7 @@ class ModelStudy(object):
         -------
         str
         """
-        return os.path.join(self.dirPath, "%s.pcl" % name)
+        return os.path.join(self.dirStudyPath, "%s.pcl" % name)
 
     def _serializeFitter(self, name):
         filePath = self._getSerializePath(name)
@@ -142,7 +143,7 @@ class ModelStudy(object):
             arguments passed to ModelFitter.bootstrap
         """
         for name in self.instanceNames:
-            print("Bootstrapping for instance %s" % name)
+            print("\n\nDoing bootstrapp for instance %s" % name)
             fitter = self.fitterDct[name]
             if not self._isBootstrapResult(fitter):
                 if fitter.params is None:
