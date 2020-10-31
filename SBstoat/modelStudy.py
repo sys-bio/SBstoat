@@ -52,7 +52,7 @@ class ModelStudy(object):
         ---------
         modelSpecification: ExtendedRoadRunner/str
             roadrunner model or antimony model
-        dataSources: list-NamedTimeseries/list-str
+        dataSources: list-NamedTimeseries/list-str or dict of either
             str: path to CSV file
         parametersToFit: list-str/None
             parameters in the model that you want to fit
@@ -76,17 +76,15 @@ class ModelStudy(object):
             dirCaller = os.path.dirname(absPath)
             self.dirStudyPath = os.path.join(dirCaller, DIR_NAME)
         self.isPlot = isPlot
+        self.instanceNames, self.dataSourceDct = self._mkInstanceData(
+              instanceNames, dataSources)
+        self.fitterPathDct = {}  # Path to serialized fitters; key is instanceName
+        self.fitterDct = {}  # Fitters: key is instanceName
+        # Ensure that the directory exists
         if not os.path.isdir(self.dirStudyPath):
-            os.mkdir(self.dirStudyPath)
-        if instanceNames is None:
-            self.instanceNames = ["src_%d" %d
-                  for d in range(1, len(dataSources)+1)]
-        else:
-            self.instanceNames = [str(i) for i in instanceNames]
-        self.fitterPathDct = {}  # Path to serialized fitters
-        self.fitterDct = {}  # Fitters
-        for idx, name in enumerate(self.instanceNames):
-            dataSource = dataSources[idx]
+            os.makedirs(self.dirStudyPath)
+        # Construct the fitters
+        for name, dataSource in self.dataSourceDct.items():
             filePath = self._getSerializePath(name)
             self.fitterPathDct[name] = filePath
             if os.path.isfile(filePath) and isSerialized:
@@ -95,6 +93,31 @@ class ModelStudy(object):
                 self.fitterDct[name] = ModelFitter(modelSpecification, dataSource,
                        isPlot=self.isPlot, **kwargs)
                 self.fitterDct[name].serialize(filePath)
+
+    def _mkInstanceData(self, instanceNames, dataSources):
+        # Determine value for instances of observed data
+        if isinstance(instanceNames, list):
+            newInstanceNames = list(instanceNames)
+        elif instanceNames is None:
+            newInstanceNames = ["src_%d" %d
+                  for d in range(1, len(dataSources)+1)]
+        else:
+            msg = "Invalid type for instanceNames: %s" % str(type(instanceNames))
+            msg += "  \nMust be list or None."
+            raise ValueError(msg)
+        # Value of newDataSourceDct
+        if isinstance(dataSources, dict):
+            newDataSourceDct = dict(dataSources)
+            newInstanceNames = [k for k in newDataSourceDct.keys()]
+        elif isinstance(dataSources, list):
+            newDataSourceDct = {n: dataSources[i]
+                  for i, n in enumerate(newInstanceNames)}
+        else:
+            msg = "Invalid type for dataSources: %s" % str(type(dataSources))
+            msg += "  \nMust be dict or list."
+            raise ValueError(msg)
+        #
+        return newInstanceNames, newDataSourceDct
 
     def _getSerializePath(self, name):
         """
