@@ -211,15 +211,17 @@ class ModelStudy(object):
         SCALE = 1.1  # Amount by which to scale an upper boundary
         fitterDct = {}
         for dataSource, fitter in self.fitterDct.items():
-            for parameterName, values in  \
-                  fitter.bootstrapResult.parameterDct.items():
-                length = len(values)
-                if length < MIN_COUNT_BOOTSTRAP:
-                    print("***Warning. Only %d samples from bootstrap of %s." %
-                          (length, dataSource))
-                    print("            Unable to do parameer plot.")
-                else:
-                    fitterDct[dataSource] = fitter
+            if len(fitter.bootstrapResult.parameterDct) > 0:
+                for parameterName, values in  \
+                      fitter.bootstrapResult.parameterDct.items():
+                    length = len(values)
+                    if length < MIN_COUNT_BOOTSTRAP:
+                        print("***Warning. Only %d samples from bootstrap of %s." %
+                              (length, dataSource))
+                        msg = "Unable to do plot for parameter %s." % parameterName
+                        print("            %s" % msg)
+                    else:
+                        fitterDct[dataSource] = fitter
         if len(fitterDct) == 0:
             print("***Nothing to plot.")
         else:
