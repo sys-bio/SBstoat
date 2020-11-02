@@ -363,25 +363,6 @@ class NamedTimeseries(rpickle.RPickler):
               in columns, first colums representing time, remaining columns will
               be whatever timeseries data is avaialble.
         selectedVariables : list of strings
-        """
-        indices = self._getColumnIndices(reference)
-        return self.values[:, indices]
-
-    def __len__(self):
-       return np.shape(self.values)[0]
-       
-    def _load(self, filePath):
-        """
-        Load data from a CSV file.
-        
-        Parameters
-        ----------
-        
-        filePath: str
-              Path to the file containing time series data. Data should be arranged
-              in columns, first colums representing time, remaining columns will
-              be whatever timeseries data is avaialble.
-        selectedVariables : list of strings
               List of names of floating species that are the columns in the 
               time series data. If the list of names is missing then it is assumed that
               all the time series columns should be used in the fit
@@ -659,3 +640,22 @@ class NamedTimeseries(rpickle.RPickler):
                 raise RuntimeError("Should not get here")
             last = value
         return times
+
+    def rename(self, curName, newName):
+        """
+        Creates a new timeseries, renaming the specified column.
+
+        Parameters
+        ----------
+        curName: str
+           Name of the column to change
+        newName: str
+           New name of the column to change
+        """
+        if not curName in self._indexDct.keys():
+            msg = "Invalid reference to NamedTimeseries. No column %s" % curName
+            raise ValueError(msg)
+        newTimeseries = self.copy()
+        newTimeseries[newName] = self[curName]
+        del newTimeseries[curName]
+        return newTimeseries

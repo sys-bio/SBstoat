@@ -5,7 +5,7 @@ Created on Tue Aug 19, 2020
 @author: joseph-hellerstein
 """
 
-from SBstoat.modelStudy import ModelStudy
+from SBstoat.modelStudy import ModelStudy, mkDataSourceDct
 import tests._testHelpers as th
 
 import matplotlib
@@ -20,8 +20,9 @@ IS_PLOT = False
 TIMESERIES = th.getTimeseries()
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 SERIALIZE_DIR = os.path.join(THIS_DIR, "modelStudy")
-DATA_FILE = os.path.join(THIS_DIR, "tst_data.txt")
-DATA_FILES = [DATA_FILE, DATA_FILE, DATA_FILE]
+DATA_PATH = os.path.join(THIS_DIR, "tst_data.txt")
+DATA_PATH2 = os.path.join(THIS_DIR, "data_file2.csv")
+DATA_PATHS = [DATA_PATH, DATA_PATH, DATA_PATH]
 FILES = []
 DIRS = [SERIALIZE_DIR]
 PARAMETERS_TO_FIT = [v for v in th.PARAMETER_DCT.keys()]
@@ -32,9 +33,9 @@ class TestModelFitterCore(unittest.TestCase):
     def setUp(self):
         self._remove()
         self.parametersToFit = list(th.PARAMETER_DCT.keys())
-        self.study = ModelStudy(th.ANTIMONY_MODEL, DATA_FILES,
+        self.study = ModelStudy(th.ANTIMONY_MODEL, DATA_PATHS,
               parametersToFit=PARAMETERS_TO_FIT,
-              dirStudyPath=SERIALIZE_DIR, isPlot=IS_PLOT, isSerialized=True)
+              dirStudyPath=SERIALIZE_DIR, isPlot=IS_PLOT, useSerialized=True)
     
     def tearDown(self):
         self._remove()
@@ -52,7 +53,7 @@ class TestModelFitterCore(unittest.TestCase):
             return
         self.assertGreater(len(self.study.fitterDct.values()), 0)
         # Ensure that ModelFitters are serialized correctly
-        study = ModelStudy(th.ANTIMONY_MODEL, DATA_FILES,
+        study = ModelStudy(th.ANTIMONY_MODEL, DATA_PATHS,
               parametersToFit=self.parametersToFit,
               dirStudyPath=SERIALIZE_DIR, isPlot=IS_PLOT)
         for name in self.study.instanceNames:
@@ -92,6 +93,27 @@ class TestModelFitterCore(unittest.TestCase):
             return
         self.study.bootstrap(numIteration=20)
         self.study.plotParameterEstimates()
+        
+
+class TestFunctions(unittest.TestCase):
+
+    def setUp(self):
+        pass
+
+    def testMkDataSourceDct(self):
+        if IGNORE_TEST:
+            return
+        COLNAME = "V"
+        def test(dataSourceNames=None):
+            dataSourceDct = mkDataSourceDct(DATA_PATH2, "V",
+                  dataSourceNames=dataSourceNames)
+            trues = [d.colnames[0] == COLNAME for d in dataSourceDct.values()]
+            self.assertTrue(all(trues))
+            keys = [k for k in dataSourceDct.keys()]
+            firstTS = dataSourceDct[keys[0]]
+            trues = [len(d) == len(firstTS) for d in dataSourceDct.values()]
+        test()
+        test(dataSourceNames=["P%d" % d for d in range(6)])
         
 
 if __name__ == '__main__':

@@ -346,6 +346,19 @@ class TestNamedTimeseries(unittest.TestCase):
         serialization = rpickle.Serialization(self.timeseries)
         timeseries = serialization.deserialize()
         self.assertTrue(timeseries.equals(self.timeseries))
+
+    def testRename(self):
+        if IGNORE_TEST:
+            return
+        NEW_NAME = "T1"
+        OLD_NAME = "S1"
+        newTimeseries = self.timeseries.rename(OLD_NAME, NEW_NAME)
+        self.assertTrue(NEW_NAME in newTimeseries.colnames)
+        self.assertFalse(OLD_NAME in newTimeseries.colnames)
+        del newTimeseries[NEW_NAME]
+        del self.timeseries[OLD_NAME]
+        self.assertTrue(newTimeseries.equals(self.timeseries))
+        
         
 
 if __name__ == '__main__':

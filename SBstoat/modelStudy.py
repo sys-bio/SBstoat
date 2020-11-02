@@ -41,11 +41,56 @@ DIR_NAME = "ModelStudyFitters"
 MIN_COUNT_BOOTSTRAP = 10
 
 
+############## FUNCTIONS ###################
+def mkDataSourceDct(filePath, colName, dataSourceNames=None):
+    """
+    Creates a dataSource dictionary as required by ModelStudy from
+    a file whose columns are observed values of the same variable.
+
+    Parameters
+    ----------
+    filepath: str
+        path to the file containing columns of observed values
+    colName: str
+        Name of the simulation variable to fit to observed values
+    dataSourceNames: list-str
+        Names for the instances of observedValues
+        if None, then column headers are used (or column number)
+    
+    Returns
+    -------
+    dict: key is instance name; value is NamedTimeseries
+    """
+    dataDF = pd.read_csv(filePath, header=None)
+    dataDF = dataDF.transpose()
+    if dataSourceNames is not None:
+        # Use instance names
+        if len(dataSourceNames) != len(dataDF.columns):
+            msg = "Number of instances is not equal to the number of columns"
+            raise ValueError(msg)
+        dct = {k: v for k, v in zip(dataDF.columns, dataSourceNames)}
+        dataDF = dataDF.rename(columns=dct)
+    # Ensure that column names are strings
+    dct = {k: str(k) for k in dataDF.columns}
+    dataDF = dataDF.rename(columns=dct)
+    dataDF.index.name = "time"
+    # Construct the data source dictionary
+    dataDF.index = [t for t in range(len(dataDF))]
+    dataDF.index.name = TIME
+    dataTS = NamedTimeseries(dataframe=dataDF)
+    dataSourceDct = {d: dataTS.subsetColumns([d]) for d in dataDF.columns}
+    dataSourceDct = {d: dataSourceDct[d].rename(d, colName)
+          for d in dataSourceDct.keys()}
+    #
+    return dataSourceDct
+
+
+############## CLASSES ###################
 class ModelStudy(object):
 
     def __init__(self, modelSpecification, dataSources,
           dirStudyPath=None,
-          instanceNames=None, isSerialized=True,
+          instanceNames=None, useSerialized=True, doSerialize=True,
           isPlot=True,  **kwargs):
         """
         Parameters
@@ -62,8 +107,10 @@ class ModelStudy(object):
             for the study.
         instanceNames: list-str
             Names of study instances corresponds to the list of dataSources
-        isSerialized: bool
+        useSerialized: bool
             Use the serialization of each ModelFitter, if it exists
+        doSerialized: bool
+            Serialize each ModelFitter
         isPlot: bool
             Do plots
         kwargs: dict
@@ -76,6 +123,7 @@ class ModelStudy(object):
             dirCaller = os.path.dirname(absPath)
             self.dirStudyPath = os.path.join(dirCaller, DIR_NAME)
         self.isPlot = isPlot
+        self.doSerialize = doSerialize
         self.instanceNames, self.dataSourceDct = self._mkInstanceData(
               instanceNames, dataSources)
         self.fitterPathDct = {}  # Path to serialized fitters; key is instanceName
@@ -87,12 +135,12 @@ class ModelStudy(object):
         for name, dataSource in self.dataSourceDct.items():
             filePath = self._getSerializePath(name)
             self.fitterPathDct[name] = filePath
-            if os.path.isfile(filePath) and isSerialized:
+            if os.path.isfile(filePath) and useSerialized:
                 self.fitterDct[name] = ModelFitter.deserialize(filePath)
             else:
                 self.fitterDct[name] = ModelFitter(modelSpecification, dataSource,
                        isPlot=self.isPlot, **kwargs)
-                self.fitterDct[name].serialize(filePath)
+                self._serializeFitter(name)
 
     def _mkInstanceData(self, instanceNames, dataSources):
         # Determine value for instances of observed data
@@ -136,7 +184,8 @@ class ModelStudy(object):
 
     def _serializeFitter(self, name):
         filePath = self._getSerializePath(name)
-        self.fitterDct[name].serialize(filePath)
+        if self.doSerialize:
+            self.fitterDct[name].serialize(filePath)
 
     def fitModel(self):
         """
@@ -175,6 +224,12 @@ class ModelStudy(object):
                 if not self._isBootstrapResult(fitter):
                     fitter.bootstrapResult = None
                 self._serializeFitter(name)
+            numSample = None
+            for name, values in fitter.bootstrapResult.parameterDct.items():
+                if numSample is None:
+                    numSample = len(values)
+                numSample = min(numSample, len(values))
+            print ("%d bootstrap estimates of parameters." % numSample)
 
     @Expander(po.KWARGS, po.BASE_OPTIONS, indent=8, header=po.HEADER)
     def plotFitAll(self, **kwargs):
