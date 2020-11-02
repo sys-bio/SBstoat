@@ -181,6 +181,27 @@ class TestModelFitterCore(unittest.TestCase):
         self.assertGreater(stds[0], stds[1])
         self.assertGreater(stds[1], stds[2])
 
+    def testFitNanValues(self):
+        if IGNORE_TEST:
+            return
+        PARAMETER = "k2"
+        def calc(method, probNan=0.2):
+            nanTimeseries = self.timeseries.copy()
+            for col in self.timeseries.colnames:
+                for idx in range(len(nanTimeseries)):
+                    if np.random.random() <= probNan:
+                        nanTimeseries[col][idx] = np.nan
+            fitter = ModelFitterCore(th.ANTIMONY_MODEL, nanTimeseries,
+                  list(th.PARAMETER_DCT.keys()), method=method)
+            fitter.fitModel()
+            diff = np.abs(th.PARAMETER_DCT[PARAMETER]
+                  - fitter.params.valuesdict()[PARAMETER])
+            return diff
+        #
+        diff1 = calc(mf.METHOD_BOTH, probNan=0.05)
+        diff2 = calc(mf.METHOD_BOTH, probNan=0.99)
+        self.assertGreater(diff2, diff1)
+
     def testFitDataTransformDct(self):
         if IGNORE_TEST:
             return

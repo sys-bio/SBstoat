@@ -114,7 +114,7 @@ class ModelFitterCore(rpickle.RPickler):
             self.minimizer = None  # lmfit.minimizer
             self.minimizerResult = None  # Results of minimization
             self.params = None  # params property in lmfit.minimizer
-            self.fittedTS = self.observedTS.copy()  # Initialization of columns
+            self.fittedTS = self.observedTS.copy(isInitialize=True)  # Initialize
             self.residualsTS = None  # Residuals for selectedColumns
             self.bootstrapResult = None  # Result from bootstrapping
             # Validation checks
@@ -314,6 +314,7 @@ class ModelFitterCore(rpickle.RPickler):
     def _residuals(self, params)->np.ndarray:
         """
         Compute the residuals between objective and experimental data
+        Handle nan values in observedTS.
 
         Parameters
         ----------
@@ -333,7 +334,7 @@ class ModelFitterCore(rpickle.RPickler):
         if self.residualsTS is None:
             self.residualsTS = self.observedTS.subsetColumns(cols)
         self.residualsTS[cols] = self.observedTS[cols] - self.fittedTS[cols]
-        residuals = self.residualsTS.flatten()
+        residuals = [0 if np.isnan(v) else v for v in self.residualsTS.flatten()]
         return residuals
 
     def fitModel(self, params:lmfit.Parameters=None,
