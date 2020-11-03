@@ -15,17 +15,18 @@ import shutil
 import unittest
 
 
-IGNORE_TEST = False
-IS_PLOT = False
-TIMESERIES = th.getTimeseries()
+COLNAME = "V"
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
-SERIALIZE_DIR = os.path.join(THIS_DIR, "modelStudy")
 DATA_PATH = os.path.join(THIS_DIR, "tst_data.txt")
 DATA_PATH2 = os.path.join(THIS_DIR, "data_file2.csv")
 DATA_PATHS = [DATA_PATH, DATA_PATH, DATA_PATH]
-FILES = []
+SERIALIZE_DIR = os.path.join(THIS_DIR, "modelStudy")
 DIRS = [SERIALIZE_DIR]
+FILES = []
+IGNORE_TEST = False
+IS_PLOT = False
 PARAMETERS_TO_FIT = [v for v in th.PARAMETER_DCT.keys()]
+TIMESERIES = th.getTimeseries()
         
 
 class TestModelFitterCore(unittest.TestCase):
@@ -103,7 +104,6 @@ class TestFunctions(unittest.TestCase):
     def testMkDataSourceDct(self):
         if IGNORE_TEST:
             return
-        COLNAME = "V"
         def test(dataSourceNames=None):
             dataSourceDct = mkDataSourceDct(DATA_PATH2, "V",
                   dataSourceNames=dataSourceNames)
@@ -114,6 +114,15 @@ class TestFunctions(unittest.TestCase):
             trues = [len(d) == len(firstTS) for d in dataSourceDct.values()]
         test()
         test(dataSourceNames=["P%d" % d for d in range(6)])
+
+    def testMkDataSourceDctTimeRows(self):
+        if IGNORE_TEST:
+            return
+        dataSourceDct1 = mkDataSourceDct(DATA_PATH2, "V", isTimeColumns=True)
+        dataSourceDct2 = mkDataSourceDct(DATA_PATH2, "V", isTimeColumns=False)
+        keys1 = list(dataSourceDct1)
+        keys2 = list(dataSourceDct2)
+        self.assertEqual(len(dataSourceDct1[keys1[0]]), len(keys2))
         
 
 if __name__ == '__main__':

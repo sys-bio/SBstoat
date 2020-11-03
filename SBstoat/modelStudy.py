@@ -42,7 +42,7 @@ MIN_COUNT_BOOTSTRAP = 10
 
 
 ############## FUNCTIONS ###################
-def mkDataSourceDct(filePath, colName, dataSourceNames=None):
+def mkDataSourceDct(filePath, colName, dataSourceNames=None, isTimeColumns=True):
     """
     Creates a dataSource dictionary as required by ModelStudy from
     a file whose columns are observed values of the same variable.
@@ -56,13 +56,16 @@ def mkDataSourceDct(filePath, colName, dataSourceNames=None):
     dataSourceNames: list-str
         Names for the instances of observedValues
         if None, then column headers are used (or column number)
+    isTimeColumns: boolean
+        Columns are time. If False, rows are time.
     
     Returns
     -------
     dict: key is instance name; value is NamedTimeseries
     """
     dataDF = pd.read_csv(filePath, header=None)
-    dataDF = dataDF.transpose()
+    if isTimeColumns:
+        dataDF = dataDF.transpose()
     if dataSourceNames is not None:
         # Use instance names
         if len(dataSourceNames) != len(dataDF.columns):
@@ -215,15 +218,20 @@ class ModelStudy(object):
             arguments passed to ModelFitter.bootstrap
         """
         for name in self.instanceNames:
-            print("\n\nDoing bootstrapp for instance %s" % name)
             fitter = self.fitterDct[name]
             if not self._isBootstrapResult(fitter):
+                msg = "\n\nDoing bootstrapp for instance %s" % name
+                msg += "\n(Dashed line is parameter value in model.)"
+                print(msg)
                 if fitter.params is None:
                     fitter.fitModel()
                 fitter.bootstrap(**kwargs)
                 if not self._isBootstrapResult(fitter):
                     fitter.bootstrapResult = None
                 self._serializeFitter(name)
+            else: 
+                print("\n\n*Using existing bootstrap results (%d) for %s"
+                      % (fitter.bootstrapResult.numSimulation, name))
 
     @Expander(po.KWARGS, po.BASE_OPTIONS, indent=8, header=po.HEADER)
     def plotFitAll(self, **kwargs):

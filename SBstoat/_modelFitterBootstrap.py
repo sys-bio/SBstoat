@@ -13,6 +13,7 @@ Several considerations are made;
 """
 
 from SBstoat.namedTimeseries import NamedTimeseries, TIME, mkNamedTimeseries
+from SBstoat import message
 from SBstoat.timeseriesStatistic import TimeseriesStatistic
 from SBstoat._bootstrapResult import BootstrapResult
 from SBstoat.observationSynthesizer import  \
@@ -81,7 +82,7 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
         except:
             pass
     if not isSuccess:
-        print("***Failed to fit.""")
+        message.warn("Failed to fit.")
     numIteration = arguments.numIteration
     reportInterval = arguments.reportInterval
     processIdx = arguments.processIdx
@@ -115,7 +116,7 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
                     and (processIdx == 0):
                 totalIteration = numSuccessIteration*processingRate
                 if totalIteration % reportInterval == 0:
-                    print("bootstrap completed %d iterations."
+                    message.notice("bootstrap completed %d iterations."
                           % totalIteration)
                     lastReport = numSuccessIteration
             if numSuccessIteration >= numIteration:
@@ -126,11 +127,12 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
             except ValueError:
                 # Problem with the fit. Don't numSuccessIteration it.
                 if IS_REPORT:
-                    print("Fit failed on iteration %d." % iteration)
+                    message.error("Fit failed on iteration %d." % iteration)
                 continue
             if newFitter.minimizerResult.redchi > MAX_CHISQ_MULT*baseChisq:
                 if IS_REPORT:
-                    print("Fit has high chisq: %2.2f on iteration %d." % iteration 
+                    message.warn("Fit has high chisq: %2.2f on iteration %d."
+                          % iteration 
                           % newFitter.minimizerResult.redchi)
                 continue
             numSuccessIteration += 1
@@ -141,7 +143,7 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
             newFitter.observedTS = synthesizer.calculate()
         except Exception as err:
             bootstrapError += 1
-    print("Completed bootstrap process %d." % (processIdx + 1))
+    message.notice("Completed bootstrap process %d." % (processIdx + 1))
     bootstrapResult = BootstrapResult(fitter, numSuccessIteration, parameterDct,
           fittedStatistic, bootstrapError=bootstrapError)
     if queue is None:
@@ -195,7 +197,7 @@ class ModelFitterBootstrap(mfc.ModelFitterCore):
               reportInterval=reportInterval,
               synthesizerClass=synthesizerClass,
               **kwargs) for i in range(numProcess)]
-        print("\n**Running bootstrap for %d iterations with %d processes."
+        message.notice("**Running bootstrap for %d iterations with %d processes."
               % (numIteration, numProcess))
         if True:
             # Run separate processes for each bootstrap
@@ -214,7 +216,7 @@ class ModelFitterBootstrap(mfc.ModelFitterCore):
                 for process in processes:
                     process.terminate()
             except:
-                print ("Caught exception in main.")
+                message.warn("Caught exception in main.")
             finally:
                 pass
         elif False:
@@ -228,14 +230,8 @@ class ModelFitterBootstrap(mfc.ModelFitterCore):
             results = [_runBootstrap(a) for a in args_list]    
         self.bootstrapResult = BootstrapResult.merge(results)
         self.bootstrapResult.fittedStatistic.calculate()
-        # Report number of parameters accumulated
-        numSample = None
-        for name, values in self.bootstrapResult.parameterDct.items():
-            if numSample is None:
-                numSample = len(values)
-            numSample = min(numSample, len(values))
-        print ("*%d bootstrap estimates of parameters." % numSample)
-        #
+        message.notice("%d bootstrap estimates of parameters."
+              % self.bootstrapResult.numSimulation)
         if serializePath is not None:
             self.serialize(serializePath)
 

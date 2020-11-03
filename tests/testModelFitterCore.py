@@ -200,7 +200,7 @@ class TestModelFitterCore(unittest.TestCase):
         #
         diff1 = calc(mf.METHOD_BOTH, probNan=0.05)
         diff2 = calc(mf.METHOD_BOTH, probNan=0.99)
-        self.assertGreater(diff2, diff1)
+        self.assertGreater(np.abs(diff2 - diff1), 1)
 
     def testFitDataTransformDct(self):
         if IGNORE_TEST:
