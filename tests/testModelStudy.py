@@ -29,7 +29,7 @@ PARAMETERS_TO_FIT = [v for v in th.PARAMETER_DCT.keys()]
 TIMESERIES = th.getTimeseries()
         
 
-class TestModelFitterCore(unittest.TestCase):
+class TestModelStudy(unittest.TestCase):
 
     def setUp(self):
         self._remove()
@@ -76,8 +76,11 @@ class TestModelFitterCore(unittest.TestCase):
     def testFitBootstrap(self):
         if IGNORE_TEST:
             return
-        self.study.bootstrap(numIteration=10)
-        for fitter in self.study.fitterDct.values():
+        study = ModelStudy(th.ANTIMONY_MODEL, DATA_PATHS,
+              parametersToFit=PARAMETERS_TO_FIT,
+              dirStudyPath=SERIALIZE_DIR, isPlot=IS_PLOT, useSerialized=False)
+        study.bootstrap(numIteration=10)
+        for fitter in study.fitterDct.values():
             self.assertIsNotNone(fitter.bootstrapResult)
 
     def testPlotFitAll(self):
