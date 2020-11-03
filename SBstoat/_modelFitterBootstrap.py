@@ -228,6 +228,14 @@ class ModelFitterBootstrap(mfc.ModelFitterCore):
             results = [_runBootstrap(a) for a in args_list]    
         self.bootstrapResult = BootstrapResult.merge(results)
         self.bootstrapResult.fittedStatistic.calculate()
+        # Report number of parameters accumulated
+        numSample = None
+        for name, values in self.bootstrapResult.parameterDct.items():
+            if numSample is None:
+                numSample = len(values)
+            numSample = min(numSample, len(values))
+        print ("*%d bootstrap estimates of parameters." % numSample)
+        #
         if serializePath is not None:
             self.serialize(serializePath)
 

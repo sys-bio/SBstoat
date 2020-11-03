@@ -224,12 +224,6 @@ class ModelStudy(object):
                 if not self._isBootstrapResult(fitter):
                     fitter.bootstrapResult = None
                 self._serializeFitter(name)
-            numSample = None
-            for name, values in fitter.bootstrapResult.parameterDct.items():
-                if numSample is None:
-                    numSample = len(values)
-                numSample = min(numSample, len(values))
-            print ("%d bootstrap estimates of parameters." % numSample)
 
     @Expander(po.KWARGS, po.BASE_OPTIONS, indent=8, header=po.HEADER)
     def plotFitAll(self, **kwargs):
