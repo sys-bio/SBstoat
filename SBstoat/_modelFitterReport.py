@@ -8,7 +8,6 @@ Reports for model fitter
 """
 
 from SBstoat.namedTimeseries import NamedTimeseries, TIME, mkNamedTimeseries
-from SBstoat import _message
 from SBstoat._modelFitterBootstrap import ModelFitterBootstrap
 
 import lmfit
@@ -43,4 +42,4 @@ class ModelFitterReport(ModelFitterBootstrap):
         f.reportBootstrap()
         """
         self._checkBootstrap()
-        _message.activity(self.bootstrapResult)
+        self._logger.activity(self.bootstrapResult)

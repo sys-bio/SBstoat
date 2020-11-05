@@ -8,6 +8,7 @@ Core logic of model fitter. Does not include plots.
 """
 
 from SBstoat.namedTimeseries import NamedTimeseries, TIME, mkNamedTimeseries
+from SBstoat._logger import Logger
 import SBstoat.timeseriesPlotter as tp
 from SBstoat import namedTimeseries
 from SBstoat import rpickle
@@ -55,6 +56,7 @@ class ModelFitterCore(rpickle.RPickler):
                  parameterUpperBound=PARAMETER_UPPER_BOUND,
                  parameterDct={},
                  fittedDataTransformDct={},
+                 logger=Logger(),
                  isPlot=True
                  ):
         """
@@ -82,6 +84,7 @@ class ModelFitterCore(rpickle.RPickler):
             value: function of the data in selectedColumns;
                    input: NamedTimeseries
                    output: array for the values of the column
+        logger: Logger
         method: str
             method used for minimization
 
@@ -109,6 +112,7 @@ class ModelFitterCore(rpickle.RPickler):
             self._isPlot = isPlot
             self._plotter = tp.TimeseriesPlotter(isPlot=self._isPlot)
             self._plotFittedTS = None  # Timeseries that is plotted
+            self._logger = logger
             # The following are calculated during fitting
             self.roadrunnerModel = None
             self.minimizer = None  # lmfit.minimizer
@@ -133,6 +137,13 @@ class ModelFitterCore(rpickle.RPickler):
         Instance of cls
         """
         return cls(None, None, None)
+    
+    def rpRevise(self):
+        """
+        Overrides rpickler.
+        """
+        if not "_logger" in self.__dict__.keys():
+            self._logger = Logger()
 
     def _validateFittedDataTransformDct(self):
         if self.fittedDataTransformDct is not None:
