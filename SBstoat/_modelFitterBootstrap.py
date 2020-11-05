@@ -82,7 +82,7 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
         except:
             pass
     if not isSuccess:
-        _message.warn("Failed to fit.")
+        _message.result("Failed to fit.")
     numIteration = arguments.numIteration
     reportInterval = arguments.reportInterval
     processIdx = arguments.processIdx
@@ -118,7 +118,7 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
                     and (processIdx == 0):
                 totalIteration = numSuccessIteration*processingRate
                 if totalIteration % reportInterval == 0:
-                    _message.notice("bootstrap completed %d iterations."
+                    _message.status("bootstrap completed %d iterations."
                           % totalIteration)
                     lastReport = numSuccessIteration
             if numSuccessIteration >= numIteration:
@@ -129,11 +129,11 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
             except ValueError:
                 # Problem with the fit. Don't numSuccessIteration it.
                 if IS_REPORT:
-                    _message.error("Fit failed on iteration %d." % iteration)
+                    _message.status("Fit failed on iteration %d." % iteration)
                 continue
             if newFitter.minimizerResult.redchi > MAX_CHISQ_MULT*baseChisq:
                 if IS_REPORT:
-                    _message.warn("Fit has high chisq: %2.2f on iteration %d."
+                    _message.status("Fit has high chisq: %2.2f on iteration %d."
                           % iteration 
                           % newFitter.minimizerResult.redchi)
                 continue
@@ -145,7 +145,7 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
             newFitter.observedTS = synthesizer.calculate()
         except Exception as err:
             bootstrapError += 1
-    _message.notice("Completed bootstrap process %d." % (processIdx + 1))
+    _message.status("Completed bootstrap process %d." % (processIdx + 1))
     bootstrapResult = BootstrapResult(fitter, numSuccessIteration, parameterDct,
           fittedStatistic, bootstrapError=bootstrapError)
     if queue is None:
@@ -199,7 +199,7 @@ class ModelFitterBootstrap(mfc.ModelFitterCore):
               reportInterval=reportInterval,
               synthesizerClass=synthesizerClass,
               **kwargs) for i in range(numProcess)]
-        _message.notice("**Running bootstrap for %d iterations with %d processes."
+        _message.activity("Running bootstrap for %d iterations with %d processes."
               % (numIteration, numProcess))
         # Run separate processes for each bootstrap
         processes = []
@@ -218,7 +218,7 @@ class ModelFitterBootstrap(mfc.ModelFitterCore):
                 for process in processes:
                     process.terminate()
             except:
-                _message.warn("Caught exception in main.")
+                _message.result("Caught exception in main.")
             finally:
                 pass
         else:
@@ -229,7 +229,7 @@ class ModelFitterBootstrap(mfc.ModelFitterCore):
         self.bootstrapResult = BootstrapResult.merge(results)
         if self.bootstrapResult.fittedStatistic is not None:
             self.bootstrapResult.fittedStatistic.calculate()
-        _message.notice("%d bootstrap estimates of parameters."
+        _message.result("%d bootstrap estimates of parameters."
               % self.bootstrapResult.numSimulation)
         if serializePath is not None:
             self.serialize(serializePath)

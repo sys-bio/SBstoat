@@ -43,4 +43,4 @@ class ModelFitterReport(ModelFitterBootstrap):
         f.reportBootstrap()
         """
         self._checkBootstrap()
-        _message.notice(self.bootstrapResult)
+        _message.activity(self.bootstrapResult)

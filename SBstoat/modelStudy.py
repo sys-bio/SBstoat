@@ -197,11 +197,11 @@ class ModelStudy(object):
         Does fits for all models and serializes the results.
         """
         for name in self.instanceNames:
-            _message.notice("Fit for data %s" % name)
+            _message.activity("Fit for data %s" % name)
             fitter = self.fitterDct[name]
             fitter.fitModel()
             self._serializeFitter(name)
-            _message.notice(fitter.reportFit())
+            _message.result(fitter.reportFit())
 
     def _hasBootstrapResult(self, fitter):
         result = False
@@ -223,7 +223,7 @@ class ModelStudy(object):
             fitter = self.fitterDct[name]
             if (not self.useSerialized) and (not self._hasBootstrapResult(fitter)):
                 msg = "Doing bootstrapp for instance %s" % name
-                _message.notice(msg)
+                _message.activity(msg)
                 if fitter.params is None:
                     fitter.fitModel()
                 fitter.bootstrap(**kwargs)
@@ -235,10 +235,10 @@ class ModelStudy(object):
                 if self._hasBootstrapResult(fitter):
                     msg = "Using existing bootstrap results (%d) for %s"  \
                           % (fitter.bootstrapResult.numSimulation, name)
-                    _message.notice(msg)
+                    _message.result(msg)
                 else:
                     msg = "No bootstrap results for data source %s"  % name
-                    _message.notice(msg)
+                    _message.result(msg)
 
     @Expander(po.KWARGS, po.BASE_OPTIONS, indent=8, header=po.HEADER)
     def plotFitAll(self, **kwargs):
@@ -259,7 +259,7 @@ class ModelStudy(object):
             newKwargs[po.SUPTITLE] = title
             fitter = self.fitterDct[name]
             if fitter.params is None:
-                _message.error("Must do fitModel or bootstrap before plotting.")
+                _message.result("Must do fitModel or bootstrap before plotting.")
             else:
                 if fitter.bootstrapResult is not None:
                     if fitter.bootstrapResult.numSimulation > 0:
@@ -284,11 +284,11 @@ class ModelStudy(object):
                               % (length, dataSource)
                         msg += "Unable to do plot for parameter %s."  \
                                % parameterName
-                        _message.warn(msg)
+                        _message.result(msg)
                     else:
                         fitterDct[dataSource] = fitter
         if len(fitterDct) == 0:
-            _message.warn("No data to plot.")
+            _message.result("No data to plot.")
         else:
             instanceNames = fitterDct.keys()
             trues = [f.bootstrapResult is None for f in fitterDct.values()]
