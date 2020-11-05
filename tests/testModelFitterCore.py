@@ -175,7 +175,7 @@ class TestModelFitterCore(unittest.TestCase):
             fitter.fitModel()
             return np.std(fitter.residualsTS.flatten())
         #
-        CASES = [th.COLUMNS[0], th.COLUMNS[:3], th.COLUMNS]
+        CASES = [[th.COLUMNS[0]], th.COLUMNS[:3], th.COLUMNS]
         stds = [calcResidualStd(c) for c in CASES]
         # Variance should decrease with more columns
         self.assertGreater(stds[0], stds[1])

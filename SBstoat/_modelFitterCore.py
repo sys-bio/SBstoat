@@ -156,11 +156,13 @@ class ModelFitterCore(rpickle.RPickler):
         ----------
         NamedTimeseries
         """
-        fittedTS = NamedTimeseries(array=data[:, :],
-              colnames=self.fittedTS.allColnames)
-        for column, func in self.fittedDataTransformDct.items():
-            if func is not None:
-                fittedTS[column] = func(fittedTS)
+        colnames = list(self.selectedColumns)
+        colnames.insert(0, TIME)
+        fittedTS = NamedTimeseries(array=data[:, :], colnames=colnames)
+        if self.fittedDataTransformDct is not None:
+            for column, func in self.fittedDataTransformDct.items():
+                if func is not None:
+                    fittedTS[column] = func(fittedTS)
         return fittedTS
         
     def _updateParameterDct(self, parameterDct):
@@ -287,11 +289,16 @@ class ModelFitterCore(rpickle.RPickler):
         if params is not None:
           # Parameters have been specified
           self._setupModel(params)
-        data = self.roadrunnerModel.simulate(startTime, endTime, numPoint)
+        # Do the simulation
+        selectedColumns = list(self.selectedColumns)
+        if not TIME in selectedColumns:
+            selectedColumns.insert(0, TIME)
+        data = self.roadrunnerModel.simulate(startTime, endTime, numPoint,
+              selectedColumns)
         # Select the required columns
+        dataColnames = [s[1:-1] if s[0]=="[" else s for s in list(data.colnames)]
         columnIndices = [i for i in range(len(data.colnames))
-              if data.colnames[i][1:-1] in self.fittedTS.allColnames]
-        columnIndices.insert(0, 0)
+              if data.colnames[i] in dataColnames]
         data = data[:, columnIndices]
         fittedTS = self._transformFittedTS(data)
         return fittedTS

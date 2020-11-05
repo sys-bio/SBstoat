@@ -56,17 +56,25 @@ class BootstrapResult(rpickle.RPickler):
             # Number of simulations
             self.numSimulation =  \
                   len(self.parameterDct[self.parameters[0]])
-            # means of parameter values
-            self.parameterMeanDct = {p: np.mean(parameterDct[p])
-                  for p in self.parameters}
-            # standard deviation of parameter values
-            self.parameterStdDct = {p: np.std(parameterDct[p])
-                  for p in self.parameters}
-            # Confidence limits for parameter values
-            self.percentileDct = {p: [] for p in self.parameterDct}
-            for name, values in self.parameterDct.items():
-                if len(values) > MIN_COUNT_PERCENTILE:
-                    self.percentileDct[name] = np.percentile(values, PERCENTILES)
+            if self.numSimulation > 1:
+                # means of parameter values
+                self.parameterMeanDct = {p: np.mean(parameterDct[p])
+                      for p in self.parameters}
+                # standard deviation of parameter values
+                self.parameterStdDct = {p: np.std(parameterDct[p])
+                      for p in self.parameters}
+                # Confidence limits for parameter values
+                self.percentileDct = {p: [] for p in self.parameterDct}
+                for name, values in self.parameterDct.items():
+                    if len(values) > MIN_COUNT_PERCENTILE:
+                        self.percentileDct[name] = np.percentile(values, PERCENTILES)
+            else:
+                # means of parameter values
+                self.parameterMeanDct = {p: np.nan for p in self.parameters}
+                # standard deviation of parameter values
+                self.parameterStdDct = {p: np.nan for p in self.parameters}
+                # Confidence limits for parameter values
+                self.percentileDct = {p: np.nan for p in self.parameters}
         ### PRIVATE
         # Fitting parameters from result
         self._params = None
@@ -190,20 +198,22 @@ class BootstrapResult(rpickle.RPickler):
         if len(bootstrapResults) == 0:
             raise ValueError("Must provide a non-empty list")
         fitter = bootstrapResults[0].fitter
-        numIteration = sum([r.numIteration for r in bootstrapResults])
-        # Merge the statistics for fitted timeseries
-        fittedStatistics = [b.fittedStatistic for b in bootstrapResults]
-        bootstrapError = sum([b.bootstrapError for b in bootstrapResults])
-        try:
-            fittedStatistic = TimeseriesStatistic.merge(fittedStatistics)
-        except ValueError:
-            import pdb; pdb.set_trace()
-        # Accumulate the results
         parameterDct = {p: [] for p in bootstrapResults[0].parameterDct}
-        for bootstrapResult in bootstrapResults:
-            for parameter in parameterDct.keys():
-                parameterDct[parameter].extend(
-                      bootstrapResult.parameterDct[parameter])
-        #
+        numIteration = sum([r.numIteration for r in bootstrapResults])
+        bootstrapError = sum([b.bootstrapError for b in bootstrapResults])
+        fittedStatistic = None
+        if numIteration > 0:
+            # Merge the statistics for fitted timeseries
+            fittedStatistics = [b.fittedStatistic for b in bootstrapResults]
+            try:
+                fittedStatistic = TimeseriesStatistic.merge(fittedStatistics)
+            except ValueError:
+                import pdb; pdb.set_trace()
+            # Accumulate the results
+            for bootstrapResult in bootstrapResults:
+                for parameter in parameterDct.keys():
+                    parameterDct[parameter].extend(
+                          bootstrapResult.parameterDct[parameter])
+            #
         return BootstrapResult(fitter, numIteration, parameterDct,
               fittedStatistic, bootstrapError=bootstrapError)

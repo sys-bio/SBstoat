@@ -16,10 +16,11 @@ import unittest
 
 IGNORE_TEST = False
 IS_PLOT = False
-TIMESERIES = th.getTimeseries()
-FITTER = th.getFitter(cls=ModelFitter, isPlot=IS_PLOT)
-FITTER.fitModel()
-FITTER.bootstrap(numIteration=10)
+if not IGNORE_TEST:
+    TIMESERIES = th.getTimeseries()
+    FITTER = th.getFitter(cls=ModelFitter, isPlot=IS_PLOT)
+    FITTER.fitModel()
+    FITTER.bootstrap(numIteration=10)
 ANTIMONY_MODEL_BENCHMARK = """
 # Reactions   
     J1: S1 -> S2; k1*S1
@@ -36,6 +37,8 @@ BENCHMARK1_TIME = 30  # Actual is 20 sec
 class TestModelFitter(unittest.TestCase):
 
     def setUp(self):
+        if IGNORE_TEST:
+            return
         self.timeseries = TIMESERIES
         self.fitter = FITTER
 
@@ -75,29 +78,18 @@ class TestModelFitter(unittest.TestCase):
     def testBootstrapAccuracy(self):
         if IGNORE_TEST:
             return
-        import tellurium as te
-        import SBstoat as tu
-        
-        r = te.loada("""
+        model = """
             J1: S1 -> S2; k1*S1
             J2: S2 -> S3; k2*S2
            
             S1 = 1; S2 = 0; S3 = 0;
             k1 = 0; k2 = 0; 
-        """)
-
+        """
         columns = ["S1", "S3"]
-        fitter = tu.modelFitter.ModelFitter(r,
-                                            BENCHMARK_PATH,
-                                            ["k1", "k2"],
-                                            selectedColumns=columns,
-                                            isPlot=IS_PLOT)
+        fitter = ModelFitter(model, BENCHMARK_PATH, ["k1", "k2"],
+                             selectedColumns=columns, isPlot=IS_PLOT)
         fitter.fitModel()
         print(fitter.reportFit())
-        
-        #fitter.plotResiduals (numCol=3, numRow=1, figsize=(17,5))
-        #fitter.plotFit (numCol=3, numRow=1, figsize=(18, 6))
-        
         print (fitter.getParameterMeans())  
         
         fitter.bootstrap(numIteration=2000,

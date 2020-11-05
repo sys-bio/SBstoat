@@ -13,7 +13,7 @@ Several considerations are made;
 """
 
 from SBstoat.namedTimeseries import NamedTimeseries, TIME, mkNamedTimeseries
-from SBstoat import message
+from SBstoat import _message
 from SBstoat.timeseriesStatistic import TimeseriesStatistic
 from SBstoat._bootstrapResult import BootstrapResult
 from SBstoat.observationSynthesizer import  \
@@ -82,14 +82,16 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
         except:
             pass
     if not isSuccess:
-        message.warn("Failed to fit.")
+        _message.warn("Failed to fit.")
     numIteration = arguments.numIteration
     reportInterval = arguments.reportInterval
     processIdx = arguments.processIdx
     processingRate = min(arguments.numProcess,
                          multiprocessing.cpu_count())
+    cols = fitter.selectedColumns
     synthesizer = arguments.synthesizerClass(
-          observedTS=fitter.observedTS, fittedTS=fitter.fittedTS,
+          observedTS=fitter.observedTS.subsetColumns(cols),
+          fittedTS=fitter.fittedTS.subsetColumns(cols),
           **arguments.kwargs)
     # Initialize
     parameterDct = {p: [] for p in fitter.parametersToFit}
@@ -116,7 +118,7 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
                     and (processIdx == 0):
                 totalIteration = numSuccessIteration*processingRate
                 if totalIteration % reportInterval == 0:
-                    message.notice("bootstrap completed %d iterations."
+                    _message.notice("bootstrap completed %d iterations."
                           % totalIteration)
                     lastReport = numSuccessIteration
             if numSuccessIteration >= numIteration:
@@ -127,11 +129,11 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
             except ValueError:
                 # Problem with the fit. Don't numSuccessIteration it.
                 if IS_REPORT:
-                    message.error("Fit failed on iteration %d." % iteration)
+                    _message.error("Fit failed on iteration %d." % iteration)
                 continue
             if newFitter.minimizerResult.redchi > MAX_CHISQ_MULT*baseChisq:
                 if IS_REPORT:
-                    message.warn("Fit has high chisq: %2.2f on iteration %d."
+                    _message.warn("Fit has high chisq: %2.2f on iteration %d."
                           % iteration 
                           % newFitter.minimizerResult.redchi)
                 continue
@@ -143,7 +145,7 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
             newFitter.observedTS = synthesizer.calculate()
         except Exception as err:
             bootstrapError += 1
-    message.notice("Completed bootstrap process %d." % (processIdx + 1))
+    _message.notice("Completed bootstrap process %d." % (processIdx + 1))
     bootstrapResult = BootstrapResult(fitter, numSuccessIteration, parameterDct,
           fittedStatistic, bootstrapError=bootstrapError)
     if queue is None:
@@ -197,13 +199,13 @@ class ModelFitterBootstrap(mfc.ModelFitterCore):
               reportInterval=reportInterval,
               synthesizerClass=synthesizerClass,
               **kwargs) for i in range(numProcess)]
-        message.notice("**Running bootstrap for %d iterations with %d processes."
+        _message.notice("**Running bootstrap for %d iterations with %d processes."
               % (numIteration, numProcess))
+        # Run separate processes for each bootstrap
+        processes = []
+        queue = multiprocessing.Queue()
+        results = []
         if True:
-            # Run separate processes for each bootstrap
-            processes = []
-            queue = multiprocessing.Queue()
-            results = []
             for args in args_list:
                 p = multiprocessing.Process(target=_runBootstrap,
                       args=(args, queue,))
@@ -216,21 +218,18 @@ class ModelFitterBootstrap(mfc.ModelFitterCore):
                 for process in processes:
                     process.terminate()
             except:
-                message.warn("Caught exception in main.")
+                _message.warn("Caught exception in main.")
             finally:
                 pass
-        elif False:
-            with multiprocessing.Pool(numProcess) as pool:
-                try:
-                    results = pool.map(_runBootstrap, args_list)
-                except Exception as e:
-                    import pdb; pdb.set_trace()
-            pool.join()
         else:
-            results = [_runBootstrap(a) for a in args_list]    
+            # Keep to debug _runBootstrap single threaded
+            results = []
+            for args in args_list:
+                results.append(_runBootstrap(args))    
         self.bootstrapResult = BootstrapResult.merge(results)
-        self.bootstrapResult.fittedStatistic.calculate()
-        message.notice("%d bootstrap estimates of parameters."
+        if self.bootstrapResult.fittedStatistic is not None:
+            self.bootstrapResult.fittedStatistic.calculate()
+        _message.notice("%d bootstrap estimates of parameters."
               % self.bootstrapResult.numSimulation)
         if serializePath is not None:
             self.serialize(serializePath)

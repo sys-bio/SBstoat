@@ -126,10 +126,11 @@ class TimeseriesStatistic(rpickle.RPickler):
         """
         Calculates statistics.
         """
-        self._calculateMean()
+        if self.count > 0:
+            self._calculateMean()
         if self.count > 1:
             self._calculateStd()
-        self._calculatePercentiles()
+            self._calculatePercentiles()
 
     def _calculateMean(self):
         for col in self.colnames:
