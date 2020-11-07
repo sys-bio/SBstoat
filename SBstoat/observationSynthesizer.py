@@ -5,6 +5,10 @@
 @author: joseph-hellerstein
 
 Creates synthetic observations.
+
+TODO:
+  1. Remove outliers via std criteria
+  2. Handling missing observerations in observedTS
 """
 
 from SBstoat.namedTimeseries import NamedTimeseries
@@ -58,6 +62,8 @@ class ObservationSynthesizer(abc.ABC):
             self._residualsTS = self._observedTS.copy()
             self._residualsTS[self.columns] -=  \
                 self._fittedTS[self.columns]
+            self._residualsTS[self.columns]  \
+                  = np.nan_to_num(self._residualsTS[self.columns], nan=0.0)
         return self._residualsTS
 
     @abc.abstractmethod

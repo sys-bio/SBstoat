@@ -267,5 +267,7 @@ class ModelFitter(ModelFitterReport):
             self.residualsTS = self.fittedTS.copy()
             cols = self.observedTS.colnames
             self.residualsTS[cols] = self.observedTS[cols] - self.fittedTS[cols]
+            self.residualsTS[cols]  \
+                  = np.nan_to_num(self.residualsTS[cols], nan=0.0)
         self._plotFittedTS = self.simulate(params=params, numPoint=numPoint)
         self._plotFittedTS = self._plotFittedTS.subsetColumns(self.selectedColumns)

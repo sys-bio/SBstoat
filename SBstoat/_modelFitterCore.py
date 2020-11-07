@@ -352,8 +352,8 @@ class ModelFitterCore(rpickle.RPickler):
         if self.residualsTS is None:
             self.residualsTS = self.observedTS.subsetColumns(cols)
         self.residualsTS[cols] = self.observedTS[cols] - self.fittedTS[cols]
-        residuals = [0 if np.isnan(v) else v for v in self.residualsTS.flatten()]
-        return residuals
+        self.residualsTS[cols] = np.nan_to_num(self.residualsTS[cols], nan=0.0)
+        return self.residualsTS.flatten()
 
     def fitModel(self, params:lmfit.Parameters=None,
           max_nfev:int=100):

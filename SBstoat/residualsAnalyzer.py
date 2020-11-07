@@ -54,6 +54,8 @@ class ResidualsAnalyzer(object):
             self.residualsTS = self.observedTS.copy()
             cols = self.residualsTS.colnames
             self.residualsTS[cols] -= self.fittedTS[cols]
+            self.residualsTS[cols]  \
+                  = np.nan_to_num(self.residualsTS[cols], nan=0.0)
         else:
             self.residualsTS = residualsTS.copy()
         ### Plotter

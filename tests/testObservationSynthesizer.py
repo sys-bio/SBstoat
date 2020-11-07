@@ -20,7 +20,7 @@ NUM_ROW = 1000
 STD = 0.1
 MEAN = 10
 
-def mkTimeseries(numRow=NUM_ROW, numCol=NUM_COL, std=STD):
+def _mkTimeseries(numRow=NUM_ROW, numCol=NUM_COL, std=STD):
     colnames = ["V%d" % d for d in range(NUM_COL)]
     allColnames = list(colnames)
     allColnames.insert(0, TIME)
@@ -41,12 +41,17 @@ def mkTimeseries(numRow=NUM_ROW, numCol=NUM_COL, std=STD):
     observedTS = fittedTS.copy()
     observedTS[colnames] += residualsTS[colnames]
     return observedTS, fittedTS, residualsTS
-        
+
+def _setRandomMissing(timeseries):
+    for col in timeseries.colnames:
+        for idx in range(len(timeseries)):
+            if np.random.random() < 0.5:
+                timeseries[col][idx] = np.nan
 
 class TestObservationSynthesizer(unittest.TestCase):
 
     def setUp(self):
-        self.observedTS, fittedTS, residualsTS = mkTimeseries()
+        self.observedTS, fittedTS, residualsTS = _mkTimeseries()
 
     def testConstructor(self):
         if IGNORE_TEST:
@@ -73,7 +78,8 @@ class TestObservationSynthesizer(unittest.TestCase):
 class TestObservationSynthesizerRandomizedResiduals(TestObservationSynthesizer):
 
     def setUp(self):
-        self.observedTS, self.fittedTS, self.residualsTS = mkTimeseries()
+        self.observedTS, self.fittedTS, self.residualsTS = _mkTimeseries()
+        _setRandomMissing(self.observedTS)
         self.synthesizer = obs.ObservationSynthesizerRandomizedResiduals(
             observedTS=self.observedTS,
             fittedTS=self.fittedTS)
@@ -84,11 +90,17 @@ class TestObservationSynthesizerRandomizedResiduals(TestObservationSynthesizer):
             return
         self._testCalculate()
 
+    def testCalculateWithMissingValues(self):
+        if IGNORE_TEST:
+            return
+        self._testCalculate()
+
 
 class TestObservationSynthesizerRandomizedErrors(TestObservationSynthesizer):
 
     def setUp(self):
-        self.observedTS, self.fittedTS, self.residualsTS = mkTimeseries()
+        self.observedTS, self.fittedTS, self.residualsTS = _mkTimeseries()
+        _setRandomMissing(self.observedTS)
         self.synthesizer = obs.ObservationSynthesizerRandomErrors(
               fittedTS=self.fittedTS)
         self.columns = self.observedTS.colnames
