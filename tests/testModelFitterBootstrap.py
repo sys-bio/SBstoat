@@ -106,12 +106,49 @@ class TestModelFitterBootstrap(unittest.TestCase):
         timeIt(2)
         timeIt(4)
 
-    def testBoostrap(self):
+    def testBootstrap1(self):
         if IGNORE_TEST:
             return
         self.fitter.bootstrap(numIteration=500,
               reportInterval=100, maxProcess=2,
               serializePath=FILE_SERIALIZE)
+        NUM_STD = 10
+        result = self.fitter.bootstrapResult
+        for p in self.fitter.parametersToFit:
+            isLowerOk = result.parameterMeanDct[p]  \
+                  - NUM_STD*result.parameterStdDct[p]  \
+                  < th.PARAMETER_DCT[p]
+            isUpperOk = result.parameterMeanDct[p]  \
+                  + NUM_STD*result.parameterStdDct[p]  \
+                  > th.PARAMETER_DCT[p]
+            self.assertTrue(isLowerOk)
+            self.assertTrue(isUpperOk)
+        self.assertIsNotNone(self.fitter.bootstrapResult)
+        #
+        fitter = mfb.ModelFitterBootstrap.deserialize(FILE_SERIALIZE)
+        self.assertIsNotNone(fitter.bootstrapResult)
+
+    def testBoostrap2(self):
+        if IGNORE_TEST:
+            return
+        numIteration = 100
+        self.fitter.bootstrap(numIteration=numIteration)
+        fitterLow = th.getFitter(cls=mfb.ModelFitterBootstrap)
+        fitterLow.bootstrap(numIteration=numIteration, stdThreshold=1.0)
+        #
+        stdHighs = self.fitter.bootstrapResult.parameterStdDct.values()
+        stdLows = fitterLow.bootstrapResult.parameterStdDct.values()
+        trues = [l <= h for l,h in zip(stdLows, stdHighs)]
+        self.assertTrue(all(trues))
+        #
+        meanHighs = self.fitter.bootstrapResult.parameterMeanDct.values()
+        meanLows = fitterLow.bootstrapResult.parameterMeanDct.values()
+        trues = [np.abs(l - h) < 0.5 for l,h in zip(meanLows, meanHighs)]
+        self.assertTrue(all(trues))
+
+    def testGetParameter(self):
+        if IGNORE_TEST:
+            return
         NUM_STD = 10
         result = self.fitter.bootstrapResult
         for p in self.fitter.parametersToFit:
@@ -145,7 +182,7 @@ class TestModelFitterBootstrap(unittest.TestCase):
         for std in stds:
             self.assertTrue(isinstance(std, float))
 
-    def testBootstrap(self):
+    def testBootstrap3(self):
         if IGNORE_TEST:
             return
         self.fitter.bootstrap(numIteration=500,

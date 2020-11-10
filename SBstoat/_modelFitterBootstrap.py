@@ -161,7 +161,7 @@ class ModelFitterBootstrap(mfc.ModelFitterCore):
           synthesizerClass=ObservationSynthesizerRandomizedResiduals,
           maxProcess:int=None,
           serializePath:str=None,
-           **kwargs: dict):
+          **kwargs: dict):
         """
         Constructs a bootstrap estimate of parameter values.
     
@@ -204,6 +204,7 @@ class ModelFitterBootstrap(mfc.ModelFitterCore):
         processes = []
         queue = multiprocessing.Queue()
         results = []
+        # Set to False for debug so not doing multiple processes
         if True:
             for args in args_list:
                 p = multiprocessing.Process(target=_runBootstrap,

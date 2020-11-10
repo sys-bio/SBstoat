@@ -76,6 +76,37 @@ class ObservationSynthesizer(abc.ABC):
 
 class ObservationSynthesizerRandomizedResiduals(ObservationSynthesizer):
 
+    def __init__(self, observedTS:NamedTimeseries=None,
+                 fittedTS:NamedTimeseries=None,
+                 residualsTS:NamedTimeseries=None,
+                 stdThreshold:float=None):
+        """
+        Parameters
+        ----------
+        stdTrheshold: Number of standard deviations to be an outlier
+
+        Notes
+        -----
+        observedTS and fittedTS must be non-Null.
+        """
+        self._stdThreshold = stdThreshold
+        super().__init__(observedTS=observedTS, fittedTS=fittedTS,
+                 residualsTS=residualsTS)
+        self._filteredResidualsDct = self._calcFilteredResidualsDct()
+
+    def _calcFilteredResidualsDct(self):
+        # Constructs dictionary of residuals meeting std criteria
+        dct = {}
+        for col in self._observedTS.colnames:
+            if self._stdThreshold is None:
+                dct[col] = self.residualsTS[col]
+            else:
+                std = np.std(self.residualsTS[col])
+                maxAbsValue = self._stdThreshold * std
+                dct[col] = [v for v in self.residualsTS[col]
+                      if np.abs(v) <= maxAbsValue]
+        return dct
+
     def calculate(self):
         """
         Calculates synthetic observations by randomly rearranging residuals.
@@ -83,8 +114,12 @@ class ObservationSynthesizerRandomizedResiduals(ObservationSynthesizer):
         numRow = len(self.observedTS)
         newObservedTS = self.fittedTS.copy()
         for column in self.columns:
+            if len(self._filteredResidualsDct[column]) == 0:
+                msg = "No residuals left after filtering."
+                msg +- " Make filter less restrictive."
+                raise ValueError(msg)
             newObservedTS[column] += np.random.choice(
-                self.residualsTS[column],numRow, replace=True)
+                self._filteredResidualsDct[column], numRow, replace=True)
         return newObservedTS
 
 

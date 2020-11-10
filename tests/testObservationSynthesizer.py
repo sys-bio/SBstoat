@@ -19,6 +19,7 @@ NUM_COL = 3
 NUM_ROW = 1000
 STD = 0.1
 MEAN = 10
+THRESHOLD_PROB = 0.5
 
 def _mkTimeseries(numRow=NUM_ROW, numCol=NUM_COL, std=STD):
     colnames = ["V%d" % d for d in range(NUM_COL)]
@@ -45,7 +46,7 @@ def _mkTimeseries(numRow=NUM_ROW, numCol=NUM_COL, std=STD):
 def _setRandomMissing(timeseries):
     for col in timeseries.colnames:
         for idx in range(len(timeseries)):
-            if np.random.random() < 0.5:
+            if np.random.random() < THRESHOLD_PROB:
                 timeseries[col][idx] = np.nan
 
 class TestObservationSynthesizer(unittest.TestCase):
@@ -60,20 +61,21 @@ class TestObservationSynthesizer(unittest.TestCase):
             _ = obs.ObservationSynthesizer()
         pass
 
-    def _testCalculate(self):
-        MAX_DIFF = 0.05
+    def _testCalculate(self, synthesizer=None, maxDiff=0.1):
+        if synthesizer is None:
+            synthesizer = self.synthesizer
         def differenceDistributions(arr1, arr2):
             return np.abs(np.mean(arr1)-np.mean(arr2)),  \
                    np.abs(np.std(arr1) - np.std(arr2))
         #
-        newObservedTS = self.synthesizer.calculate()
+        newObservedTS = synthesizer.calculate()
         residualsTS = newObservedTS.copy()
         residualsTS[self.columns] -= self.fittedTS[self.columns]
         for column in self.columns:
           meanDiff, stdDiff = differenceDistributions(
               self.residualsTS[column], residualsTS[column])
           for diff in [meanDiff, stdDiff]:
-              self.assertLess(diff, MAX_DIFF)
+              self.assertLess(diff, maxDiff)
 
 class TestObservationSynthesizerRandomizedResiduals(TestObservationSynthesizer):
 
@@ -94,6 +96,19 @@ class TestObservationSynthesizerRandomizedResiduals(TestObservationSynthesizer):
         if IGNORE_TEST:
             return
         self._testCalculate()
+
+    def testCalculateWithStdthreshold(self):
+        if IGNORE_TEST:
+            return
+        stds = []
+        for threshold in [0.01, 0.1, None]:
+            synthesizer = obs.ObservationSynthesizerRandomizedResiduals(
+                observedTS=self.observedTS,
+                fittedTS=self.fittedTS, stdThreshold=threshold)
+            observedTS = synthesizer.calculate()
+            stds.append(np.std(observedTS.flatten() - self.fittedTS.flatten()))
+        self.assertGreater(stds[1], stds[0])
+        self.assertGreater(stds[2], stds[1])
 
 
 class TestObservationSynthesizerRandomizedErrors(TestObservationSynthesizer):
