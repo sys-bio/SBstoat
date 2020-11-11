@@ -1,8 +1,9 @@
 coverage
+docstring_expander
+httplib2
 jupyterlab
 libroadrunner
 lmfit
 nose
 numpy
 tellurium
-docstring_expander
