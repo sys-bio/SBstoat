@@ -12,6 +12,7 @@ TODO:
 """
 
 from SBstoat.namedTimeseries import NamedTimeseries
+from SBstoat import _helpers
 
 import abc
 import numpy as np
@@ -81,32 +82,30 @@ class ObservationSynthesizerRandomizedResiduals(ObservationSynthesizer):
     def __init__(self, observedTS:NamedTimeseries=None,
                  fittedTS:NamedTimeseries=None,
                  residualsTS:NamedTimeseries=None,
-                 stdThreshold:float=None):
+                 filterSL:float=0.01):
         """
         Parameters
         ----------
-        stdTrheshold: Number of standard deviations to be an outlier
+        filterSL: maximum significance level used in filtering residuals
 
         Notes
         -----
         observedTS and fittedTS must be non-Null.
         """
-        self._stdThreshold = stdThreshold
         super().__init__(observedTS=observedTS, fittedTS=fittedTS,
                  residualsTS=residualsTS)
+        self._filterSL = filterSL
         self._filteredResidualsDct = self._calcFilteredResidualsDct()
 
     def _calcFilteredResidualsDct(self):
         # Constructs dictionary of residuals meeting std criteria
         dct = {}
         for col in self._observedTS.colnames:
-            if self._stdThreshold is None:
+            if self._filterSL is None:
                 dct[col] = self.residualsTS[col]
             else:
-                std = np.std(self.residualsTS[col])
-                maxAbsValue = self._stdThreshold * std
-                dct[col] = [v for v in self.residualsTS[col]
-                      if np.abs(v) <= maxAbsValue]
+                dct[col] = _helpers.filterOutliersFromZero(
+                      self.residualsTS[col], self._filterSL)
         return dct
 
     def calculate(self):

@@ -101,10 +101,10 @@ class TestObservationSynthesizerRandomizedResiduals(TestObservationSynthesizer):
         if IGNORE_TEST:
             return
         stds = []
-        for threshold in [0.01, 0.1, None]:
+        for maxSL in [0.9, 0.4, 0.001]:
             synthesizer = obs.ObservationSynthesizerRandomizedResiduals(
                 observedTS=self.observedTS,
-                fittedTS=self.fittedTS, stdThreshold=threshold)
+                fittedTS=self.fittedTS, filterSL=maxSL)
             observedTS = synthesizer.calculate()
             stds.append(np.std(observedTS.flatten() - self.fittedTS.flatten()))
         self.assertGreater(stds[1], stds[0])
