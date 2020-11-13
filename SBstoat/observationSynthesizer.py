@@ -35,6 +35,8 @@ class ObservationSynthesizer(abc.ABC):
         """
         self._observedTS = observedTS
         self._fittedTS = fittedTS
+        if fittedTS is not None:
+            self._fittedTS = fittedTS.copy()
         self._residualsTS = residualsTS
         # Set the columns based on the information provided
         for ts in [self._observedTS, self._fittedTS, self._residualsTS]:

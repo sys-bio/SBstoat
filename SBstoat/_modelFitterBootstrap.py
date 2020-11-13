@@ -205,7 +205,7 @@ class ModelFitterBootstrap(mfc.ModelFitterCore):
         queue = multiprocessing.Queue()
         results = []
         # Set to False for debug so not doing multiple processes
-        if True:
+        if False:
             for args in args_list:
                 p = multiprocessing.Process(target=_runBootstrap,
                       args=(args, queue,))

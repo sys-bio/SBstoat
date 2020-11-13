@@ -228,6 +228,7 @@ class ModelFitterCore(rpickle.RPickler):
               parameterUpperBound=self.upperBound,
               parameterDct=copy.deepcopy(self.parameterDct),
               fittedDataTransformDct=copy.deepcopy(self.fittedDataTransformDct),
+              logger=copy.deepcopy(self._logger),
               isPlot=self._isPlot)
         if self.bootstrapResult is not None:
             newModelFitter.bootstrapResult = self.bootstrapResult.copy()
@@ -353,7 +354,7 @@ class ModelFitterCore(rpickle.RPickler):
             self.residualsTS = self.observedTS.subsetColumns(cols)
         self.residualsTS[cols] = self.observedTS[cols] - self.fittedTS[cols]
         self.residualsTS[cols] = np.nan_to_num(self.residualsTS[cols], nan=0.0)
-        return self.residualsTS.flatten()
+        return self.residualsTS[cols].flatten()
 
     def fitModel(self, params:lmfit.Parameters=None,
           max_nfev:int=100):
@@ -445,7 +446,10 @@ class ModelFitterCore(rpickle.RPickler):
         """
         pp = params.valuesdict()
         for parameter in self.parametersToFit:
-            self.roadrunnerModel.model[parameter] = pp[parameter]
+            try:
+                self.roadrunnerModel.model[parameter] = pp[parameter]
+            except Exception:
+                self._logger.status("Could not set value for %s" % parameter)
 
     def mkParams(self, parameterDct:dict=None)->lmfit.Parameters:
         """
@@ -469,11 +473,15 @@ class ModelFitterCore(rpickle.RPickler):
         params = lmfit.Parameters()
         for parameterName in self.parametersToFit:
             if parameterName in parameterDct.keys():
-              specification = parameterDct[parameterName]
-              value = get(specification.value, specification.value, 1.0)
-              lower = get(specification.lower, specification.value, 0.9)
-              upper = get(specification.upper, specification.value, 1.1)
-              params.add(parameterName, value=value, min=lower, max=upper)
+                specification = parameterDct[parameterName]
+                value = get(specification.value, specification.value, 1.0)
+                if value > 0:
+                    lower = get(specification.lower, specification.value, 0.9)
+                    upper = get(specification.upper, specification.value, 1.1)
+                else:
+                    lower = value
+                    upper = 10
+                params.add(parameterName, value=value, min=lower, max=upper)
             else:
                 value = np.mean([self.lowerBound, self.upperBound])
                 params.add(parameterName, value=value,

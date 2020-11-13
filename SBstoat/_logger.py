@@ -8,14 +8,20 @@ Messages are structured as follows:
 
 class Logger(object):
 
+    def __init__(self, isReport=True):
+        self.isReport = isReport
+
     def activity(self, msg, preString=""):
        # Major processing activity
-       print("\n\n***%s***" %msg)
+       if self.isReport:
+           print("\n\n***%s***" %msg)
     
     def result(self, msg, preString=""):
        # Result of an activity
-       print("\n **%s" %msg)
+       if self.isReport:
+           print("\n **%s" %msg)
     
     def status(self, msg, preString=""):
        # Progress message
-       print("    (%s)" %msg)
+       if self.isReport:
+           print("    (%s)" %msg)

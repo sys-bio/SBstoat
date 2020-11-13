@@ -195,7 +195,8 @@ class NamedTimeseries(rpickle.RPickler):
         self.allColnames.append(name)
         self._indexDct[name] = self.allColnames.index(name)
         self.colnames = list(self.allColnames)
-        self.colnames.remove(TIME)
+        if TIME in self.colnames:
+            self.colnames.remove(TIME)
 
     def __setitem__(self, reference, value):
         """
