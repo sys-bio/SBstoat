@@ -11,8 +11,8 @@ import os
 import unittest
 
 
-IGNORE_TEST = True
-IS_PLOT = True
+IGNORE_TEST = False
+IS_PLOT = False
 DIR = os.path.dirname(os.path.abspath(__file__))
 INPUT_PATH = os.path.join(DIR, "BIOMD0000000339.xml")
 VARIABLE_NAMES = ["Va_Xa", "IIa_Tmod", "VIIa_TF"]

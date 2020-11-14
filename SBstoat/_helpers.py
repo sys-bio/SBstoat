@@ -123,7 +123,10 @@ def filterOutliersFromZero(data, maxSL):
         #
         var1, df1 = calc(arr1)
         var2, df2 = calc(arr2)
-        fstat = var1/var2
+        if var2 > 0:
+            fstat = var1/var2
+        else:
+            fstat = 1000*var1
         sl = 1 - scipy.stats.f.cdf(fstat, df1, df2)
         return sl
     sortedData = sorted(data, key=lambda v: np.abs(v), reverse=True)

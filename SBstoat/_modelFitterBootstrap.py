@@ -113,12 +113,14 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
     bootstrapError = 0
     for iteration in range(numIteration*ITERATION_MULTIPLIER):
         try:
-            if (iteration > 0) and (numSuccessIteration != lastReport)  \
+            if (iteration > 0) and (iteration != lastReport)  \
                     and (processIdx == 0):
-                totalIteration = numSuccessIteration*processingRate
+                totalSuccessIteration = numSuccessIteration*processingRate
+                totalIteration = iteration*processingRate
                 if totalIteration % reportInterval == 0:
-                    fitter._logger.status("bootstrap completed %d iterations."
-                          % totalIteration)
+                    msg = "bootstrap completed %d iterations with %d successes."
+                    msg = msg % (totalIteration, totalSuccessIteration)
+                    fitter._logger.status(msg)
                     lastReport = numSuccessIteration
             if numSuccessIteration >= numIteration:
                 # Performed the iterations
@@ -157,7 +159,7 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
 class ModelFitterBootstrap(mfc.ModelFitterCore):
 
     def bootstrap(self, numIteration:int=10, 
-          reportInterval:int=1000,
+          reportInterval:int=100,
           synthesizerClass=ObservationSynthesizerRandomizedResiduals,
           maxProcess:int=None,
           serializePath:str=None,
@@ -205,7 +207,7 @@ class ModelFitterBootstrap(mfc.ModelFitterCore):
         queue = multiprocessing.Queue()
         results = []
         # Set to False for debug so not doing multiple processes
-        if False:
+        if True:
             for args in args_list:
                 p = multiprocessing.Process(target=_runBootstrap,
                       args=(args, queue,))

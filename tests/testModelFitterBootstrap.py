@@ -134,17 +134,18 @@ class TestModelFitterBootstrap(unittest.TestCase):
         numIteration = 100
         self.fitter.bootstrap(numIteration=numIteration)
         fitterLow = th.getFitter(cls=mfb.ModelFitterBootstrap)
-        fitterLow.bootstrap(numIteration=numIteration, stdThreshold=1.0)
+        # Filters more and so lower std
+        fitterLow.bootstrap(numIteration=numIteration, filterSL=0.5)
         #
-        stdHighs = self.fitter.bootstrapResult.parameterStdDct.values()
         stdLows = fitterLow.bootstrapResult.parameterStdDct.values()
+        stdHighs = self.fitter.bootstrapResult.parameterStdDct.values()
         trues = [l <= h for l,h in zip(stdLows, stdHighs)]
         self.assertTrue(all(trues))
         #
         meanHighs = self.fitter.bootstrapResult.parameterMeanDct.values()
         meanLows = fitterLow.bootstrapResult.parameterMeanDct.values()
         trues = [np.abs(l - h) < 0.5 for l,h in zip(meanLows, meanHighs)]
-        self.assertTrue(all(trues))
+        self.assertTrue(sum(trues) > len(trues)*0.6)
 
     def testGetParameter(self):
         if IGNORE_TEST:
