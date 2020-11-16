@@ -3,6 +3,9 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# Ignore models in biomodels
+biomodels/*.xml
+
 # C extensions
 *.so
 .*.swp

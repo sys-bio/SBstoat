@@ -36,6 +36,8 @@ PERCENTILES = [2.5, 97.55]  # Percentile for confidence limits
 INDENTATION = "  "
 NULL_STR = ""
 IS_REPORT = False
+LOWER_PARAMETER_MULT = 0.95
+UPPER_PARAMETER_MULT = 0.95
 
 
 ##############################
@@ -476,12 +478,19 @@ class ModelFitterCore(rpickle.RPickler):
                 specification = parameterDct[parameterName]
                 value = get(specification.value, specification.value, 1.0)
                 if value > 0:
-                    lower = get(specification.lower, specification.value, 0.9)
-                    upper = get(specification.upper, specification.value, 1.1)
+                    lower_factor = LOWER_PARAMETER_MULT
+                    upper_factor = UPPER_PARAMETER_MULT
                 else:
-                    lower = value
-                    upper = 10
-                params.add(parameterName, value=value, min=lower, max=upper)
+                    upper_factor = UPPER_PARAMETER_MULT
+                    lower_factor = LOWER_PARAMETER_MULT
+                lower = get(specification.lower, specification.value, lower_factor)
+                upper = get(specification.upper, specification.value, upper_factor)
+                if lower == upper:
+                    upper = 0.0001
+                try:
+                    params.add(parameterName, value=value, min=lower, max=upper)
+                except:
+                    import pdb; pdb.set_trace()
             else:
                 value = np.mean([self.lowerBound, self.upperBound])
                 params.add(parameterName, value=value,

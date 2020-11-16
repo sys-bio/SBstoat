@@ -97,6 +97,8 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
     numSuccessIteration = 0
     newObservedTS = synthesizer.calculate()
     lastReport = 0
+    if fitter.minimizerResult is None:
+        fitter.fitModel()
     baseChisq = fitter.minimizerResult.redchi
     newFitter = ModelFitterBootstrap(fitter.roadrunnerModel,
           newObservedTS,  
@@ -106,6 +108,7 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
           parameterLowerBound=fitter.lowerBound,
           parameterUpperBound=fitter.upperBound,
           fittedDataTransformDct=fitter.fittedDataTransformDct,
+          logger=fitter._logger,
           isPlot=fitter._isPlot)
     fittedStatistic = TimeseriesStatistic(newFitter.observedTS,
           percentiles=[])
@@ -159,7 +162,7 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
 class ModelFitterBootstrap(mfc.ModelFitterCore):
 
     def bootstrap(self, numIteration:int=10, 
-          reportInterval:int=100,
+          reportInterval:int=1000,
           synthesizerClass=ObservationSynthesizerRandomizedResiduals,
           maxProcess:int=None,
           serializePath:str=None,
@@ -207,7 +210,7 @@ class ModelFitterBootstrap(mfc.ModelFitterCore):
         queue = multiprocessing.Queue()
         results = []
         # Set to False for debug so not doing multiple processes
-        if True:
+        if False:
             for args in args_list:
                 p = multiprocessing.Process(target=_runBootstrap,
                       args=(args, queue,))

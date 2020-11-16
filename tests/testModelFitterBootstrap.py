@@ -7,6 +7,7 @@ Created on Aug 19, 2020
 """
 
 from SBstoat import _modelFitterBootstrap as mfb
+from SBstoat.modelStudy import ModelStudy
 from SBstoat.namedTimeseries import NamedTimeseries, TIME
 from tests import _testHelpers as th
 from SBstoat.observationSynthesizer import  \
@@ -23,11 +24,13 @@ import time
 import unittest
 
 
-IGNORE_TEST = False
-IS_PLOT = False
-TIMESERIES = th.getTimeseries()
-FITTER = th.getFitter(cls=mfb.ModelFitterBootstrap)
-FITTER.fitModel()
+
+IGNORE_TEST = True
+IS_PLOT = True
+if False:
+    TIMESERIES = th.getTimeseries()
+    FITTER = th.getFitter(cls=mfb.ModelFitterBootstrap)
+    FITTER.fitModel()
 NUM_ITERATION = 50
 DIR = os.path.dirname(os.path.abspath(__file__))
 FILE_SERIALIZE = os.path.join(DIR, "modelFitterBootstrap.pcl")
@@ -39,6 +42,11 @@ STD_UNIFORM = np.sqrt(1.0/12)  # Standard deviation of uniform
 class TestModelFitterBootstrap(unittest.TestCase):
 
     def setUp(self):
+        if IGNORE_TEST:
+            return
+        self._init()
+
+    def _init(self):
         self._remove()
         self.timeseries = TIMESERIES
         self.fitter = FITTER
@@ -191,6 +199,52 @@ class TestModelFitterBootstrap(unittest.TestCase):
               reportInterval=100, maxProcess=2, std=0.01)
         result = self.fitter.bootstrapResult
         self.assertTrue(result is not None)
+
+    def testBootstrapErrorOnException(self):
+        # TESTING
+        ANTIMONY_MODEL  = '''
+            // Equations
+            E1: T -> E ; beta*T*V ; // Target cells to exposed
+            E2: E -> I ; kappa*E ;  // Exposed cells to infected
+            E3: -> V ; p*I ;        // Virus production by infected cells
+            E4: V -> ; c*V ;        // Virus clearance
+            E5: I -> ; delta*I      // Death of infected cells    
+        
+            // Parameters - from the Influenza article,
+                
+            beta = 3.2e-5;  // rate of transition of target(T) to exposed(E) cells, in units of 1/[V] * 1/day
+            kappa = 4.0;    // rate of transition from exposed(E) to infected(I) cells, in units of 1/day
+            delta = 5.2;    // rate of death of infected cells(I), in units of 1/day
+            p = 4.6e-2;     // rate virus(V) producion by infected cells(I), in units of [V]/day
+            c = 5.2;        // rate of virus clearance, in units of 1/day
+        
+            // Initial conditions
+            T = 4E+8 // estimate of the total number of susceptible epithelial cells
+                     // in upper respiratory tract)
+            E = 0
+            I = 0
+            V = 0.75 // the dose of virus in TCID50 in Influenza experiment; could be V=0 and I = 20 instead for a natural infection
+            
+            // Computed values
+            log10V := log10(V)
+        
+        '''
+        arr = np.array([range(7), [2,5.5,4,5.5,3,0,0]])
+        arr = np.resize(arr, (2, 7))
+        arr = arr.transpose()
+        dataSource = NamedTimeseries(array=arr, colnames=["time", "log10V"])
+        parameterDct = dict(
+              beta=(0, 10e-5, 3.2e-5),
+              kappa=(0, 10, 4.0),
+              delta=(0, 10, 5.2),
+              p=(0, 1, 4.6e-2),
+              c=(0, 10, 5.2),
+              )
+        study = ModelStudy(ANTIMONY_MODEL, [dataSource],
+                    parameterDct=parameterDct,
+                    selectedColumns=["log10V"],
+                    doSerialize=False, useSerialized=False)
+        study.bootstrap(numIteration=5)
 
 
 if __name__ == '__main__':

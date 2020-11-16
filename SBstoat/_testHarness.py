@@ -23,6 +23,18 @@ HTTP200 = 200
 HTTP = "http://"
 
 
+class TestHarnessResult(object):
+
+    def __init__(self):
+        self.parameterRelErrorDct = {}
+
+    def addParameter(self, name, relerror):
+        self.parameterRelErrorDct[name] = relerror
+
+    def __repr__(self):
+        return str(self.parameterRelErrorDct)
+
+
 class TestHarness(object):
 
     def __init__(self, sbmlPath:str,
@@ -51,6 +63,8 @@ class TestHarness(object):
             self._logger = kwargs["logger"]
         else:
             self._logger = _logger.Logger()
+        self.fitModelResult = TestHarnessResult()
+        self.bootstrapResult = TestHarnessResult()
 
     def _checkNamesInModel(self, names:typing.List[str], errorMsgPattern:str):
         """
@@ -96,12 +110,13 @@ class TestHarness(object):
         errorMsgPatter = "Parameter name is not in model: %s"
         self._checkNamesInModel(self.parametersToFit, errorMsgPattern)
 
-    def _checkParameters(self, params, relError):
+    def _checkParameters(self, params, relError, testHarnessResult):
         valuesDct = params.valuesdict()
         for name in self.parameterValueDct.keys():
             estimatedValue = valuesDct[name]
             actualRelError = _helpers.calcRelError(self.parameterValueDct[name],
                   estimatedValue)
+            testHarnessResult.addParameter(name, actualRelError)
             if actualRelError > relError:
                 self._logger.result("Parameter %s has high relError: %2.3f"
                       % (name, actualRelError))
@@ -148,7 +163,7 @@ class TestHarness(object):
               **self.kwargs)
         # Evaluate the fit
         fitter.fitModel()
-        self._checkParameters(fitter.params, relError)
+        self._checkParameters(fitter.params, relError, self.fitModelResult)
         # Evaluate bootstrap
         fitter.bootstrap(numIteration=100)
-        self._checkParameters(fitter.bootstrapResult.params, relError)
+        self._checkParameters(fitter.bootstrapResult.params, relError, self.bootstrapResult)

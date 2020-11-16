@@ -22,7 +22,7 @@ class TestFunctions(unittest.TestCase):
         if IGNORE_TEST:
             return
         result = _helpers.calcRelError(1.5, 1)
-        self.assertEquals(result, 1.0/3)
+        self.assertEqual(result, 1.0/3)
         result = _helpers.calcRelError(1.5, 1, isAbsolute=False)
         self.assertEquals(result, -1.0/3)
         #

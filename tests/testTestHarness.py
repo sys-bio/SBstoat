@@ -11,9 +11,11 @@ import os
 import unittest
 
 
-IGNORE_TEST = False
-IS_PLOT = False
+IGNORE_TEST = True
+IS_PLOT = True
 DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_DIR = os.path.join(os.path.dirname(DIR), "biomodels")
+PATH_PAT = os.path.join(DATA_DIR, "BIOMD0000000%d.xml")
 INPUT_PATH = os.path.join(DIR, "BIOMD0000000339.xml")
 VARIABLE_NAMES = ["Va_Xa", "IIa_Tmod", "VIIa_TF"]
 PARAMETER_NAMES = ["r27_c", "r28_c", "r29_c"]
@@ -43,8 +45,10 @@ class TestFunctions(unittest.TestCase):
     def testEvaluate(self):
         # TESTING
         logger = Logger(isReport=False)
-        harness = TestHarness(URL_603, logger=logger)
-        harness.evaluate(stdResiduals=0)
+        #harness = TestHarness(URL_603, logger=logger)
+        input_path = PATH_PAT % 200
+        harness = TestHarness(input_path, logger=logger)
+        harness.evaluate(stdResiduals=1.0, fractionParameterDeviation=1.0)
         import pdb; pdb.set_trace()
        
 

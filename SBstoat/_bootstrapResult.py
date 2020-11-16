@@ -205,10 +205,7 @@ class BootstrapResult(rpickle.RPickler):
         if numIteration > 0:
             # Merge the statistics for fitted timeseries
             fittedStatistics = [b.fittedStatistic for b in bootstrapResults]
-            try:
-                fittedStatistic = TimeseriesStatistic.merge(fittedStatistics)
-            except ValueError:
-                import pdb; pdb.set_trace()
+            fittedStatistic = TimeseriesStatistic.merge(fittedStatistics)
             # Accumulate the results
             for bootstrapResult in bootstrapResults:
                 for parameter in parameterDct.keys():

@@ -105,9 +105,6 @@ class ModelStudy(object):
             roadrunner model or antimony model
         dataSources: list-NamedTimeseries/list-str or dict of either
             str: path to CSV file
-        parametersToFit: list-str/None
-            parameters in the model that you want to fit
-            if None, no parameters are fit
         dirStudyPath: str
             Path to the output directory containing the serialized fitters
             for the study.

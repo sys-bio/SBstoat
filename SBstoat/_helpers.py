@@ -103,6 +103,8 @@ def filterOutliersFromZero(data, maxSL):
     data: iterable-float
     maxSL: float
         Maximum significance level to accept a difference in variance
+        A larger maxSL means more filtering since it's more likely that an
+        extreme value will be filtered.
     
     Returns
     -------
@@ -112,11 +114,10 @@ def filterOutliersFromZero(data, maxSL):
         """
         Calculates the significance level that the variance of the first array
         is larger than the variance of the second array.
-        Parameters
-        ----------
         
         Returns
         -------
+        float
         """
         def calc(arr):
             return np.var(arr), len(arr) - 1
