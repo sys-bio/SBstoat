@@ -49,6 +49,11 @@ class TestHarness(object):
         parametersToFit: names of parameters to fit
         kwargs: passed to ModelFitter constructor
         """
+        if "logger" in kwargs.keys():
+            self._logger = kwargs["logger"]
+        else:
+            self._logger = _logger.Logger()
+        #
         self.sbmlPath = sbmlPath
         self.selectedColumns = selectedColumns
         self.parametersToFit = parametersToFit
@@ -59,10 +64,6 @@ class TestHarness(object):
             self.parametersToFit = list(self.roadRunner.getGlobalParameterIds())
         self.parameterValueDct = {p: self.roadRunner[p]
               for p in self.parametersToFit}
-        if "logger" in kwargs.keys():
-            self._logger = kwargs["logger"]
-        else:
-            self._logger = _logger.Logger()
         self.fitModelResult = TestHarnessResult()
         self.bootstrapResult = TestHarnessResult()
 
@@ -74,10 +75,32 @@ class TestHarness(object):
         ----------
         names: what to check
         errorMsgPattern: string pattern taking one argument (name) for error msg
+        Handles names that get transformed with a trailing "_"
         
         Raises ValueError
         """
         if self.selectedColumns is None:
+            # FIXME: Resolve issue with spurious addition of "_"
+            if False:
+                self.selectedColumns = []
+                data = self.roadRunner.simulate()
+                for string in data.colnames:
+                    if string[0] == "[":
+                        name = string[1:-1]
+                    else:
+                        name = string
+                    if name in self.roadRunner.keys():
+                        self.selectedColumns.append(name)
+                    else:
+                        newName = "%s_" % name
+                        if newName in self.roadRunner.keys():
+                            msg = "Variable %s appears as %s in output."  \
+                                  % (name, newName)
+                            self._logger.status(msg)
+                            self.selectedColumns.append(newName)
+                        else:
+                            msg = "Variable %s does not appear in output." % name
+                            self._logger.status(msg)
             return
         for name in self.selectedColumns:
             if not name in self.roadRunner.model.keys():

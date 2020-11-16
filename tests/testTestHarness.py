@@ -7,6 +7,7 @@ Created on Nov 11, 2020
 from SBstoat._testHarness import TestHarness
 from SBstoat._logger import Logger
 
+import numpy as np
 import os
 import unittest
 
@@ -43,13 +44,21 @@ class TestFunctions(unittest.TestCase):
             self.harness = TestHarness("dummy", VARIABLE_NAMES, PARAMETER_NAMES)
 
     def testEvaluate(self):
+        # Works for: 200, 210
         # TESTING
-        logger = Logger(isReport=False)
-        #harness = TestHarness(URL_603, logger=logger)
-        input_path = PATH_PAT % 200
-        harness = TestHarness(input_path, logger=logger)
-        harness.evaluate(stdResiduals=1.0, fractionParameterDeviation=1.0)
-        import pdb; pdb.set_trace()
+        modelNums = 200 + np.array(range(20))
+        for modelNum in modelNums:
+            logger = Logger(isReport=True)
+            #harness = TestHarness(URL_603, logger=logger)
+            input_path = PATH_PAT % 210
+            harness = TestHarness(input_path, logger=logger)
+            harness.evaluate(stdResiduals=1.0, fractionParameterDeviation=1.0,
+                  relError=2.0)
+            print("\n\n*** Model %d" % modelNum)
+            print("\n** Fit Model")
+            print(harness.fitModelResult)
+            print("\n** Bootstrap")
+            print(harness.bootstrapResult)
        
 
 

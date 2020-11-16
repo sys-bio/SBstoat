@@ -485,12 +485,9 @@ class ModelFitterCore(rpickle.RPickler):
                     lower_factor = LOWER_PARAMETER_MULT
                 lower = get(specification.lower, specification.value, lower_factor)
                 upper = get(specification.upper, specification.value, upper_factor)
-                if lower == upper:
+                if np.isclose(lower - upper, 0):
                     upper = 0.0001
-                try:
-                    params.add(parameterName, value=value, min=lower, max=upper)
-                except:
-                    import pdb; pdb.set_trace()
+                params.add(parameterName, value=value, min=lower, max=upper)
             else:
                 value = np.mean([self.lowerBound, self.upperBound])
                 params.add(parameterName, value=value,
