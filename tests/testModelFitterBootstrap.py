@@ -25,8 +25,8 @@ import unittest
 
 
 
-IGNORE_TEST = True
-IS_PLOT = True
+IGNORE_TEST = False
+IS_PLOT = False
 if False:
     TIMESERIES = th.getTimeseries()
     FITTER = th.getFitter(cls=mfb.ModelFitterBootstrap)
@@ -201,7 +201,8 @@ class TestModelFitterBootstrap(unittest.TestCase):
         self.assertTrue(result is not None)
 
     def testBootstrapErrorOnException(self):
-        # TESTING
+        if IGNORE_TEST:
+            return
         ANTIMONY_MODEL  = '''
             // Equations
             E1: T -> E ; beta*T*V ; // Target cells to exposed
