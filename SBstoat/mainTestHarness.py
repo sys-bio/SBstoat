@@ -34,8 +34,9 @@ FIG_FILE = "mainTestHarness.png"
 
 class Runner(object):
 
-    def __init__(self, firstModel=210, numModel=2, useExisting=False):
+    def __init__(self, firstModel=210, numModel=2, useExisting=False, reportInterval=10):
         self.useExisting = useExisting and os.path.isfile(PCL_FILE)
+        self.reportInterval = reportInterval
         if self.useExisting:
             self.restore()
         else:
@@ -66,8 +67,10 @@ class Runner(object):
                     self.bootstrapRelerrors.extend(values)
                 except:
                     erroredModels.append(modelNum)
-            self.numNoError = self.numModel - len(erroredModels)
-            self.save()
+                self.numNoError = self.numModel - len(erroredModels)
+                self.save()
+                if modelNum % self.reportInterval == 0:
+                    print("*** Processed model %d" % modelNum)
         self.plot()
 
     def save(self):
