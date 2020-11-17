@@ -154,8 +154,8 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
             except Exception as err:
                 bootstrapError += 1
         fitter._logger.status("Completed bootstrap process %d." % (processIdx + 1))
-    bootstrapResult = BootstrapResult(fitter, numSuccessIteration, parameterDct,
-          fittedStatistic, bootstrapError=bootstrapError)
+        bootstrapResult = BootstrapResult(fitter, numSuccessIteration, parameterDct,
+              fittedStatistic, bootstrapError=bootstrapError)
     if queue is None:
         return bootstrapResult
     else:

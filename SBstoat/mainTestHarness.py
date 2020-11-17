@@ -38,7 +38,8 @@ class Runner(object):
 
     def __init__(self, firstModel:int=210, numModel:int=2,
           pclPath=PCL_FILE, figPath=FIG_FILE,
-          useExisting:bool=False, reportInterval:int=10):
+          useExisting:bool=False, reportInterval:int=10,
+          isPlot=IS_PLOT):
         """
         Parameters
         ----------
@@ -49,6 +50,7 @@ class Runner(object):
         """
         self.pclPath = pclPath
         self.figPath = figPath
+        self.isPlot = isPlot
         self.reportInterval = reportInterval
         self.useExisting = useExisting and os.path.isfile(PCL_FILE)
         if self.useExisting:
@@ -60,6 +62,32 @@ class Runner(object):
             self.fitModelRelerrors = []
             self.bootstrapRelerrors = []
             self.processedModels = []
+
+    def _isListSame(self, list1, list2):
+        diff = set(list1).symmetric_difference(list2)
+        return len(diff) == 0
+
+    def equals(self, other):
+        selfKeys = list(self.__dict__.keys())
+        otherKeys = list(other.__dict__.keys())
+        if not self._isListSame(selfKeys, otherKeys):
+            return False
+        #
+        for key in selfKeys:
+            if isinstance(self.__getattribute__(key), list):
+                isEqual = self._isListSame(
+                      self.__getattribute__(key), other.__getattribute__(key))
+                if not isEqual:
+                    return True
+            else:
+                if self.__getattribute__(key) != other.__getattribute__(key):
+                    return False
+        return True
+           
+
+        for attr in ["firstModel", "numModel", "numNoError"]:
+            if self.__getattribute__(attr) != other.__getattribute__(attr):
+                return False
 
     def run(self):
         """
@@ -130,7 +158,10 @@ class Runner(object):
         lastModel = self.firstModel + len(self.processedModels)
         suptitle = suptitle % (self.firstModel, lastModel, frac)
         plt.suptitle(suptitle)
-        plt.savefig(self.figPath)
+        if self.isPlot:
+            plt.show()
+        else:
+            plt.savefig(self.figPath)
     
     def plotRelativeErrors(self, ax, relErrors, title):
         ax.hist(relErrors)
