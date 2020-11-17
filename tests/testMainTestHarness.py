@@ -20,7 +20,7 @@ PCL_PATH = os.path.join(DIR, "testMainTestHarness.pcl")
 FIG_PATH = os.path.join(DIR, "testMainTestHarness.png")
 FILES = [PCL_PATH, FIG_PATH]
 FIRST_MODEL = 200
-NUM_MODEL = 1
+NUM_MODEL = 2
        
  
 class TestRunner(unittest.TestCase):
@@ -28,7 +28,8 @@ class TestRunner(unittest.TestCase):
     def setUp(self):
         self._remove()
         self.runner = Runner(firstModel=FIRST_MODEL, numModel=NUM_MODEL,
-              useExisting=False, figPath=FIG_PATH, pclPath=PCL_PATH)
+              useExisting=False, figPath=FIG_PATH, pclPath=PCL_PATH,
+              isPlot=IS_PLOT)
     
     def tearDown(self):
         self._remove()
@@ -48,7 +49,8 @@ class TestRunner(unittest.TestCase):
         if IGNORE_TEST:
             return
         runner = Runner(firstModel=300, numModel=2,
-              useExisting=False, figPath=FIG_PATH, pclPath=PCL_PATH)
+              useExisting=False, figPath=FIG_PATH, pclPath=PCL_PATH,
+              isPlot=IS_PLOT)
         runner.run()
         self.assertGreater(len(runner.fitModelRelerrors), 0)
         self.assertGreater(len(runner.bootstrapRelerrors), 0)
@@ -61,11 +63,13 @@ class TestRunner(unittest.TestCase):
         self.assertTrue(os.path.isfile(PCL_PATH))
         #
         runner = Runner(firstModel=FIRST_MODEL, numModel=NUM_MODEL,
-              useExisting=True, figPath=FIG_PATH, pclPath=PCL_PATH)
+              useExisting=True, figPath=FIG_PATH, pclPath=PCL_PATH,
+              isPlot=IS_PLOT)
         runner.useExisting = False  # Change so that test works
         self.assertTrue(self.runner.equals(runner))
 
 
 if __name__ == '__main__':
-    matplotlib.use('TkAgg')
+    if IS_PLOT:
+        matplotlib.use('TkAgg')
     unittest.main()

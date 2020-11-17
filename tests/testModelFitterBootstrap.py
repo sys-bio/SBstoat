@@ -27,10 +27,9 @@ import unittest
 
 IGNORE_TEST = False
 IS_PLOT = False
-if False:
-    TIMESERIES = th.getTimeseries()
-    FITTER = th.getFitter(cls=mfb.ModelFitterBootstrap)
-    FITTER.fitModel()
+TIMESERIES = th.getTimeseries()
+FITTER = th.getFitter(cls=mfb.ModelFitterBootstrap)
+FITTER.fitModel()
 NUM_ITERATION = 50
 DIR = os.path.dirname(os.path.abspath(__file__))
 FILE_SERIALIZE = os.path.join(DIR, "modelFitterBootstrap.pcl")
