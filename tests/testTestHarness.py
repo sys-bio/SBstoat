@@ -12,8 +12,8 @@ import os
 import unittest
 
 
-IGNORE_TEST = True
-IS_PLOT = True
+IGNORE_TEST = False
+IS_PLOT = False
 DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(os.path.dirname(DIR), "biomodels")
 PATH_PAT = os.path.join(DATA_DIR, "BIOMD0000000%d.xml")
@@ -45,8 +45,9 @@ class TestFunctions(unittest.TestCase):
 
     def testEvaluate(self):
         # Works for: 200, 210
-        # TESTING
-        modelNums = 205 + np.array(range(20))
+        if IGNORE_TEST:
+            return
+        modelNums = 200 + np.array(range(2))
         fitModelRelerrors = []
         bootstrapRelerrors = []
         erroredModels = []
@@ -67,8 +68,8 @@ class TestFunctions(unittest.TestCase):
                 bootstrapRelerrors.extend(values)
             except:
                 erroredModels.append(modelNum)
-        import pdb; pdb.set_trace()
-       
+        self.assertEqual(len(nonErroredModels), 1)
+        self.assertEqual(len(erroredModels), 1)
 
 
 if __name__ == '__main__':
