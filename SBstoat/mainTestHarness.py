@@ -14,7 +14,11 @@ import os
 import pandas as pd
 import pickle
 
-matplotlib.use('TkAgg')
+# Handle problem with module load
+try:
+    matplotlib.use('TkAgg')
+except ImportError:
+    pass
 
 
 IGNORE_TEST = True
@@ -170,5 +174,5 @@ class Runner(object):
     
 
 if __name__ == '__main__':
-    runner = Runner(firstModel=400, numModel=200, useExisting=True)
+    runner = Runner(firstModel=400, numModel=400, useExisting=False)
     runner.run()
