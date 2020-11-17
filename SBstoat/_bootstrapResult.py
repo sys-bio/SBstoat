@@ -54,8 +54,11 @@ class BootstrapResult(rpickle.RPickler):
             # list of parameters
             self.parameters = list(self.parameterDct.keys())
             # Number of simulations
-            self.numSimulation =  \
-                  len(self.parameterDct[self.parameters[0]])
+            if len(self.parameters) > 0:
+                self.numSimulation =  \
+                      len(self.parameterDct[self.parameters[0]])
+            else:
+                self.numSimulation = 0
             if self.numSimulation > 1:
                 # means of parameter values
                 self.parameterMeanDct = {p: np.mean(parameterDct[p])

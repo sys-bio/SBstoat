@@ -46,19 +46,28 @@ class TestFunctions(unittest.TestCase):
     def testEvaluate(self):
         # Works for: 200, 210
         # TESTING
-        modelNums = 200 + np.array(range(20))
+        modelNums = 205 + np.array(range(20))
+        fitModelRelerrors = []
+        bootstrapRelerrors = []
+        erroredModels = []
+        nonErroredModels = []
         for modelNum in modelNums:
-            logger = Logger(isReport=True)
-            #harness = TestHarness(URL_603, logger=logger)
-            input_path = PATH_PAT % 210
-            harness = TestHarness(input_path, logger=logger)
-            harness.evaluate(stdResiduals=1.0, fractionParameterDeviation=1.0,
-                  relError=2.0)
-            print("\n\n*** Model %d" % modelNum)
-            print("\n** Fit Model")
-            print(harness.fitModelResult)
-            print("\n** Bootstrap")
-            print(harness.bootstrapResult)
+            logger = Logger(isReport=False)
+            input_path = PATH_PAT % modelNum
+            try:
+                harness = TestHarness(input_path, logger=logger)
+                harness.evaluate(stdResiduals=1.0, fractionParameterDeviation=1.0,
+                      relError=2.0)
+                nonErroredModels.append(modelNum)
+                values = [v for v in 
+                      harness.fitModelResult.parameterRelErrorDct.values()]
+                fitModelRelerrors.extend(values)
+                values = [v for v in 
+                      harness.bootstrapResult.parameterRelErrorDct.values()]
+                bootstrapRelerrors.extend(values)
+            except:
+                erroredModels.append(modelNum)
+        import pdb; pdb.set_trace()
        
 
 
