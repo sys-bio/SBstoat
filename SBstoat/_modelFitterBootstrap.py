@@ -56,7 +56,7 @@ class _Arguments():
         self.processIdx = processIdx
         self.synthesizerClass = synthesizerClass
         self.kwargs = kwargs
-            
+       
 
 ################# FUNCTIONS ####################
 def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
@@ -107,26 +107,26 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
         # Initialize
         parameterDct = {p: [] for p in fitter.parametersToFit}
         numSuccessIteration = 0
-        newObservedTS = synthesizer.calculate()
         lastReport = 0
         if fitter.minimizerResult is None:
             fitter.fitModel()
         baseChisq = fitter.minimizerResult.redchi
-        newFitter = ModelFitterBootstrap(fitter.roadrunnerModel,
-              newObservedTS,  
-              fitter.parametersToFit,
-              selectedColumns=fitter.selectedColumns,
-              method=fitter._method,
-              parameterLowerBound=fitter.lowerBound,
-              parameterUpperBound=fitter.upperBound,
-              fittedDataTransformDct=fitter.fittedDataTransformDct,
-              logger=fitter._logger,
-              isPlot=fitter._isPlot)
-        fittedStatistic = TimeseriesStatistic(newFitter.observedTS,
-              percentiles=[])
         # Do the bootstrap iterations
         bootstrapError = 0
         for iteration in range(numIteration*ITERATION_MULTIPLIER):
+            newObservedTS = synthesizer.calculate()
+            newFitter = ModelFitterBootstrap(fitter.roadrunnerModel,
+                  newObservedTS,  
+                  fitter.parametersToFit,
+                  selectedColumns=fitter.selectedColumns,
+                  method=fitter._method,
+                  parameterLowerBound=fitter.lowerBound,
+                  parameterUpperBound=fitter.upperBound,
+                  fittedDataTransformDct=fitter.fittedDataTransformDct,
+                  logger=fitter._logger,
+                  isPlot=fitter._isPlot)
+            fittedStatistic = TimeseriesStatistic(newFitter.observedTS,
+                  percentiles=[])
             try:
                 if (iteration > 0) and (iteration != lastReport)  \
                         and (processIdx == 0):
@@ -150,9 +150,9 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
                     continue
                 if newFitter.minimizerResult.redchi > MAX_CHISQ_MULT*baseChisq:
                     if IS_REPORT:
-                        fitter._logger.status("Fit has high chisq: %2.2f on iteration %d."
-                              % iteration 
-                              % newFitter.minimizerResult.redchi)
+                        msg = "Fit has high chisq: %2.2f on iteration %d."
+                        fitter._logger.status(msg % (iteration ,
+                              newFitter.minimizerResult.redchi))
                     continue
                 numSuccessIteration += 1
                 dct = newFitter.params.valuesdict()

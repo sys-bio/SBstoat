@@ -255,15 +255,17 @@ class TestModelFitterBootstrap(unittest.TestCase):
               p=(0, 1, 4.6e-2),
               c=(0, 10, 5.2),
               )
+        if IGNORE_TEST:
+            logger = Logger()
+        else:
+            logger = LOGGER
         study = ModelStudy(ANTIMONY_MODEL, [dataSource],
                     parameterDct=parameterDct,
                     selectedColumns=["log10V"],
                     doSerialize=False, useSerialized=False,
-                    logger=LOGGER)
-        #           logger=Logger())
-        study.bootstrap(numIteration=5)
+                    logger=logger)
+        study.bootstrap(numIteration=50)
         fitter = study.fitterDct["src_1"]
-        # FIXME: Sometimes fails. Also, once fails, continues to do so.
         self.assertIsNotNone(fitter.bootstrapResult)
         for name in parameterDct.keys():
             value = fitter.bootstrapResult.params.valuesdict()[name]
