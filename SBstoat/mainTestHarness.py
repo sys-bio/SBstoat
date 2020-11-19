@@ -39,6 +39,10 @@ NUM_NOERROR = "num_noerror"
 NUM_MODEL = "num_model"
 FIG_FILE = "mainTestHarness.png"
 LOGGER = "logger"
+CONTEXT =  [ "firstModel", "numModel", "numNoError", "fitModelRelerrors",
+      "bootstrapRelerrors", "processedModels", "nonErroredModels", "erroredModels",
+      "modelParameterDct",
+      ]
 
 remove(LOG_FILE)  # Start fresh each run
 
@@ -73,12 +77,16 @@ class Runner(object):
         if self.useExisting:
             self.restore()
         else:
+            # Must be consistent with the variable CONTEXT
             self.firstModel = firstModel
             self.numModel = numModel
             self.numNoError = 0
             self.fitModelRelerrors = []
             self.bootstrapRelerrors = []
             self.processedModels = []
+            self.nonErroredModels = []
+            self.erroredModels = []
+            self.modelParameterDct = {}
 
     def _isListSame(self, list1, list2):
         diff = set(list1).symmetric_difference(list2)
@@ -100,12 +108,8 @@ class Runner(object):
                     return False
             else:
                 pass
+        #
         return True
-           
-
-        for attr in ["firstModel", "numModel", "numNoError"]:
-            if self.__getattribute__(attr) != other.__getattribute__(attr):
-                return False
 
     def run(self):
         """
@@ -113,8 +117,6 @@ class Runner(object):
         """
         modelNums = self.firstModel + np.array(range(self.numModel))
         if not self.useExisting:
-            nonErroredModels = []
-            erroredModels = []
             for modelNum in modelNums:
                 if not modelNum in self.processedModels:
                     input_path = PATH_PAT % modelNum
@@ -122,16 +124,22 @@ class Runner(object):
                         harness = TestHarness(input_path, **self.kwargs)
                         harness.evaluate(stdResiduals=1.0, fractionParameterDeviation=1.0,
                               relError=2.0)
-                        nonErroredModels.append(modelNum)
+                        # Parameters for model
+                        self.modelParameterDct[modelNum] =  \
+                              list(harness.fitModelResult.parameterRelErrorDct.keys())
+                        # Relative error in initial fit
                         values = [v for v in 
                               harness.fitModelResult.parameterRelErrorDct.values()]
                         self.fitModelRelerrors.extend(values)
+                        # Relative error in bootstrap
                         values = [v for v in 
                               harness.bootstrapResult.parameterRelErrorDct.values()]
                         self.bootstrapRelerrors.extend(values)
+                        # Count models without exceptions
+                        self.nonErroredModels.append(modelNum)
                     except:
-                        erroredModels.append(modelNum)
-                    self.numNoError = self.numModel - len(erroredModels)
+                        self.erroredModels.append(modelNum)
+                    self.numNoError =  len(self.nonErroredModels)
                     self.processedModels.append(modelNum)
                     self.save()
                     if modelNum % self.reportInterval == 0:
@@ -143,9 +151,7 @@ class Runner(object):
         Saves state. Maintain in sync with self.restore().
         """
         if self.pclPath is not None:
-            data = [self.fitModelRelerrors, self.bootstrapRelerrors,
-                  self.numModel, self.numNoError, self.firstModel,
-                  self.processedModels],
+            data = [self.__getattribute__(n) for n in CONTEXT]
             with (open(self.pclPath, "wb")) as fd:
                 pickle.dump(data, fd)
 
@@ -155,10 +161,8 @@ class Runner(object):
         """
         if os.path.isfile(self.pclPath):
             with (open(self.pclPath, "rb")) as fd:
-                data = pickle.load(fd)[0]
-            self.fitModelRelerrors, self.bootstrapRelerrors,  \
-                  self.numModel, self.numNoError, self.firstModel,  \
-                  self.processedModels = data
+                data = pickle.load(fd)
+            [self.__setattr__(n, v) for n, v in zip(CONTEXT, data)]
         else:
             raise ValueError("***Restart file %s does not exist"
                   % self.pclPath)
@@ -172,7 +176,7 @@ class Runner(object):
         self.plotRelativeErrors(axes[1], self.bootstrapRelerrors, BOOTSTRAP)
         frac = 1.0*self.numNoError/len(self.processedModels)
         suptitle = "Models %d-%d. Fraction non-errored: %2.3f"
-        lastModel = self.firstModel + len(self.processedModels)
+        lastModel = self.firstModel + len(self.processedModels) - 1
         suptitle = suptitle % (self.firstModel, lastModel, frac)
         plt.suptitle(suptitle)
         if self.isPlot:
@@ -184,9 +188,10 @@ class Runner(object):
         ax.hist(relErrors)
         ax.set_title(title)
         ax.set_xlabel("relative error")
+        ax.set_xlim([0, 1])
     
 
 if __name__ == '__main__':
-    runner = Runner(firstModel=400, numModel=400, useExisting=False,
+    runner = Runner(firstModel=400, numModel=400, useExisting=True,
           logger=Logger(toFile=LOG_FILE))
     runner.run()

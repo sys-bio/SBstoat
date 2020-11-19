@@ -79,6 +79,14 @@ class TestRunner(unittest.TestCase):
         runner.useExisting = False  # Change so that test works
         self.assertTrue(self.runner.equals(runner))
 
+    def testBug(self):
+        if IGNORE_TEST:
+            return
+        runner = Runner(firstModel=596, numModel=1,
+              useExisting=False, figPath=FIG_PATH, pclPath=PCL_PATH,
+              isPlot=IS_PLOT, logger=Logger())
+        runner.run()
+
 
 if __name__ == '__main__':
     if IS_PLOT:

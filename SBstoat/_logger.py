@@ -23,25 +23,27 @@ class Logger(object):
         else:
             return None
 
-    def _write(self, msg):
+    def _write(self, msg, numNL):
+        relTime = time.time() - self.startTime
+        newLineStr = ('').join(["\n" for _ in range(numNL)])
+        newMsg = "%s%f: %s" % (newLineStr, relTime, msg)
         if self.toFile is None:
-            print(msg)
+            print(newMsg)
         else:
             with open(self.toFile, "a") as fd:
-                relTime = time.time() - self.startTime
-                fd.write("\n%f: %s" % (relTime, msg))
+                fd.write(newMsg)
 
     def activity(self, msg, preString=""):
        # Major processing activity
        if self.isReport:
-           self._write("\n\n***%s***" %msg)
+           self._write("***%s***" %msg, 2)
     
     def result(self, msg, preString=""):
        # Result of an activity
        if self.isReport:
-           self._write("\n **%s" %msg)
+           self._write("\n **%s" %msg, 1)
     
     def status(self, msg, preString=""):
        # Progress message
        if self.isReport:
-           self._write("    (%s)" %msg)
+           self._write("    (%s)" %msg, 0)
