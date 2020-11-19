@@ -105,19 +105,8 @@ def dump(obj, fd):
     global_dct = globals()
     save_global_dct = dict(global_dct)
     keys = list(global_dct.keys())
-    # FIXME: Do we need to clean globals before serializing?
-    if False:
-        for key in keys:
-            if (not "__" in key) and (key != full_module_name):
-                value = global_dct[key]
-                del global_dct[key]
     # Serialize
     pickle.dump(serialization, fd)
-    # Restore globals
-    # FIXME: Do we need to clean globals before serializing?
-    if False:
-        for key, value in global_dict:
-            global_dct[key] = save_global_dct[key]
 
 def load(fd):
     """

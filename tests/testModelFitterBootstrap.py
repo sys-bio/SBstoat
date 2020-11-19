@@ -263,7 +263,7 @@ class TestModelFitterBootstrap(unittest.TestCase):
         #           logger=Logger())
         study.bootstrap(numIteration=5)
         fitter = study.fitterDct["src_1"]
-        # FIXME: Sometimes fails
+        # FIXME: Sometimes fails. Also, once fails, continues to do so.
         self.assertIsNotNone(fitter.bootstrapResult)
         for name in parameterDct.keys():
             value = fitter.bootstrapResult.params.valuesdict()[name]
