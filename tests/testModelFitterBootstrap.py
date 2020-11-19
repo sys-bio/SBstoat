@@ -8,6 +8,7 @@ Created on Aug 19, 2020
 
 from SBstoat import _modelFitterBootstrap as mfb
 from SBstoat.modelStudy import ModelStudy
+from SBstoat._logger import Logger
 from SBstoat.namedTimeseries import NamedTimeseries, TIME
 from tests import _testHelpers as th
 from SBstoat.observationSynthesizer import  \
@@ -25,18 +26,31 @@ import unittest
 
 
 
+def remove(ffile):
+    if os.path.isfile(ffile):
+        os.remove(ffile)
+
 IGNORE_TEST = False
 IS_PLOT = False
 TIMESERIES = th.getTimeseries()
-FITTER = th.getFitter(cls=mfb.ModelFitterBootstrap)
+DIR = os.path.dirname(os.path.abspath(__file__))
+LOG_FILE = os.path.join(DIR, "testModelFitterBootstrap.log")
+LOGGER = Logger(toFile=LOG_FILE)
+if IGNORE_TEST:
+    # Write log to std output
+    FITTER = th.getFitter(cls=mfb.ModelFitterBootstrap)
+else:
+    FITTER = th.getFitter(cls=mfb.ModelFitterBootstrap, logger=LOGGER)
 FITTER.fitModel()
 NUM_ITERATION = 50
-DIR = os.path.dirname(os.path.abspath(__file__))
 FILE_SERIALIZE = os.path.join(DIR, "modelFitterBootstrap.pcl")
 FILES = [FILE_SERIALIZE]
 MEAN_UNIFORM = 0.5  # Mean of uniform distribution
 STD_UNIFORM = np.sqrt(1.0/12)  # Standard deviation of uniform
-        
+
+remove(LOG_FILE)  # Clean log file on each run
+
+
 
 class TestModelFitterBootstrap(unittest.TestCase):
 
@@ -56,8 +70,7 @@ class TestModelFitterBootstrap(unittest.TestCase):
 
     def _remove(self):
         for ffile in FILES:
-            if os.path.isfile(ffile):
-                os.remove(ffile)
+            remove(ffile)
 
     def testRunBootstrap(self):
         if IGNORE_TEST:
@@ -140,7 +153,8 @@ class TestModelFitterBootstrap(unittest.TestCase):
             return
         numIteration = 100
         self.fitter.bootstrap(numIteration=numIteration)
-        fitterLow = th.getFitter(cls=mfb.ModelFitterBootstrap)
+        fitterLow = th.getFitter(cls=mfb.ModelFitterBootstrap,
+            logger=LOGGER)
         # Filters more and so lower std
         fitterLow.bootstrap(numIteration=numIteration, filterSL=0.5)
         #
@@ -170,7 +184,8 @@ class TestModelFitterBootstrap(unittest.TestCase):
             self.assertTrue(isUpperOk)
         self.assertIsNotNone(self.fitter.bootstrapResult)
         #
-        fitter = mfb.ModelFitterBootstrap.deserialize(FILE_SERIALIZE)
+        fitter = mfb.ModelFitterBootstrap.deserialize(FILE_SERIALIZE,
+              logger=LOGGER)
         self.assertIsNotNone(fitter.bootstrapResult)
 
     def testGetParameter(self):
@@ -195,7 +210,7 @@ class TestModelFitterBootstrap(unittest.TestCase):
             return
         self.fitter.bootstrap(numIteration=500,
               synthesizerClass=ObservationSynthesizerRandomErrors,
-              reportInterval=100, maxProcess=2, std=0.01)
+              reportInterval=100, maxProcess=2, std=0.02)
         result = self.fitter.bootstrapResult
         self.assertTrue(result is not None)
 
@@ -243,8 +258,16 @@ class TestModelFitterBootstrap(unittest.TestCase):
         study = ModelStudy(ANTIMONY_MODEL, [dataSource],
                     parameterDct=parameterDct,
                     selectedColumns=["log10V"],
-                    doSerialize=False, useSerialized=False)
+                    doSerialize=False, useSerialized=False,
+                    logger=LOGGER)
+        #           logger=Logger())
         study.bootstrap(numIteration=5)
+        fitter = study.fitterDct["src_1"]
+        # FIXME: Sometimes fails
+        self.assertIsNotNone(fitter.bootstrapResult)
+        for name in parameterDct.keys():
+            value = fitter.bootstrapResult.params.valuesdict()[name]
+            self.assertIsNotNone(value)
 
 
 if __name__ == '__main__':

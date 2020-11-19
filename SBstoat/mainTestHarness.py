@@ -20,12 +20,16 @@ try:
 except ImportError:
     pass
 
+def remove(ffile):
+    if os.path.isfile(ffile):
+        os.remove(ffile)
 
 IGNORE_TEST = True
 IS_PLOT = True
 DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(os.path.dirname(DIR), "biomodels")
 PATH_PAT = os.path.join(DATA_DIR, "BIOMD0000000%d.xml")
+LOG_FILE = os.path.join(DIR, "mainTestHarness.log")
 FIRST_MODEL = 210
 NUM_MODEL = 2
 PCL_FILE = "mainTestHarness.pcl"
@@ -34,6 +38,9 @@ BOOTSTRAP = "bootstrap"
 NUM_NOERROR = "num_noerror"
 NUM_MODEL = "num_model"
 FIG_FILE = "mainTestHarness.png"
+LOGGER = "logger"
+
+remove(LOG_FILE)  # Start fresh each run
 
 
 class Runner(object):
@@ -43,7 +50,7 @@ class Runner(object):
     def __init__(self, firstModel:int=210, numModel:int=2,
           pclPath=PCL_FILE, figPath=FIG_FILE,
           useExisting:bool=False, reportInterval:int=10,
-          isPlot=IS_PLOT):
+          isPlot=IS_PLOT, **kwargs):
         """
         Parameters
         ----------
@@ -56,6 +63,12 @@ class Runner(object):
         self.figPath = figPath
         self.isPlot = isPlot
         self.reportInterval = reportInterval
+        self.kwargs = kwargs
+        if LOGGER in kwargs.keys():
+            self.logger = kwargs[LOGGER]
+        else:
+            self.logger = Logger()
+            kwargs[LOGGER] = self.logger
         self.useExisting = useExisting and os.path.isfile(PCL_FILE)
         if self.useExisting:
             self.restore()
@@ -77,15 +90,16 @@ class Runner(object):
         if not self._isListSame(selfKeys, otherKeys):
             return False
         #
-        for key in selfKeys:
-            if isinstance(self.__getattribute__(key), list):
-                isEqual = self._isListSame(
-                      self.__getattribute__(key), other.__getattribute__(key))
+        for key, value in self.__dict__.items():
+            if isinstance(value, list):
+                isEqual = self._isListSame(value, other.__getattribute__(key))
                 if not isEqual:
                     return True
-            else:
+            elif any([isinstance(value, t) for t in [int, str, float, bool]]):
                 if self.__getattribute__(key) != other.__getattribute__(key):
                     return False
+            else:
+                pass
         return True
            
 
@@ -103,10 +117,9 @@ class Runner(object):
             erroredModels = []
             for modelNum in modelNums:
                 if not modelNum in self.processedModels:
-                    logger = Logger(isReport=False)
                     input_path = PATH_PAT % modelNum
                     try:
-                        harness = TestHarness(input_path, logger=logger)
+                        harness = TestHarness(input_path, **self.kwargs)
                         harness.evaluate(stdResiduals=1.0, fractionParameterDeviation=1.0,
                               relError=2.0)
                         nonErroredModels.append(modelNum)
@@ -122,7 +135,7 @@ class Runner(object):
                     self.processedModels.append(modelNum)
                     self.save()
                     if modelNum % self.reportInterval == 0:
-                        print("*** Processed model %d" % modelNum)
+                        self.logger.result("Processed model %d" % modelNum)
         self.plot()
 
     def save(self):
@@ -174,5 +187,6 @@ class Runner(object):
     
 
 if __name__ == '__main__':
-    runner = Runner(firstModel=400, numModel=400, useExisting=False)
+    runner = Runner(firstModel=400, numModel=400, useExisting=False,
+          logger=Logger(toFile=LOG_FILE))
     runner.run()

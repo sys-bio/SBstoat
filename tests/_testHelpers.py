@@ -45,9 +45,9 @@ TEST_DATA_PATH = os.path.join(DIR, "tst_data.txt")
 def getTimeseries():
     return NamedTimeseries(TEST_DATA_PATH)
 
-def getFitter(cls=ModelFitterCore, isPlot=False):
+def getFitter(cls=ModelFitterCore, isPlot=False, **kwargs):
     return cls(ANTIMONY_MODEL, getTimeseries(),
-      list(PARAMETER_DCT.keys()), isPlot=isPlot)
+      list(PARAMETER_DCT.keys()), isPlot=isPlot, **kwargs)
 
 def getObservedFitted():
     fitter = getFitter()

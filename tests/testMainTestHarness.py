@@ -6,6 +6,7 @@ Created on Nov 16, 2020
 """
 
 from SBstoat.mainTestHarness import Runner
+from SBstoat._logger import Logger
 
 import os
 import unittest
@@ -20,7 +21,16 @@ PCL_PATH = os.path.join(DIR, "testMainTestHarness.pcl")
 FIG_PATH = os.path.join(DIR, "testMainTestHarness.png")
 FILES = [PCL_PATH, FIG_PATH]
 FIRST_MODEL = 200
-NUM_MODEL = 2
+NUM_MODEL = 4
+DIR = os.path.dirname(os.path.abspath(__file__))
+LOG_FILE = os.path.join(DIR, "testMaintTestHarness.log")
+if IGNORE_TEST:
+    LOGGER = Logger()
+else:
+    LOGGER = Logger(toFile=LOG_FILE)
+
+if os.path.isfile(LOG_FILE):
+    os.remove(LOG_FILE)
        
  
 class TestRunner(unittest.TestCase):
@@ -29,7 +39,7 @@ class TestRunner(unittest.TestCase):
         self._remove()
         self.runner = Runner(firstModel=FIRST_MODEL, numModel=NUM_MODEL,
               useExisting=False, figPath=FIG_PATH, pclPath=PCL_PATH,
-              isPlot=IS_PLOT)
+              isPlot=IS_PLOT, numIteration=20, logger=LOGGER)
     
     def tearDown(self):
         self._remove()
@@ -50,7 +60,7 @@ class TestRunner(unittest.TestCase):
             return
         runner = Runner(firstModel=300, numModel=2,
               useExisting=False, figPath=FIG_PATH, pclPath=PCL_PATH,
-              isPlot=IS_PLOT)
+              isPlot=IS_PLOT, logger=LOGGER)
         runner.run()
         self.assertGreater(len(runner.fitModelRelerrors), 0)
         self.assertGreater(len(runner.bootstrapRelerrors), 0)
@@ -64,7 +74,8 @@ class TestRunner(unittest.TestCase):
         #
         runner = Runner(firstModel=FIRST_MODEL, numModel=NUM_MODEL,
               useExisting=True, figPath=FIG_PATH, pclPath=PCL_PATH,
-              isPlot=IS_PLOT)
+              isPlot=IS_PLOT, logger=LOGGER)
+        runner.run()
         runner.useExisting = False  # Change so that test works
         self.assertTrue(self.runner.equals(runner))
 

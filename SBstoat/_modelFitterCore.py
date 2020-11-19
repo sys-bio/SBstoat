@@ -59,7 +59,8 @@ class ModelFitterCore(rpickle.RPickler):
                  parameterDct={},
                  fittedDataTransformDct={},
                  logger=Logger(),
-                 isPlot=True
+                 isPlot=True,
+                 **bootstrapKwargs
                  ):
         """
         Parameters
@@ -89,6 +90,8 @@ class ModelFitterCore(rpickle.RPickler):
         logger: Logger
         method: str
             method used for minimization
+        bootstrapKwargs: dict
+            Parameters used in bootstrap
 
         Usage
         -----
@@ -100,6 +103,7 @@ class ModelFitterCore(rpickle.RPickler):
             self.parametersToFit = parametersToFit
             self.lowerBound = parameterLowerBound
             self.upperBound = parameterUpperBound
+            self.bootstrapKwargs = bootstrapKwargs
             self.parameterDct = self._updateParameterDct(parameterDct)
             if self.parametersToFit is None:
                 self.parametersToFit = [p for p in self.parameterDct.keys()]

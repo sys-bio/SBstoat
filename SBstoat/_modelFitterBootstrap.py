@@ -19,17 +19,20 @@ from SBstoat.observationSynthesizer import  \
       ObservationSynthesizerRandomizedResiduals
 from SBstoat import _modelFitterCore as mfc
 from SBstoat import _helpers
+from SBstoat._logger import Logger
 
+import inspect
 import lmfit
 import multiprocessing
 import numpy as np
 import pandas as pd
 import random
+import sys
 import typing
 
 MAX_CHISQ_MULT = 5
 PERCENTILES = [2.5, 97.55]  # Percentile for confidence limits
-IS_REPORT = False
+IS_REPORT = True
 ITERATION_MULTIPLIER = 10  # Multiplier to calculate max bootsrap iterations
 ITERATION_PER_PROCESS = 20  # Numer of iterations handled by a process
 MAX_TRIES = 10  # Maximum number of tries to fit
@@ -72,14 +75,19 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
     """
     # Unapack arguments
     isSuccess = False
+    fitter = arguments.fitter
     for _ in range(MAX_TRIES):
         try:
-            fitter = arguments.fitter
             fitter.fitModel()  # Initialize model
             isSuccess = True
             break
         except:
             pass
+    # Set up logging for this process
+    fd = fitter._logger.getFileDescriptor()
+    if fd is not None:
+        sys.stderr = fitter._logger.getFileDescriptor()
+        sys.stdout = fitter._logger.getFileDescriptor()
     if not isSuccess:
         fitter._logger.result("Failed to fit.")
         fittedStatistic = TimeseriesStatistic(fitter.observedTS, percentiles=[])
@@ -137,7 +145,8 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
                 except ValueError:
                     # Problem with the fit. Don't numSuccessIteration it.
                     if IS_REPORT:
-                        fitter._logger.status("Fit failed on iteration %d." % iteration)
+                        fitter._logger.status("Fit failed on iteration %d." \
+                              % iteration)
                     continue
                 if newFitter.minimizerResult.redchi > MAX_CHISQ_MULT*baseChisq:
                     if IS_REPORT:
@@ -156,6 +165,9 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
         fitter._logger.status("Completed bootstrap process %d." % (processIdx + 1))
         bootstrapResult = BootstrapResult(fitter, numSuccessIteration, parameterDct,
               fittedStatistic, bootstrapError=bootstrapError)
+    if fd is not None:
+        if not fd.closed:
+            fd.close()
     if queue is None:
         return bootstrapResult
     else:
@@ -191,8 +203,22 @@ class ModelFitterBootstrap(mfc.ModelFitterCore):
             f.getParameterStds()  # standard deviations
 
         Notes
+            1. Arguments can be overriden by the constructor using
+               the keyword argument bootstrapKwargs.
         ----
         """
+        def get(name, value):
+            if name in self.bootstrapKwargs:
+                return self.bootstrapKwargs[name]
+            else:
+                return value
+        # Handle overrides of arguments specified in constructor
+        numIteration = get("numIteration", numIteration)
+        reportInterval = get("reportInterval", reportInterval)
+        synthesizerClass = get("synthesizerClass", synthesizerClass)
+        maxProcess = get("maxProcess", maxProcess)
+        serializePath = get("serializePath", serializePath)
+        # Other initializations       
         if maxProcess is None:
             maxProcess = multiprocessing.cpu_count()
         if self.minimizerResult is None:
