@@ -264,7 +264,7 @@ class TestModelFitterBootstrap(unittest.TestCase):
                     selectedColumns=["log10V"],
                     doSerialize=False, useSerialized=False,
                     logger=logger)
-        study.bootstrap(numIteration=50)
+        study.bootstrap(numIteration=100)
         fitter = study.fitterDct["src_1"]
         self.assertIsNotNone(fitter.bootstrapResult)
         for name in parameterDct.keys():

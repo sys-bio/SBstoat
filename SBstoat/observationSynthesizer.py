@@ -16,9 +16,12 @@ from SBstoat import _helpers
 
 import abc
 import numpy as np
+import time
 import typing
 
 
+# FIXME: Get same random sequence in different processes.
+#        Consider using the last digit in time.time() as a seed.
 class ObservationSynthesizer(abc.ABC):
 
 
@@ -34,16 +37,19 @@ class ObservationSynthesizer(abc.ABC):
         fittedTS: Fitted values
         residualsTS: Residual values
         """
-        self._observedTS = observedTS
+        self._observedTS = observedTS.copy()
         self._fittedTS = fittedTS
-        if fittedTS is not None:
-            self._fittedTS = fittedTS.copy()
         self._residualsTS = residualsTS
+        if self._fittedTS is not None:
+            self._fittedTS = self._fittedTS.copy()
+        if self._residualsTS is not None:
+            self._residualsTS = self._residualsTS.copy()
         # Set the columns based on the information provided
         for ts in [self._observedTS, self._fittedTS, self._residualsTS]:
             if ts is not None:
                 self.columns = ts.colnames
                 break
+        np.random.seed()  # Ensure different sequences on each invocation
 
     @property
     def observedTS(self):

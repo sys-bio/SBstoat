@@ -89,7 +89,7 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
         sys.stderr = fitter._logger.getFileDescriptor()
         sys.stdout = fitter._logger.getFileDescriptor()
     if not isSuccess:
-        fitter._logger.result("Failed to fit.")
+        fitter._logger.result("Process %d: Failed to fit." % processIdx)
         fittedStatistic = TimeseriesStatistic(fitter.observedTS, percentiles=[])
         bootstrapResult = BootstrapResult(fitter, 0, {},
               fittedStatistic)
@@ -115,6 +115,7 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
         bootstrapError = 0
         for iteration in range(numIteration*ITERATION_MULTIPLIER):
             newObservedTS = synthesizer.calculate()
+            std = np.std(newObservedTS.flatten())
             newFitter = ModelFitterBootstrap(fitter.roadrunnerModel,
                   newObservedTS,  
                   fitter.parametersToFit,
@@ -133,8 +134,8 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
                     totalSuccessIteration = numSuccessIteration*processingRate
                     totalIteration = iteration*processingRate
                     if totalIteration % reportInterval == 0:
-                        msg = "bootstrap completed %d iterations with %d successes."
-                        msg = msg % (totalIteration, totalSuccessIteration)
+                        msg = "Process %d: bootstrap completed %d iterations with %d successes."
+                        msg = msg % (processIdx, totalIteration, totalSuccessIteration)
                         fitter._logger.status(msg)
                         lastReport = numSuccessIteration
                 if numSuccessIteration >= numIteration:
@@ -145,14 +146,14 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
                 except ValueError:
                     # Problem with the fit. Don't numSuccessIteration it.
                     if IS_REPORT:
-                        fitter._logger.status("Fit failed on iteration %d." \
-                              % iteration)
+                        fitter._logger.status("Proces %d: Fit failed on iteration %d." \
+                              % (processIdx, iteration))
                     continue
                 if newFitter.minimizerResult.redchi > MAX_CHISQ_MULT*baseChisq:
                     if IS_REPORT:
-                        msg = "Fit has high chisq: %2.2f on iteration %d."
-                        fitter._logger.status(msg % (iteration ,
-                              newFitter.minimizerResult.redchi))
+                        msg = "Process %d: Fit has high chisq: %2.2f on iteration %d."
+                        fitter._logger.status(msg % (processIdx,
+                              newFitter.minimizerResult.redchi, iteration))
                     continue
                 numSuccessIteration += 1
                 dct = newFitter.params.valuesdict()
@@ -162,7 +163,7 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
                 newFitter.observedTS = synthesizer.calculate()
             except Exception as err:
                 bootstrapError += 1
-        fitter._logger.status("Completed bootstrap process %d." % (processIdx + 1))
+        fitter._logger.status("Process %d: completed bootstrap." % (processIdx + 1))
         bootstrapResult = BootstrapResult(fitter, numSuccessIteration, parameterDct,
               fittedStatistic, bootstrapError=bootstrapError)
     if fd is not None:
