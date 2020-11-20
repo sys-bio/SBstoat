@@ -146,13 +146,13 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
                 except ValueError:
                     # Problem with the fit. Don't numSuccessIteration it.
                     if IS_REPORT:
-                        fitter._logger.status("Proces %d: Fit failed on iteration %d." \
+                        fitter._logger.exception("Proces %d: Fit failed on iteration %d." \
                               % (processIdx, iteration))
                     continue
                 if newFitter.minimizerResult.redchi > MAX_CHISQ_MULT*baseChisq:
                     if IS_REPORT:
                         msg = "Process %d: Fit has high chisq: %2.2f on iteration %d."
-                        fitter._logger.status(msg % (processIdx,
+                        fitter._logger.exception(msg % (processIdx,
                               newFitter.minimizerResult.redchi, iteration))
                     continue
                 numSuccessIteration += 1

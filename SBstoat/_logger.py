@@ -9,13 +9,22 @@ Messages are structured as follows:
 import sys
 import time
 
+LEVEL_ACTIVITY = 1
+LEVEL_RESULT = 2
+LEVEL_STATUS = 3
+LEVEL_EXCEPTION = 4
+LEVEL_MAX = LEVEL_EXCEPTION
+
 
 class Logger(object):
 
-    def __init__(self, isReport=True, toFile=None):
+    # Logging levels: 1
+
+    def __init__(self, isReport=True, toFile=None, logLevel=LEVEL_MAX):
         self.isReport = isReport
         self.toFile = toFile
         self.startTime = time.time()
+        self.level = logLevel
 
     def getFileDescriptor(self):
         if self.toFile is not None:
@@ -35,15 +44,20 @@ class Logger(object):
 
     def activity(self, msg, preString=""):
        # Major processing activity
-       if self.isReport:
+       if self.isReport and (self.level >= LEVEL_ACTIVITY):
            self._write("***%s***" %msg, 2)
     
     def result(self, msg, preString=""):
        # Result of an activity
-       if self.isReport:
+       if self.isReport and (self.level >= LEVEL_RESULT):
            self._write("\n **%s" %msg, 1)
     
     def status(self, msg, preString=""):
        # Progress message
-       if self.isReport:
+       if self.isReport and (self.level >= LEVEL_STATUS):
+           self._write("    (%s)" %msg, 0)
+    
+    def exception(self, msg, preString=""):
+       # Progress message
+       if self.isReport and (self.level >= LEVEL_EXCEPTION):
            self._write("    (%s)" %msg, 0)
