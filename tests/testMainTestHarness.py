@@ -23,7 +23,7 @@ FILES = [PCL_PATH, FIG_PATH]
 FIRST_MODEL = 200
 NUM_MODEL = 4
 DIR = os.path.dirname(os.path.abspath(__file__))
-LOG_FILE = os.path.join(DIR, "testMaintTestHarness.log")
+LOG_FILE = os.path.join(DIR, "testMainTestHarness.log")
 if IGNORE_TEST:
     LOGGER = Logger()
 else:
