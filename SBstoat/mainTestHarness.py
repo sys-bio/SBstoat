@@ -7,6 +7,7 @@ Runs TestHarness for BioModels
 from SBstoat._testHarness import TestHarness
 from SBstoat._logger import Logger
 
+import argparse
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
@@ -20,16 +21,13 @@ try:
 except ImportError:
     pass
 
-def remove(ffile):
-    if os.path.isfile(ffile):
-        os.remove(ffile)
-
 IGNORE_TEST = True
 IS_PLOT = True
 DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(os.path.dirname(DIR), "biomodels")
 PATH_PAT = os.path.join(DATA_DIR, "BIOMD0000000%d.xml")
-LOG_FILE = os.path.join(DIR, "mainTestHarness.log")
+LOG_PATH = os.path.join(DIR, "mainTestHarness.log")
+FIG_PATH = os.path.join(DIR, "mainTestHarness.png")
 FIRST_MODEL = 210
 NUM_MODEL = 2
 PCL_FILE = "mainTestHarness.pcl"
@@ -37,22 +35,37 @@ FIT_MODEL = "fitModel"
 BOOTSTRAP = "bootstrap"
 NUM_NOERROR = "num_noerror"
 NUM_MODEL = "num_model"
-FIG_FILE = "mainTestHarness.png"
 LOGGER = "logger"
 CONTEXT =  [ "firstModel", "numModel", "numNoError", "fitModelRelerrors",
       "bootstrapRelerrors", "processedModels", "nonErroredModels", "erroredModels",
       "modelParameterDct",
       ]
 
-remove(LOG_FILE)  # Start fresh each run
 
 
+############### FUNCTIONS ##################
+def str2Bool(v):
+    if isinstance(v, bool):
+       return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
+
+def remove(ffile):
+    if os.path.isfile(ffile):
+        os.remove(ffile)
+
+
+############### CLASSES ##################
 class Runner(object):
 
     """Runs tests on biomodels."""
 
     def __init__(self, firstModel:int=210, numModel:int=2,
-          pclPath=PCL_FILE, figPath=FIG_FILE,
+          pclPath=PCL_FILE, figPath=FIG_PATH,
           useExisting:bool=False, reportInterval:int=10,
           isPlot=IS_PLOT, **kwargs):
         """
@@ -192,6 +205,24 @@ class Runner(object):
     
 
 if __name__ == '__main__':
-    runner = Runner(firstModel=100, numModel=840, useExisting=False,
-          logger=Logger(toFile=LOG_FILE))
+    parser = argparse.ArgumentParser(description='SBstoat tests for BioModels.')
+    parser.add_argument('--firstModel', type=int,
+        help='First BioModel to process.', default=100)
+    parser.add_argument('--numModel', type=int,
+        help='Number of models to process.', default=1)
+    parser.add_argument('--useExisting', nargs=1, type=str2Bool,
+        help="Use saved data from an previous run.",
+        default = 'True')
+    parser.add_argument('--logPath', type=str, help='Path for log file.',
+        default=LOG_PATH)
+    parser.add_argument('--figPath', type=str, help='Path for figure.',
+        default=FIG_PATH)
+    args = parser.parse_args()
+    #
+    remove(args.logPath)  # Start fresh each run
+    runner = Runner(firstModel=args.firstModel,
+                    numModel=args.numModel,
+                    useExisting=args.useExisting,
+                    figPath=args.figPath,
+                    logger=Logger(toFile=args.logPath))
     runner.run()

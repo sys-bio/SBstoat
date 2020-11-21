@@ -57,12 +57,17 @@ class TestLogger(unittest.TestCase):
         fd = self.logger.getFileDescriptor()
         self.assertIsInstance(fd, io.TextIOWrapper)
 
+    def _checkMsg(self, msg):
+        lines = self.read()
+        true = any([MSG in t for t in lines])
+        self.assertTrue(true)
+        return lines
+
     def testWrite(self):
         if IGNORE_TEST:
             return
         self.logger._write(MSG, 0)
-        lines = self.read()
-        self.assertTrue(MSG in lines[0])
+        _ = self._checkMsg(MSG)
 
     def _testApi(self, method, logLevel):
         if IGNORE_TEST:
@@ -70,9 +75,7 @@ class TestLogger(unittest.TestCase):
         logger = _logger.Logger(toFile=LOG_PATH, logLevel=logLevel)
         stmt = "logger.%s(MSG)" % method
         exec(stmt)
-        line1s = self.read()
-        true = any([MSG in t for t in line1s])
-        self.assertTrue(true)
+        line1s = self._checkMsg(MSG)
         #
         logger = _logger.Logger(toFile=LOG_PATH, logLevel=0)
         stmt = "logger.%s(MSG)" % method
