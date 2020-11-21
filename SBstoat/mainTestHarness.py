@@ -25,7 +25,7 @@ IGNORE_TEST = True
 IS_PLOT = True
 DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(os.path.dirname(DIR), "biomodels")
-PATH_PAT = os.path.join(DATA_DIR, "BIOMD0000000%d.xml")
+PATH_PAT = os.path.join(DATA_DIR, "BIOMD0000000%03d.xml")
 LOG_PATH = os.path.join(DIR, "mainTestHarness.log")
 FIG_PATH = os.path.join(DIR, "mainTestHarness.png")
 FIRST_MODEL = 210
@@ -40,7 +40,6 @@ CONTEXT =  [ "firstModel", "numModel", "numNoError", "fitModelRelerrors",
       "bootstrapRelerrors", "processedModels", "nonErroredModels", "erroredModels",
       "modelParameterDct",
       ]
-
 
 
 ############### FUNCTIONS ##################
@@ -185,8 +184,13 @@ class Runner(object):
         Does all plots.
         """
         fig, axes = plt.subplots(1, 2)
-        self.plotRelativeErrors(axes[0], self.fitModelRelerrors, FIT_MODEL)
-        self.plotRelativeErrors(axes[1], self.bootstrapRelerrors, BOOTSTRAP)
+        maxBin1 = self._plotRelativeErrors(axes[0], self.fitModelRelerrors, FIT_MODEL)
+        maxBin2 = self._plotRelativeErrors(axes[1], self.bootstrapRelerrors, BOOTSTRAP)
+        maxBin = max(maxBin1, maxBin2)
+        if maxBin > 0:
+            axes[0].set_ylim([0, maxBin])
+            axes[1].set_ylim([0, maxBin])
+        #
         frac = 1.0*self.numNoError/len(self.processedModels)
         suptitle = "Models %d-%d. Fraction non-errored: %2.3f"
         lastModel = self.firstModel + len(self.processedModels) - 1
@@ -197,11 +201,25 @@ class Runner(object):
         else:
             plt.savefig(self.figPath)
     
-    def plotRelativeErrors(self, ax, relErrors, title):
-        ax.hist(relErrors)
+    def _plotRelativeErrors(self, ax, relErrors, title):
+        """
+        Plots histogram of relative errors.
+
+        Parameters
+        ----------
+        ax: Matplotlib.axes
+        relErrors: list-float
+        title: str
+        
+        Returns
+        -------
+        float: maximum number in a bin
+        """
+        rr = ax.hist(relErrors)
         ax.set_title(title)
         ax.set_xlabel("relative error")
         ax.set_xlim([0, 1])
+        return max(rr[0])
     
 
 if __name__ == '__main__':
@@ -212,7 +230,7 @@ if __name__ == '__main__':
         help='Number of models to process.', default=1)
     parser.add_argument('--useExisting', nargs=1, type=str2Bool,
         help="Use saved data from an previous run.",
-        default = 'True')
+        default = [True])
     parser.add_argument('--logPath', type=str, help='Path for log file.',
         default=LOG_PATH)
     parser.add_argument('--figPath', type=str, help='Path for figure.',
@@ -222,7 +240,7 @@ if __name__ == '__main__':
     remove(args.logPath)  # Start fresh each run
     runner = Runner(firstModel=args.firstModel,
                     numModel=args.numModel,
-                    useExisting=args.useExisting,
+                    useExisting=args.useExisting[0],
                     figPath=args.figPath,
                     logger=Logger(toFile=args.logPath))
     runner.run()
