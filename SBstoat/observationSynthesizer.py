@@ -37,9 +37,11 @@ class ObservationSynthesizer(abc.ABC):
         fittedTS: Fitted values
         residualsTS: Residual values
         """
-        self._observedTS = observedTS.copy()
+        self._observedTS = observedTS
         self._fittedTS = fittedTS
         self._residualsTS = residualsTS
+        if self._observedTS is not None:
+            self._observedTS = self._observedTS.copy()
         if self._fittedTS is not None:
             self._fittedTS = self._fittedTS.copy()
         if self._residualsTS is not None:

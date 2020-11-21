@@ -85,6 +85,7 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
             pass
     # Set up logging for this process
     fd = fitter._logger.getFileDescriptor()
+    processIdx = arguments.processIdx
     if fd is not None:
         sys.stderr = fitter._logger.getFileDescriptor()
         sys.stdout = fitter._logger.getFileDescriptor()
@@ -96,7 +97,6 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
     else:
         numIteration = arguments.numIteration
         reportInterval = arguments.reportInterval
-        processIdx = arguments.processIdx
         processingRate = min(arguments.numProcess,
                              multiprocessing.cpu_count())
         cols = fitter.selectedColumns

@@ -122,8 +122,8 @@ class Runner(object):
                     input_path = PATH_PAT % modelNum
                     try:
                         harness = TestHarness(input_path, **self.kwargs)
-                        harness.evaluate(stdResiduals=1.0, fractionParameterDeviation=1.0,
-                              relError=2.0)
+                        harness.evaluate(stdResiduals=1.0,
+                              fractionParameterDeviation=1.0, relError=2.0)
                         # Parameters for model
                         self.modelParameterDct[modelNum] =  \
                               list(harness.fitModelResult.parameterRelErrorDct.keys())
@@ -192,6 +192,6 @@ class Runner(object):
     
 
 if __name__ == '__main__':
-    runner = Runner(firstModel=400, numModel=400, useExisting=True,
+    runner = Runner(firstModel=100, numModel=840, useExisting=False,
           logger=Logger(toFile=LOG_FILE))
     runner.run()

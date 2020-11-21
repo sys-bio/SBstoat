@@ -35,7 +35,7 @@ class Logger(object):
     def _write(self, msg, numNL):
         relTime = time.time() - self.startTime
         newLineStr = ('').join(["\n" for _ in range(numNL)])
-        newMsg = "%s%f: %s" % (newLineStr, relTime, msg)
+        newMsg = "\n%s%f: %s" % (newLineStr, relTime, msg)
         if self.toFile is None:
             print(newMsg)
         else:

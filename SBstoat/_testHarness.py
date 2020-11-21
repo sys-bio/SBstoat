@@ -159,7 +159,6 @@ class TestHarness(object):
         fractionParameterDeviation: fractional amount that the parameter can vary
         """
         msg = "Model %s" % self.sbmlPath
-        msg += "\n   parameters: %s" % str(self.selectedColumns)
         self._logger.activity(msg)
         # Construct synthetic observations
         if self.selectedColumns is None:
