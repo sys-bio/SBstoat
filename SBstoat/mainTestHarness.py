@@ -36,9 +36,16 @@ BOOTSTRAP = "bootstrap"
 NUM_NOERROR = "num_noerror"
 NUM_MODEL = "num_model"
 LOGGER = "logger"
+# Context variables that are saved. Uses the following naming convention:
+#  ends in "s" is a list: initialized to []
+#  ends in "Dct" is a dict: initialized to {}
+#  ends in "Path" is file path: initialized to None
+#  begins with "is" is a bool: initialized to False
+#  otherwise: int: initialized to 0
 CONTEXT =  [ "firstModel", "numModel", "numNoError", "fitModelRelerrors",
       "bootstrapRelerrors", "processedModels", "nonErroredModels", "erroredModels",
-      "modelParameterDct",
+      "modelParameterDct", "pclPath", "figPath", "isPlot", "reportInterval",
+      "kwargDct"
       ]
 
 
@@ -65,8 +72,9 @@ class Runner(object):
 
     def __init__(self, firstModel:int=210, numModel:int=2,
           pclPath=PCL_FILE, figPath=FIG_PATH,
-          useExisting:bool=False, reportInterval:int=10,
-          isPlot=IS_PLOT, **kwargs):
+          useExistingData:bool=False, reportInterval:int=10,
+          onlyPlot=False,
+          isPlot=IS_PLOT, **kwargDct):
         """
         Parameters
         ----------
@@ -74,31 +82,43 @@ class Runner(object):
         numModel: number of models to use
         pclPath: file to which results are saved
         reportInterval: how frequently report progress
+        useExistingData: use data in existing PCL file
         """
+        self.useExistingData = useExistingData and os.path.isfile(pclPath)
+        self.onlyPlot = onlyPlot
+        if self.onlyPlot and (not self.useExistingData):
+            raise ValueError("Only plot option requires specifying pclPath and useExistingData.")
+        # Recover previously saved results if desired
+        if self.useExistingData:
+            self.restore(pclPath=pclPath)
+        else:
+            # Initialize based on type of context variable
+            for name in CONTEXT:
+                if name[-1:] == "s":
+                    self.__setattr__(name, [])
+                elif name[-3:]  == "Dct":
+                    self.__setattr__(name, {})
+                elif name[-4:]  == "Path":
+                    self.__setattr__(name, None)
+                elif name[0:2]  == "is":
+                    self.__setattr__(name, False)
+                else:
+                    self.__setattr__(name, 0)
+        # Initialize to parameters for this instantiation
+        self.firstModel = firstModel
+        self.numModel = numModel
         self.pclPath = pclPath
         self.figPath = figPath
         self.isPlot = isPlot
         self.reportInterval = reportInterval
-        self.kwargs = kwargs
-        if LOGGER in kwargs.keys():
-            self.logger = kwargs[LOGGER]
+        self.kwargDct = kwargDct
+        #
+        if LOGGER in kwargDct.keys():
+            self.logger = kwargDct[LOGGER]
         else:
             self.logger = Logger()
-            kwargs[LOGGER] = self.logger
-        self.useExisting = useExisting and os.path.isfile(PCL_FILE)
-        if self.useExisting:
-            self.restore()
-        else:
-            # Must be consistent with the variable CONTEXT
-            self.firstModel = firstModel
-            self.numModel = numModel
-            self.numNoError = 0
-            self.fitModelRelerrors = []
-            self.bootstrapRelerrors = []
-            self.processedModels = []
-            self.nonErroredModels = []
-            self.erroredModels = []
-            self.modelParameterDct = {}
+            kwargDct[LOGGER] = self.logger
+        self.save()
 
     def _isListSame(self, list1, list2):
         diff = set(list1).symmetric_difference(list2)
@@ -114,7 +134,7 @@ class Runner(object):
             if isinstance(value, list):
                 isEqual = self._isListSame(value, other.__getattribute__(key))
                 if not isEqual:
-                    return True
+                    return False
             elif any([isinstance(value, t) for t in [int, str, float, bool]]):
                 if self.__getattribute__(key) != other.__getattribute__(key):
                     return False
@@ -127,18 +147,25 @@ class Runner(object):
         """
         Runs the tests. Saves state after each tests.
         """
+        # Check for plot only
+        if self.onlyPlot:
+            self.plot()
+            return
+        # Processing models
         modelNums = self.firstModel + np.array(range(self.numModel))
         for modelNum in modelNums:
-            if (not modelNum in self.processedModels) or (not self.useExisting):
+            if (not modelNum in self.processedModels) or (not self.useExistingData):
                 input_path = PATH_PAT % modelNum
+                self.processedModels.append(modelNum)
                 try:
-                    harness = TestHarness(input_path, **self.kwargs)
+                    harness = TestHarness(input_path, **self.kwargDct)
                     if len(harness.parametersToFit) == 0:
                         self.logger.result("No fitable parameters in model.")
                         break
                     harness.evaluate(stdResiduals=1.0,
                           fractionParameterDeviation=1.0, relError=2.0)
                 except Exception as err:
+                    self.erroredModels.append(modelNum)
                     self.logger.error("TestHarness failed", err)
                     continue
                 # Parameters for model
@@ -154,9 +181,7 @@ class Runner(object):
                 self.bootstrapRelerrors.extend(values)
                 # Count models without exceptions
                 self.nonErroredModels.append(modelNum)
-                self.erroredModels.append(modelNum)
                 self.numNoError =  len(self.nonErroredModels)
-                self.processedModels.append(modelNum)
                 self.save()
                 if modelNum % self.reportInterval == 0:
                     self.logger.result("Processed model %d" % modelNum)
@@ -171,12 +196,14 @@ class Runner(object):
             with (open(self.pclPath, "wb")) as fd:
                 pickle.dump(data, fd)
 
-    def restore(self):
+    def restore(self, pclPath=None):
         """
         Restores state. Maintain in sync with self.save().
         """
-        if os.path.isfile(self.pclPath):
-            with (open(self.pclPath, "rb")) as fd:
+        if pclPath is None:
+            pclPath = self.pclPath
+        if os.path.isfile(pclPath):
+            with (open(pclPath, "rb")) as fd:
                 data = pickle.load(fd)
             [self.__setattr__(n, v) for n, v in zip(CONTEXT, data)]
         else:
@@ -235,19 +262,27 @@ if __name__ == '__main__':
         help='First BioModel to process.', default=100)
     parser.add_argument('--numModel', type=int,
         help='Number of models to process.', default=1)
-    parser.add_argument('--useExisting', nargs=1, type=str2Bool,
+    parser.add_argument('--useExistingData', nargs=1, type=str2Bool,
         help="Use saved data from an previous run.",
         default = [True])
     parser.add_argument('--logPath', type=str, help='Path for log file.',
         default=LOG_PATH)
     parser.add_argument('--figPath', type=str, help='Path for figure.',
         default=FIG_PATH)
+    parser.add_argument('--onlyPlot', nargs=1, type=str2Bool,
+        help="Just plot what exists from a previous run.",
+        default = [False])
+    parser.add_argument('--useExistingLog', nargs=1, type=str2Bool,
+        help="Append to the existing log file, if it exists.",
+        default = [False])
     args = parser.parse_args()
     #
-    remove(args.logPath)  # Start fresh each run
+    if not args.useExistingLog:
+        remove(args.logPath)
     runner = Runner(firstModel=args.firstModel,
                     numModel=args.numModel,
-                    useExisting=args.useExisting[0],
+                    useExistingData=args.useExistingData[0],
                     figPath=args.figPath,
+                    onlyPlot=args.onlyPlot[0],
                     logger=Logger(toFile=args.logPath))
     runner.run()
