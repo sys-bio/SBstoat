@@ -128,36 +128,38 @@ class Runner(object):
         Runs the tests. Saves state after each tests.
         """
         modelNums = self.firstModel + np.array(range(self.numModel))
-        if not self.useExisting:
-            for modelNum in modelNums:
-                if not modelNum in self.processedModels:
-                    input_path = PATH_PAT % modelNum
+        for modelNum in modelNums:
+            if (not modelNum in self.processedModels) or (not self.useExisting):
+                input_path = PATH_PAT % modelNum
+                try:
                     harness = TestHarness(input_path, **self.kwargs)
-                    try:
-                        harness.evaluate(stdResiduals=1.0,
-                              fractionParameterDeviation=1.0, relError=2.0)
-                    except Exception as err:
-                        self.logger.error("TestHarness failed", err)
-                        continue
-                    # Parameters for model
-                    self.modelParameterDct[modelNum] =  \
-                          list(harness.fitModelResult.parameterRelErrorDct.keys())
-                    # Relative error in initial fit
-                    values = [v for v in 
-                          harness.fitModelResult.parameterRelErrorDct.values()]
-                    self.fitModelRelerrors.extend(values)
-                    # Relative error in bootstrap
-                    values = [v for v in 
-                          harness.bootstrapResult.parameterRelErrorDct.values()]
-                    self.bootstrapRelerrors.extend(values)
-                    # Count models without exceptions
-                    self.nonErroredModels.append(modelNum)
-                    self.erroredModels.append(modelNum)
-                    self.numNoError =  len(self.nonErroredModels)
-                    self.processedModels.append(modelNum)
-                    self.save()
-                    if modelNum % self.reportInterval == 0:
-                        self.logger.result("Processed model %d" % modelNum)
+                    if len(harness.parametersToFit) == 0:
+                        self.logger.result("No fitable parameters in model.")
+                        break
+                    harness.evaluate(stdResiduals=1.0,
+                          fractionParameterDeviation=1.0, relError=2.0)
+                except Exception as err:
+                    self.logger.error("TestHarness failed", err)
+                    continue
+                # Parameters for model
+                self.modelParameterDct[modelNum] =  \
+                      list(harness.fitModelResult.parameterRelErrorDct.keys())
+                # Relative error in initial fit
+                values = [v for v in 
+                      harness.fitModelResult.parameterRelErrorDct.values()]
+                self.fitModelRelerrors.extend(values)
+                # Relative error in bootstrap
+                values = [v for v in 
+                      harness.bootstrapResult.parameterRelErrorDct.values()]
+                self.bootstrapRelerrors.extend(values)
+                # Count models without exceptions
+                self.nonErroredModels.append(modelNum)
+                self.erroredModels.append(modelNum)
+                self.numNoError =  len(self.nonErroredModels)
+                self.processedModels.append(modelNum)
+                self.save()
+                if modelNum % self.reportInterval == 0:
+                    self.logger.result("Processed model %d" % modelNum)
         self.plot()
 
     def save(self):
