@@ -454,8 +454,10 @@ class ModelFitterCore(rpickle.RPickler):
         for parameter in self.parametersToFit:
             try:
                 self.roadrunnerModel.model[parameter] = pp[parameter]
-            except Exception:
-                self._logger.status("Could not set value for %s" % parameter)
+            except Exception as err:
+                msg = "_modelFitterCore/_setupModel: Could not set value for %s"  \
+                      % parameter
+                self._logger.error(msg, err)
 
     def mkParams(self, parameterDct:dict=None)->lmfit.Parameters:
         """
@@ -487,11 +489,18 @@ class ModelFitterCore(rpickle.RPickler):
                 else:
                     upper_factor = UPPER_PARAMETER_MULT
                     lower_factor = LOWER_PARAMETER_MULT
-                lower = get(specification.lower, specification.value, lower_factor)
-                upper = get(specification.upper, specification.value, upper_factor)
+                lower = get(specification.lower, specification.value,
+                      lower_factor)
+                upper = get(specification.upper, specification.value,
+                      upper_factor)
                 if np.isclose(lower - upper, 0):
                     upper = 0.0001
-                params.add(parameterName, value=value, min=lower, max=upper)
+                try:
+                    params.add(parameterName, value=value, min=lower, max=upper)
+                except Exception as err:
+                    msg = "modelFitterCore/mkParams parameterName %s" \
+                          % parameterName
+                    self._logger.error(msg, err)
             else:
                 value = np.mean([self.lowerBound, self.upperBound])
                 params.add(parameterName, value=value,

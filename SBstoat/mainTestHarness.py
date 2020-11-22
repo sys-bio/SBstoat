@@ -132,25 +132,27 @@ class Runner(object):
             for modelNum in modelNums:
                 if not modelNum in self.processedModels:
                     input_path = PATH_PAT % modelNum
+                    harness = TestHarness(input_path, **self.kwargs)
                     try:
-                        harness = TestHarness(input_path, **self.kwargs)
                         harness.evaluate(stdResiduals=1.0,
                               fractionParameterDeviation=1.0, relError=2.0)
-                        # Parameters for model
-                        self.modelParameterDct[modelNum] =  \
-                              list(harness.fitModelResult.parameterRelErrorDct.keys())
-                        # Relative error in initial fit
-                        values = [v for v in 
-                              harness.fitModelResult.parameterRelErrorDct.values()]
-                        self.fitModelRelerrors.extend(values)
-                        # Relative error in bootstrap
-                        values = [v for v in 
-                              harness.bootstrapResult.parameterRelErrorDct.values()]
-                        self.bootstrapRelerrors.extend(values)
-                        # Count models without exceptions
-                        self.nonErroredModels.append(modelNum)
-                    except:
-                        self.erroredModels.append(modelNum)
+                    except Exception as err:
+                        self.logger.error("TestHarness failed", err)
+                        continue
+                    # Parameters for model
+                    self.modelParameterDct[modelNum] =  \
+                          list(harness.fitModelResult.parameterRelErrorDct.keys())
+                    # Relative error in initial fit
+                    values = [v for v in 
+                          harness.fitModelResult.parameterRelErrorDct.values()]
+                    self.fitModelRelerrors.extend(values)
+                    # Relative error in bootstrap
+                    values = [v for v in 
+                          harness.bootstrapResult.parameterRelErrorDct.values()]
+                    self.bootstrapRelerrors.extend(values)
+                    # Count models without exceptions
+                    self.nonErroredModels.append(modelNum)
+                    self.erroredModels.append(modelNum)
                     self.numNoError =  len(self.nonErroredModels)
                     self.processedModels.append(modelNum)
                     self.save()
@@ -191,7 +193,10 @@ class Runner(object):
             axes[0].set_ylim([0, maxBin])
             axes[1].set_ylim([0, maxBin])
         #
-        frac = 1.0*self.numNoError/len(self.processedModels)
+        if len(self.processedModels) == 0:
+            frac = 0.0
+        else:
+            frac = 1.0*self.numNoError/len(self.processedModels)
         suptitle = "Models %d-%d. Fraction non-errored: %2.3f"
         lastModel = self.firstModel + len(self.processedModels) - 1
         suptitle = suptitle % (self.firstModel, lastModel, frac)

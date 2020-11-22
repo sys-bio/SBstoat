@@ -13,7 +13,8 @@ LEVEL_ACTIVITY = 1
 LEVEL_RESULT = 2
 LEVEL_STATUS = 3
 LEVEL_EXCEPTION = 4
-LEVEL_MAX = LEVEL_EXCEPTION
+LEVEL_ERROR = 5
+LEVEL_MAX = LEVEL_ERROR
 
 
 class Logger(object):
@@ -61,3 +62,9 @@ class Logger(object):
        # Progress message
        if self.isReport and (self.level >= LEVEL_EXCEPTION):
            self._write("    (%s)" %msg, 0)
+    
+    def error(self, msg, excp):
+       # Progress message
+       if self.isReport and (self.level >= LEVEL_ERROR):
+           fullMsg = "%s: %s" % (msg, str(excp))
+           self._write("    (%s)" % fullMsg, 0)

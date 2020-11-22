@@ -55,17 +55,31 @@ class TestHarness(object):
             self._logger = _logger.Logger()
         #
         self.sbmlPath = sbmlPath
-        self.selectedColumns = selectedColumns
-        self.parametersToFit = parametersToFit
-        self.kwargs = kwargs
         self.roadRunner = self._initializeRoadrunner()
-        self._validate()
-        if self.parametersToFit is None:
-            self.parametersToFit = list(self.roadRunner.getGlobalParameterIds())
+        self.selectedColumns = selectedColumns
+        self.parametersToFit = self._getSetableParameters(parametersToFit)
+        self.kwargs = kwargs
+        self.parametersToFit = self._getSetableParameters(parametersToFit)
         self.parameterValueDct = {p: self.roadRunner[p]
               for p in self.parametersToFit}
         self.fitModelResult = TestHarnessResult()
         self.bootstrapResult = TestHarnessResult()
+        self._validate()
+
+    def _getSetableParameters(self, initialParametersToFit):
+        if initialParametersToFit is None:
+            parameters = list(self.roadRunner.getGlobalParameterIds())
+        else:
+            parameters = initialParametersToFit
+        # See which parameters can be changed
+        parametersToFit = []
+        for parameter in parameters:
+            try:
+                self.roadRunner.model[parameter] = self.roadRunner.model[parameter]
+                parametersToFit.append(parameter)
+            except Exception:
+                pass
+        return parametersToFit
 
     def _checkNamesInModel(self, names:typing.List[str], errorMsgPattern:str):
         """
@@ -79,32 +93,9 @@ class TestHarness(object):
         
         Raises ValueError
         """
-        if self.selectedColumns is None:
-            # FIXME: Resolve issue with spurious addition of "_"
-            if False:
-                self.selectedColumns = []
-                data = self.roadRunner.simulate()
-                for string in data.colnames:
-                    if string[0] == "[":
-                        name = string[1:-1]
-                    else:
-                        name = string
-                    if name in self.roadRunner.keys():
-                        self.selectedColumns.append(name)
-                    else:
-                        newName = "%s_" % name
-                        if newName in self.roadRunner.keys():
-                            msg = "Variable %s appears as %s in output."  \
-                                  % (name, newName)
-                            self._logger.status(msg)
-                            self.selectedColumns.append(newName)
-                        else:
-                            msg = "Variable %s does not appear in output." % name
-                            self._logger.status(msg)
-            return
-        for name in self.selectedColumns:
-            if not name in self.roadRunner.model.keys():
-                raise ValueError(errorMsgPatter % name)
+        diffs = set(names).difference(self.roadRunner.model.keys())
+        if len(diffs) > 0:
+            raise ValueError(errorMsgPatter % str(diffs))
 
     def _initializeRoadrunner(self):
         """
@@ -115,10 +106,11 @@ class TestHarness(object):
         Roadrunner
         """
         try:
-            rr = te.roadrunner.ExtendedRoadRunner(self.sbmlPath)
+            rr = te.loads(self.sbmlPath)
         except Exception as err:
-            msg = "sbmlPath does is not a valid file path or URL: %s" \
+            msg = "sbmlPath is not a valid file path or URL: %s" \
                   % self.sbmlPath
+            self._logger.error("_initializeRoadrunner", err)
             raise ValueError(msg)
         return te.loads(self.sbmlPath)
 
@@ -128,12 +120,13 @@ class TestHarness(object):
         """
         # Validate the column names
         errorMsgPattern = "Variable name is not in model: %s"
-        self._checkNamesInModel(self.selectedColumns, errorMsgPattern)
+        if self.selectedColumns is not None:
+            self._checkNamesInModel(self.selectedColumns, errorMsgPattern)
         # Validate the parameter names
         errorMsgPatter = "Parameter name is not in model: %s"
         self._checkNamesInModel(self.parametersToFit, errorMsgPattern)
 
-    def _checkParameters(self, params, relError, testHarnessResult):
+    def _recordResult(self, params, relError, testHarnessResult):
         valuesDct = params.valuesdict()
         for name in self.parameterValueDct.keys():
             estimatedValue = valuesDct[name]
@@ -183,9 +176,11 @@ class TestHarness(object):
         fitter = ModelFitter(self.roadRunner, observedTS,
               selectedColumns=self.selectedColumns, parameterDct=parameterDct,
               **self.kwargs)
+        msg = "Fitting the parameters %s" % str(self.parameterValueDct.keys())
+        self._logger.result(msg)
         # Evaluate the fit
         fitter.fitModel()
-        self._checkParameters(fitter.params, relError, self.fitModelResult)
+        self._recordResult(fitter.params, relError, self.fitModelResult)
         # Evaluate bootstrap
         fitter.bootstrap(numIteration=100)
-        self._checkParameters(fitter.bootstrapResult.params, relError, self.bootstrapResult)
+        self._recordResult(fitter.bootstrapResult.params, relError, self.bootstrapResult)

@@ -76,13 +76,14 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
     # Unapack arguments
     isSuccess = False
     fitter = arguments.fitter
+    lastErr = ""
     for _ in range(MAX_TRIES):
         try:
             fitter.fitModel()  # Initialize model
             isSuccess = True
             break
-        except:
-            pass
+        except Exception as err:
+            lastErr = err
     # Set up logging for this process
     fd = fitter._logger.getFileDescriptor()
     processIdx = arguments.processIdx
@@ -90,7 +91,8 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
         sys.stderr = fitter._logger.getFileDescriptor()
         sys.stdout = fitter._logger.getFileDescriptor()
     if not isSuccess:
-        fitter._logger.result("Process %d: Failed to fit." % processIdx)
+        msg = "Process %d/modelFitterBootstrip/_runBootstrap" % processIdx
+        fitter._logger.error(msg,  lastErr)
         fittedStatistic = TimeseriesStatistic(fitter.observedTS, percentiles=[])
         bootstrapResult = BootstrapResult(fitter, 0, {},
               fittedStatistic)
@@ -143,11 +145,11 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
                     break
                 try:
                     newFitter.fitModel(params=fitter.params)
-                except ValueError:
+                except Exception as err:
                     # Problem with the fit. Don't numSuccessIteration it.
-                    if IS_REPORT:
-                        fitter._logger.exception("Proces %d: Fit failed on iteration %d." \
-                              % (processIdx, iteration))
+                    msg = "Proces %d/modelFitterBootstrap" % processIdx
+                    msg += " Fit failed on iteration %d."  % iteration
+                    fitter._logger.error(msg, err)
                     continue
                 if newFitter.minimizerResult.redchi > MAX_CHISQ_MULT*baseChisq:
                     if IS_REPORT:
@@ -162,6 +164,9 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
                 fittedStatistic.accumulate(newFitter.fittedTS)
                 newFitter.observedTS = synthesizer.calculate()
             except Exception as err:
+                msg = "Proces %d/modelFitterBootstrap" % processIdx
+                msg += " Error on iteration %d."  % iteration
+                fitter._logger.error(msg, err)
                 bootstrapError += 1
         fitter._logger.status("Process %d: completed bootstrap." % (processIdx + 1))
         bootstrapResult = BootstrapResult(fitter, numSuccessIteration, parameterDct,
@@ -253,8 +258,9 @@ class ModelFitterBootstrap(mfc.ModelFitterCore):
                 # Get rid of possible zombies
                 for process in processes:
                     process.terminate()
-            except:
-                self._logger.result("Caught exception in main.")
+            except Exception as err:
+                msg = "modelFitterBootstrap/Error in process management"
+                self._logger.error(msg, err)
             finally:
                 pass
         else:

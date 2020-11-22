@@ -14,8 +14,8 @@ import matplotlib
 import matplotlib.pyplot as plt
 
 
-IGNORE_TEST = False
-IS_PLOT = False
+IGNORE_TEST = True
+IS_PLOT = True
 DIR = os.path.dirname(os.path.abspath(__file__))
 PCL_PATH = os.path.join(DIR, "testMainTestHarness.pcl")
 FIG_PATH = os.path.join(DIR, "testMainTestHarness.png")
@@ -80,9 +80,8 @@ class TestRunner(unittest.TestCase):
         self.assertTrue(self.runner.equals(runner))
 
     def testBug(self):
-        if IGNORE_TEST:
-            return
-        runner = Runner(firstModel=596, numModel=1,
+        # TESTING
+        runner = Runner(firstModel=607, numModel=1,
               useExisting=False, figPath=FIG_PATH, pclPath=PCL_PATH,
               isPlot=IS_PLOT, logger=Logger())
         runner.run()
