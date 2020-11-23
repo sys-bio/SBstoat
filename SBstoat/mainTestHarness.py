@@ -1,5 +1,24 @@
 """
-Runs TestHarness for BioModels
+Runs TestHarness for BioModels. Creates:
+    *.png figure that plots relative errors
+    *.pcl file with data collected from run
+    *.log file with information about run
+
+ Common usage:
+
+  # Access information about command arguments
+  python SBstoat/mainTestHarness.py --help
+
+  # Process the BioModels 1-800, creating a new log file and data file
+  python SBstoat/mainTestHarness.py --firstModel 1 --numModel 800
+
+  # Process the BioModels 1-800, using the existing log and data files.
+  python SBstoat/mainTestHarness.py --firstModel 1 --numModel 800 --useExistingData True --useExistingLog True
+
+  # Create a plot from the existing data file
+  python SBstoat/mainTestHarness.py --useExistingData True --onlyPlot True
+
+  # Run analysis
 
 @author: joseph-hellerstein
 """
@@ -215,8 +234,10 @@ class Runner(object):
         Does all plots.
         """
         fig, axes = plt.subplots(1, 2)
-        maxBin1 = self._plotRelativeErrors(axes[0], self.fitModelRelerrors, FIT_MODEL)
-        maxBin2 = self._plotRelativeErrors(axes[1], self.bootstrapRelerrors, BOOTSTRAP)
+        maxBin1 = self._plotRelativeErrors(axes[0], self.fitModelRelerrors,
+              FIT_MODEL)
+        maxBin2 = self._plotRelativeErrors(axes[1], self.bootstrapRelerrors,
+              BOOTSTRAP, isYLabel=False)
         maxBin = max(maxBin1, maxBin2)
         if maxBin > 0:
             axes[0].set_ylim([0, maxBin])
@@ -235,7 +256,7 @@ class Runner(object):
         else:
             plt.savefig(self.figPath)
     
-    def _plotRelativeErrors(self, ax, relErrors, title):
+    def _plotRelativeErrors(self, ax, relErrors, title, isYLabel=True):
         """
         Plots histogram of relative errors.
 
@@ -252,6 +273,8 @@ class Runner(object):
         rr = ax.hist(relErrors)
         ax.set_title(title)
         ax.set_xlabel("relative error")
+        if isYLabel:
+            ax.set_ylabel("number parameters")
         ax.set_xlim([0, 1])
         return max(rr[0])
     
