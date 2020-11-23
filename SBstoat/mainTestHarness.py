@@ -303,8 +303,9 @@ if __name__ == '__main__':
         help="Append to the existing log file, if it exists.",
         default = [False])
     args = parser.parse_args()
+    useExistingLog = args.useExistingLog[0]
     #
-    if not args.useExistingLog:
+    if not useExistingLog:
         remove(args.logPath)
     runner = Runner(firstModel=args.firstModel,
                     numModel=args.numModel,
