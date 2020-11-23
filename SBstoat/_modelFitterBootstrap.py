@@ -25,9 +25,11 @@ import inspect
 import lmfit
 import multiprocessing
 import numpy as np
+import os
 import pandas as pd
 import random
 import sys
+import time
 import typing
 
 MAX_CHISQ_MULT = 5
@@ -36,6 +38,7 @@ IS_REPORT = True
 ITERATION_MULTIPLIER = 10  # Multiplier to calculate max bootsrap iterations
 ITERATION_PER_PROCESS = 20  # Numer of iterations handled by a process
 MAX_TRIES = 10  # Maximum number of tries to fit
+TIME_PER_ITERATION = 1.0
 
 
 ###############  HELPER CLASSES ###############
@@ -252,9 +255,11 @@ class ModelFitterBootstrap(mfc.ModelFitterCore):
                       args=(args, queue,))
                 p.start()
                 processes.append(p)
+            timeout = TIME_PER_ITERATION*numProcessIteration
             try:
-                for process in processes:
-                    results.append(queue.get())
+                # Get rid of possible zombies
+                for _ in range(len(processes)):
+                    results.append(queue.get(timeout=timeout))
                 # Get rid of possible zombies
                 for process in processes:
                     process.terminate()

@@ -161,7 +161,7 @@ class Runner(object):
                     harness = TestHarness(input_path, **self.kwargDct)
                     if len(harness.parametersToFit) == 0:
                         self.logger.result("No fitable parameters in model.")
-                        break
+                        continue
                     harness.evaluate(stdResiduals=1.0,
                           fractionParameterDeviation=1.0, relError=2.0)
                 except Exception as err:
