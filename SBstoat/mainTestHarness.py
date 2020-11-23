@@ -173,9 +173,13 @@ class Runner(object):
         # Processing models
         modelNums = self.firstModel + np.array(range(self.numModel))
         for modelNum in modelNums:
-            if (not modelNum in self.processedModels) or (not self.useExistingData):
-                input_path = PATH_PAT % modelNum
+            if (modelNum in self.processedModels) and self.useExistingData:
+                continue
+            else:
                 self.processedModels.append(modelNum)
+                input_path = PATH_PAT % modelNum
+                msg = "Model %s" % input_path
+                self.logger.activity(msg)
                 try:
                     harness = TestHarness(input_path, **self.kwargDct)
                     if len(harness.parametersToFit) == 0:

@@ -151,8 +151,6 @@ class TestHarness(object):
         numPoint: number of points in the simulatin
         fractionParameterDeviation: fractional amount that the parameter can vary
         """
-        msg = "Model %s" % self.sbmlPath
-        self._logger.activity(msg)
         # Construct synthetic observations
         if self.selectedColumns is None:
             data = self.roadRunner.simulate(0, endTime, numPoint)

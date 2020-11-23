@@ -150,7 +150,7 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
                     newFitter.fitModel(params=fitter.params)
                 except Exception as err:
                     # Problem with the fit. Don't numSuccessIteration it.
-                    msg = "Proces %d/modelFitterBootstrap" % processIdx
+                    msg = "Process %d/modelFitterBootstrap" % processIdx
                     msg += " Fit failed on iteration %d."  % iteration
                     fitter._logger.error(msg, err)
                     continue
@@ -167,7 +167,7 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
                 fittedStatistic.accumulate(newFitter.fittedTS)
                 newFitter.observedTS = synthesizer.calculate()
             except Exception as err:
-                msg = "Proces %d/modelFitterBootstrap" % processIdx
+                msg = "Process %d/modelFitterBootstrap" % processIdx
                 msg += " Error on iteration %d."  % iteration
                 fitter._logger.error(msg, err)
                 bootstrapError += 1
