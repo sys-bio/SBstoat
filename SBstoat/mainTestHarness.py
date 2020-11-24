@@ -173,6 +173,7 @@ class Runner(object):
         # Processing models
         modelNums = self.firstModel + np.array(range(self.numModel))
         for modelNum in modelNums:
+            self.save()
             if (modelNum in self.processedModels) and self.useExistingData:
                 continue
             else:
@@ -205,7 +206,6 @@ class Runner(object):
                 # Count models without exceptions
                 self.nonErroredModels.append(modelNum)
                 self.numNoError =  len(self.nonErroredModels)
-                self.save()
                 if modelNum % self.reportInterval == 0:
                     self.logger.result("Processed model %d" % modelNum)
         self.plot()

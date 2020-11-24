@@ -21,6 +21,7 @@ import typing
 
 HTTP200 = 200
 HTTP = "http://"
+MAX_PARAMETER = 5  # Maximum number of parameters estimated
 
 
 class TestHarnessResult(object):
@@ -66,7 +67,8 @@ class TestHarness(object):
         self.bootstrapResult = TestHarnessResult()
         self._validate()
 
-    def _getSetableParameters(self, initialParametersToFit):
+    def _getSetableParameters(self, initialParametersToFit,
+          maxParameter=MAX_PARAMETER):
         if initialParametersToFit is None:
             parameters = list(self.roadRunner.getGlobalParameterIds())
         else:
@@ -79,6 +81,9 @@ class TestHarness(object):
                 parametersToFit.append(parameter)
             except Exception:
                 pass
+        #
+        if len(parametersToFit) > maxParameter:
+             parametersToFit = parametersToFit[:maxParameter]
         return parametersToFit
 
     def _checkNamesInModel(self, names:typing.List[str], errorMsgPattern:str):
