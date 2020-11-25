@@ -173,7 +173,6 @@ class Runner(object):
         # Processing models
         modelNums = self.firstModel + np.array(range(self.numModel))
         for modelNum in modelNums:
-            self.save()
             if (modelNum in self.processedModels) and self.useExistingData:
                 continue
             else:
@@ -185,12 +184,14 @@ class Runner(object):
                     harness = TestHarness(input_path, **self.kwargDct)
                     if len(harness.parametersToFit) == 0:
                         self.logger.result("No fitable parameters in model.")
+                        self.save()
                         continue
                     harness.evaluate(stdResiduals=1.0,
                           fractionParameterDeviation=1.0, relError=2.0)
                 except Exception as err:
                     self.erroredModels.append(modelNum)
                     self.logger.error("TestHarness failed", err)
+                    self.save()
                     continue
                 # Parameters for model
                 self.modelParameterDct[modelNum] =  \
@@ -208,6 +209,7 @@ class Runner(object):
                 self.numNoError =  len(self.nonErroredModels)
                 if modelNum % self.reportInterval == 0:
                     self.logger.result("Processed model %d" % modelNum)
+                self.save()
         self.plot()
 
     def save(self):
