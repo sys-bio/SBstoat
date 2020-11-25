@@ -68,8 +68,8 @@ class TestFunctions(unittest.TestCase):
                 bootstrapRelerrors.extend(values)
             except:
                 erroredModels.append(modelNum)
-        self.assertEqual(len(nonErroredModels), 1)
-        self.assertEqual(len(erroredModels), 1)
+        self.assertEqual(len(nonErroredModels), 2)
+        self.assertEqual(len(erroredModels), 0)
 
     def testBug258(self):
         if IGNORE_TEST:

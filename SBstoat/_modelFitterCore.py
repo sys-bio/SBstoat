@@ -214,6 +214,37 @@ class ModelFitterCore(rpickle.RPickler):
         parameterDct[name] = ParameterSpecification(
               lower=lower, upper=upper, value=value)
 
+    def _adjustNames(self, antimonyModel:str, observedTS:NamedTimeseries)  \
+          ->typing.Tuple[NamedTimeseries, list]:
+        """
+        Antimony exports can change the names of floating species
+        by adding a "_" at the end. Check for this and adjust
+        the names in observedTS.
+
+        Return
+        ------
+        NamedTimeseries: newObservedTS
+        list: newSelectedColumns
+        """
+        rr = te.loada(antimonyModel)
+        dataNames = rr.simulate().colnames
+        names = ["[%s]" % n for n in observedTS.colnames]
+        missingNames = [n[1:-1] for n in set(names).difference(dataNames)]
+        newSelectedColumns = list(self.selectedColumns)
+        if len(missingNames) > 0:
+            newObservedTS = observedTS.copy()
+            self._logger.exception("Missing names in antimony export: %s"
+                  % str(missingNames))
+            for name in observedTS.colnames:
+                missingName = "%s_" % name
+                if name in missingNames:
+                    newObservedTS = newObservedTS.rename(name, missingName)
+                    newSelectedColumns.remove(name)
+                    newSelectedColumns.append(missingName)
+        else:
+            newObservedTS = observedTS
+        return newObservedTS, newSelectedColumns
+
     def copy(self):
         """
         Creates a copy of the model fitter.
@@ -222,13 +253,18 @@ class ModelFitterCore(rpickle.RPickler):
         """
         if not isinstance(self.modelSpecification, str):
             modelSpecification = self.modelSpecification.getAntimony()
+            observedTS, selectedColumns = self._adjustNames(
+                  modelSpecification, self.observedTS)
         else:
             modelSpecification = self.modelSpecification
+            observedTS = self.observedTS.copy()
+            selectedColumns = self.selectedColumns
+        #
         newModelFitter = self.__class__(
               copy.deepcopy(modelSpecification),
-              self.observedTS.copy(),
+              observedTS,
               copy.deepcopy(self.parametersToFit),
-              selectedColumns=copy.deepcopy(self.selectedColumns),
+              selectedColumns=selectedColumns,
               method=self._method,
               parameterLowerBound=self.lowerBound,
               parameterUpperBound=self.upperBound,
