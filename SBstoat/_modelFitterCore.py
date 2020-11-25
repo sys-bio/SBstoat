@@ -281,7 +281,7 @@ class ModelFitterCore(rpickle.RPickler):
         Runs a simulation. Defaults to parameter values in the simulation.
 
         Parameters
-        ----------
+       ----------
         params: lmfit.Parameters
         startTime: float
         endTime: float

@@ -94,7 +94,6 @@ class TestHarness(object):
         ----------
         names: what to check
         errorMsgPattern: string pattern taking one argument (name) for error msg
-        Handles names that get transformed with a trailing "_"
         
         Raises ValueError
         """
@@ -186,4 +185,6 @@ class TestHarness(object):
         self._recordResult(fitter.params, relError, self.fitModelResult)
         # Evaluate bootstrap
         fitter.bootstrap(numIteration=100)
-        self._recordResult(fitter.bootstrapResult.params, relError, self.bootstrapResult)
+        if fitter.bootstrapResult.numSimulation > 0:
+            self._recordResult(fitter.bootstrapResult.params,
+                  relError, self.bootstrapResult)

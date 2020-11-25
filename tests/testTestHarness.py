@@ -72,9 +72,9 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual(len(erroredModels), 1)
 
     def testBug258(self):
-        return
         if IGNORE_TEST:
             return
+        # Smoke test
         input_path = PATH_PAT % 258
         harness = TestHarness(input_path)
         harness.evaluate(stdResiduals=1.0, fractionParameterDeviation=1.0,

@@ -13,10 +13,10 @@ Runs TestHarness for BioModels. Creates:
   python SBstoat/mainTestHarness.py --firstModel 1 --numModel 800
 
   # Process the BioModels 1-800, using the existing log and data files.
-  python SBstoat/mainTestHarness.py --firstModel 1 --numModel 800 --useExistingData True --useExistingLog True
+  python SBstoat/mainTestHarness.py --firstModel 1 --numModel 800 --useExistingData --useExistingLog
 
   # Create a plot from the existing data file
-  python SBstoat/mainTestHarness.py --useExistingData True --onlyPlot True
+  python SBstoat/mainTestHarness.py --plot
 
   # Run analysis
 
@@ -92,7 +92,6 @@ class Runner(object):
     def __init__(self, firstModel:int=210, numModel:int=2,
           pclPath=PCL_FILE, figPath=FIG_PATH,
           useExistingData:bool=False, reportInterval:int=10,
-          onlyPlot=False,
           isPlot=IS_PLOT, **kwargDct):
         """
         Parameters
@@ -104,9 +103,6 @@ class Runner(object):
         useExistingData: use data in existing PCL file
         """
         self.useExistingData = useExistingData and os.path.isfile(pclPath)
-        self.onlyPlot = onlyPlot
-        if self.onlyPlot and (not self.useExistingData):
-            raise ValueError("Only plot option requires specifying pclPath and useExistingData.")
         # Recover previously saved results if desired
         if self.useExistingData:
             self.restore(pclPath=pclPath)
@@ -128,9 +124,10 @@ class Runner(object):
         self.numModel = numModel
         self.pclPath = pclPath
         self.figPath = figPath
-        self.isPlot = isPlot
         self.reportInterval = reportInterval
         self.kwargDct = kwargDct
+        self.isPlot = isPlot
+        self.useExistingData = useExistingData
         #
         if LOGGER in kwargDct.keys():
             self.logger = kwargDct[LOGGER]
@@ -166,10 +163,6 @@ class Runner(object):
         """
         Runs the tests. Saves state after each tests.
         """
-        # Check for plot only
-        if self.onlyPlot:
-            self.plot()
-            return
         # Processing models
         modelNums = self.firstModel + np.array(range(self.numModel))
         for modelNum in modelNums:
@@ -210,7 +203,9 @@ class Runner(object):
                 if modelNum % self.reportInterval == 0:
                     self.logger.result("Processed model %d" % modelNum)
                 self.save()
-        self.plot()
+        # Check for plot
+        if self.isPlot:
+            self.plot()
 
     def save(self):
         """
@@ -257,10 +252,8 @@ class Runner(object):
         lastModel = self.firstModel + len(self.processedModels) - 1
         suptitle = suptitle % (self.firstModel, lastModel, frac)
         plt.suptitle(suptitle)
-        if self.isPlot:
-            plt.show()
-        else:
-            plt.savefig(self.figPath)
+        plt.show()
+        plt.savefig(self.figPath)
     
     def _plotRelativeErrors(self, ax, relErrors, title, isYLabel=True):
         """
@@ -287,32 +280,36 @@ class Runner(object):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='SBstoat tests for BioModels.')
+    default = 1
     parser.add_argument('--firstModel', type=int,
-        help='First BioModel to process.', default=100)
+        help='First BioModel to process (int); default: %d' % default,
+        default=default)
+    default = 0
     parser.add_argument('--numModel', type=int,
-        help='Number of models to process.', default=1)
-    parser.add_argument('--useExistingData', nargs=1, type=str2Bool,
-        help="Use saved data from an previous run.",
-        default = [True])
-    parser.add_argument('--logPath', type=str, help='Path for log file.',
+        help='Number of models to process (int); default = %d' % default,
+        default=default)
+    parser.add_argument('--logPath', type=str,
+        help='Path for log file (str); default: %s' % LOG_PATH,
         default=LOG_PATH)
-    parser.add_argument('--figPath', type=str, help='Path for figure.',
+    parser.add_argument('--figPath', type=str,
+        help='Path for figure (str); Default: %s' % FIG_PATH,
         default=FIG_PATH)
-    parser.add_argument('--onlyPlot', nargs=1, type=str2Bool,
-        help="Just plot what exists from a previous run.",
-        default = [False])
-    parser.add_argument('--useExistingLog', nargs=1, type=str2Bool,
-        help="Append to the existing log file, if it exists.",
-        default = [False])
+    parser.add_argument('--useExistingData', action='store_true',
+        help="Use saved data from an previous run (flag).")
+    parser.add_argument('--plot', action='store_true',
+        help="Plot existing data (flag).")
+    parser.add_argument('--useExistingLog', action='store_true',
+        help="Append to the existing log file, if it exists (flag).")
     args = parser.parse_args()
-    useExistingLog = args.useExistingLog[0]
+    useExistingLog = args.plot or args.useExistingLog
+    useExistingData = args.plot or args.useExistingData
     #
     if not useExistingLog:
         remove(args.logPath)
     runner = Runner(firstModel=args.firstModel,
                     numModel=args.numModel,
-                    useExistingData=args.useExistingData[0],
+                    useExistingData=useExistingData,
                     figPath=args.figPath,
-                    onlyPlot=args.onlyPlot[0],
+                    isPlot=args.plot,
                     logger=Logger(toFile=args.logPath))
     runner.run()
