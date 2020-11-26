@@ -23,12 +23,7 @@ VARIABLE_NAMES = ["Va_Xa", "IIa_Tmod", "VIIa_TF"]
 PARAMETER_NAMES = ["r27_c", "r28_c", "r29_c"]
 VARIABLE_NAMES = ["Pk", "VK"]
 PARAMETER_NAMES = ["d_Pk", "d_VK"]
-BIOMD_URL_PAT = "http://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000%s?filename=BIOMD0000000%s_url.xml"
-URL_603 = BIOMD_URL_PAT % ("603", "603")
-if IGNORE_TEST:
-    LOGGER = Logger()
-else:
-    LOGGER = Logger(toFile=LOG_PATH)
+LOGGER = Logger()
 
 if os.path.isfile(LOG_PATH):
     os.remove(LOG_PATH)
@@ -99,16 +94,6 @@ class TestFunctions(unittest.TestCase):
         harness = TestHarness(input_path, logger=LOGGER)
         harness.evaluate(stdResiduals=1.0, fractionParameterDeviation=1.0,
               relError=2.0)
-
-    def testBug19(self):
-        # "non-empty list" error
-        if IGNORE_TEST:
-            return
-        # Smoke test
-        input_path = PATH_PAT % 235
-        harness = TestHarness(input_path, logger=LOGGER)
-        harness.evaluate(stdResiduals=1.0, fractionParameterDeviation=1.0,
-              relError=2.0, numIteration=10)
 
     def testBug148(self):
         # "SBML error"
