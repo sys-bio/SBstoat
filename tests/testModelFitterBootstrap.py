@@ -35,7 +35,7 @@ IS_PLOT = False
 TIMESERIES = th.getTimeseries()
 DIR = os.path.dirname(os.path.abspath(__file__))
 LOG_FILE = os.path.join(DIR, "testModelFitterBootstrap.log")
-LOGGER = _logger.Logger(toFile=LOG_FILE)
+LOGGER = _logger.Logger()
 if IGNORE_TEST:
     # Write log to std output
     FITTER = th.getFitter(cls=mfb.ModelFitterBootstrap)

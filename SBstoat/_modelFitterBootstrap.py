@@ -139,8 +139,9 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
                     totalSuccessIteration = numSuccessIteration*processingRate
                     totalIteration = iteration*processingRate
                     if totalIteration % reportInterval == 0:
-                        msg = "Process %d: bootstrap completed %d iterations with %d successes."
-                        msg = msg % (processIdx, totalIteration, totalSuccessIteration)
+                        msg = "Bootstrap completed %d total iterations "
+                        msg += "with %d successes."
+                        msg = msg % (totalIteration, totalSuccessIteration)
                         fitter._logger.status(msg)
                         lastReport = numSuccessIteration
                 if numSuccessIteration >= numIteration:
@@ -242,8 +243,9 @@ class ModelFitterBootstrap(mfc.ModelFitterCore):
               reportInterval=reportInterval,
               synthesizerClass=synthesizerClass,
               **kwargs) for i in range(numProcess)]
-        self._logger.activity("Running bootstrap for %d iterations with %d processes."
-              % (numIteration, numProcess))
+        msg = "Running bootstrap for %d successful iterations " % numIteration
+        msg += "with %d processes." % numProcess
+        self._logger.activity(msg)
         # Run separate processes for each bootstrap
         processes = []
         queue = multiprocessing.Queue()
