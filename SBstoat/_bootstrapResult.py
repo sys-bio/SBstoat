@@ -22,6 +22,7 @@ import typing
 
 PERCENTILES = [2.5, 50, 97.55]  # Percentile for confidence limits
 MIN_COUNT_PERCENTILE = 100  # Minimum number of values required to get percentiles
+MIN_VALUE = 1e-3
 
 
 ######### CLASSES ###############
@@ -129,8 +130,14 @@ class BootstrapResult(rpickle.RPickler):
             self._params = lmfit.Parameters()
             for name in self.parameterMeanDct.keys():
                 value = self.parameterMeanDct[name]
-                self._params.add(name, value=value, min=value*0.99,
-                      max=value*1.01)
+                if np.isclose(value, 0):
+                    minValue = -MIN_VALUE
+                    maxValue = MIN_VALUE
+                else:
+                    values = (value*0.99, value*1.01)
+                    minValue = min(values)
+                    maxValue = max(values)
+                self._params.add(name, value=value, min=minValue, max=maxValue)
         return self._params
 
     def simulate(self, numSample:int=1000, numPoint:int=100)->TimeseriesStatistic:

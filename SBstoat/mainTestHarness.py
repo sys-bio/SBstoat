@@ -302,7 +302,7 @@ if __name__ == '__main__':
         help="Append to the existing log file, if it exists (flag).")
     args = parser.parse_args()
     useExistingLog = args.plot or args.useExistingLog
-    useExistingData = args.plot or args.useExistingData
+    useExistingData = (args.plot and (args.numModel == 0)) or args.useExistingData
     #
     if not useExistingLog:
         remove(args.logPath)

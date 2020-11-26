@@ -12,25 +12,35 @@ import os
 import unittest
 
 
-IGNORE_TEST = False
-IS_PLOT = False
+IGNORE_TEST = True
+IS_PLOT = True
 DIR = os.path.dirname(os.path.abspath(__file__))
+LOG_PATH = os.path.join(DIR, "testTestHarness.log")
 DATA_DIR = os.path.join(os.path.dirname(DIR), "biomodels")
-PATH_PAT = os.path.join(DATA_DIR, "BIOMD0000000%d.xml")
-INPUT_PATH = os.path.join(DIR, "BIOMD0000000339.xml")
+PATH_PAT = os.path.join(DATA_DIR, "BIOMD0000000%03d.xml")
+INPUT_PATH = PATH_PAT % 339
 VARIABLE_NAMES = ["Va_Xa", "IIa_Tmod", "VIIa_TF"]
 PARAMETER_NAMES = ["r27_c", "r28_c", "r29_c"]
 VARIABLE_NAMES = ["Pk", "VK"]
 PARAMETER_NAMES = ["d_Pk", "d_VK"]
 BIOMD_URL_PAT = "http://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000%s?filename=BIOMD0000000%s_url.xml"
 URL_603 = BIOMD_URL_PAT % ("603", "603")
+if IGNORE_TEST:
+    LOGGER = Logger()
+else:
+    LOGGER = Logger(toFile=LOG_PATH)
+
+if os.path.isfile(LOG_PATH):
+    os.remove(LOG_PATH)
+
 
 class TestFunctions(unittest.TestCase):
 
     def setUp(self):
         if IGNORE_TEST:
             return
-        self.harness = TestHarness(INPUT_PATH, PARAMETER_NAMES, VARIABLE_NAMES)
+        self.harness = TestHarness(INPUT_PATH, PARAMETER_NAMES, VARIABLE_NAMES,
+              logger=LOGGER)
 
     def testConstructor(self):
         if IGNORE_TEST:
@@ -41,7 +51,8 @@ class TestFunctions(unittest.TestCase):
         if IGNORE_TEST:
             return
         with self.assertRaises(ValueError):
-            self.harness = TestHarness("dummy", VARIABLE_NAMES, PARAMETER_NAMES)
+            self.harness = TestHarness("dummy", VARIABLE_NAMES, PARAMETER_NAMES,
+                  logger=LOGGER)
 
     def testEvaluate(self):
         # Works for: 200, 210
@@ -53,10 +64,9 @@ class TestFunctions(unittest.TestCase):
         erroredModels = []
         nonErroredModels = []
         for modelNum in modelNums:
-            logger = Logger(isReport=False)
             input_path = PATH_PAT % modelNum
             try:
-                harness = TestHarness(input_path, logger=logger)
+                harness = TestHarness(input_path, logger=LOGGER)
                 harness.evaluate(stdResiduals=1.0, fractionParameterDeviation=1.0,
                       relError=2.0)
                 nonErroredModels.append(modelNum)
@@ -76,7 +86,47 @@ class TestFunctions(unittest.TestCase):
             return
         # Smoke test
         input_path = PATH_PAT % 258
-        harness = TestHarness(input_path)
+        harness = TestHarness(input_path, logger=LOGGER)
+        harness.evaluate(stdResiduals=1.0, fractionParameterDeviation=1.0,
+              relError=2.0)
+
+    def testBug157(self):
+        # Bug with setting min and max values for parameters
+        if IGNORE_TEST:
+            return
+        # Smoke test
+        input_path = PATH_PAT % 157
+        harness = TestHarness(input_path, logger=LOGGER)
+        harness.evaluate(stdResiduals=1.0, fractionParameterDeviation=1.0,
+              relError=2.0)
+
+    def testBug19(self):
+        # "non-empty list" error
+        if IGNORE_TEST:
+            return
+        # Smoke test
+        input_path = PATH_PAT % 19
+        harness = TestHarness(input_path, logger=LOGGER)
+        harness.evaluate(stdResiduals=1.0, fractionParameterDeviation=1.0,
+              relError=2.0)
+
+    def testBug148(self):
+        # "SBML error"
+        if IGNORE_TEST:
+            return
+        # Smoke test
+        input_path = PATH_PAT % 148
+        harness = TestHarness(input_path, logger=LOGGER)
+        with self.assertRaises(ValueError):
+            harness.evaluate(stdResiduals=1.0, fractionParameterDeviation=1.0,
+                  relError=2.0)
+
+    def testBug437(self):
+        # "One time column"
+        # TESTING
+        # Smoke test
+        input_path = PATH_PAT % 437
+        harness = TestHarness(input_path, logger=LOGGER)
         harness.evaluate(stdResiduals=1.0, fractionParameterDeviation=1.0,
               relError=2.0)
 

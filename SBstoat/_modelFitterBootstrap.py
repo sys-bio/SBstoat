@@ -38,7 +38,7 @@ IS_REPORT = True
 ITERATION_MULTIPLIER = 10  # Multiplier to calculate max bootsrap iterations
 ITERATION_PER_PROCESS = 20  # Numer of iterations handled by a process
 MAX_TRIES = 10  # Maximum number of tries to fit
-TIME_PER_ITERATION = 1.0
+MAX_ITERATION_TIME = 10.0
 
 
 ###############  HELPER CLASSES ###############
@@ -255,7 +255,7 @@ class ModelFitterBootstrap(mfc.ModelFitterCore):
                       args=(args, queue,))
                 p.start()
                 processes.append(p)
-            timeout = TIME_PER_ITERATION*numProcessIteration
+            timeout = MAX_ITERATION_TIME*numProcessIteration
             try:
                 # Get rid of possible zombies
                 for _ in range(len(processes)):

@@ -252,7 +252,12 @@ class ModelFitterCore(rpickle.RPickler):
         of bootstrapping.
         """
         if not isinstance(self.modelSpecification, str):
-            modelSpecification = self.modelSpecification.getAntimony()
+            try:
+                modelSpecification = self.modelSpecification.getAntimony()
+            except Exception as err:
+                self._logger.error("Problem wth conversion to Antimony. Details:",
+                      err)
+                raise ValueError("Cannot proceed.")
             observedTS, selectedColumns = self._adjustNames(
                   modelSpecification, self.observedTS)
         else:

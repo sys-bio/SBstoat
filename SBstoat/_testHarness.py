@@ -22,6 +22,7 @@ import typing
 HTTP200 = 200
 HTTP = "http://"
 MAX_PARAMETER = 5  # Maximum number of parameters estimated
+NUM_BOOTSTRAP_ITERATION = 100
 
 
 class TestHarnessResult(object):
@@ -163,7 +164,17 @@ class TestHarness(object):
             if not TIME in allColumns:
                 allColumns.append(TIME)
             data = self.roadRunner.simulate(0, endTime, numPoint, allColumns)
-        simTS = NamedTimeseries(namedArray=data)
+        bracketTime = "[%s]" % TIME
+        if bracketTime in data.colnames:
+            # Exclude any column named '[time]'
+            idx = data.colnames.index(bracketTime)
+            dataArr = np.delete(data, idx, axis=1)
+            colnames = list(data.colnames)
+            colnames.remove(bracketTime)
+            colnames = [s[1:-1] if s != TIME else s for s in colnames]
+            simTS = NamedTimeseries(array=dataArr, colnames=colnames)
+        else:
+            simTS = NamedTimeseries(namedArray=data)
         synthesizer = ObservationSynthesizerRandomErrors(
               fittedTS=simTS, std=stdResiduals)
         observedTS = synthesizer.calculate()
@@ -184,7 +195,7 @@ class TestHarness(object):
         fitter.fitModel()
         self._recordResult(fitter.params, relError, self.fitModelResult)
         # Evaluate bootstrap
-        fitter.bootstrap(numIteration=100)
+        fitter.bootstrap(numIteration=NUM_BOOTSTRAP_ITERATION)
         if fitter.bootstrapResult.numSimulation > 0:
             self._recordResult(fitter.bootstrapResult.params,
                   relError, self.bootstrapResult)
