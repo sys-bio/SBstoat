@@ -12,8 +12,8 @@ import os
 import unittest
 
 
-IGNORE_TEST = True
-IS_PLOT = True
+IGNORE_TEST = False
+IS_PLOT = False
 DIR = os.path.dirname(os.path.abspath(__file__))
 LOG_PATH = os.path.join(DIR, "testTestHarness.log")
 DATA_DIR = os.path.join(os.path.dirname(DIR), "biomodels")
@@ -123,7 +123,8 @@ class TestFunctions(unittest.TestCase):
 
     def testBug437(self):
         # "One time column"
-        # TESTING
+        if IGNORE_TEST:
+            return
         # Smoke test
         input_path = PATH_PAT % 437
         harness = TestHarness(input_path, logger=LOGGER)
