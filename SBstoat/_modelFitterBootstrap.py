@@ -272,14 +272,20 @@ class ModelFitterBootstrap(mfc.ModelFitterCore):
             # Keep to debug _runBootstrap single threaded
             results = []
             for args in args_list:
-                results.append(_runBootstrap(args))    
-        self.bootstrapResult = BootstrapResult.merge(results)
-        if self.bootstrapResult.fittedStatistic is not None:
-            self.bootstrapResult.fittedStatistic.calculate()
-        self._logger.result("%d bootstrap estimates of parameters."
-              % self.bootstrapResult.numSimulation)
-        if serializePath is not None:
-            self.serialize(serializePath)
+                results.append(_runBootstrap(args))
+        if len(results) == 0:
+            msg = "modelFitterBootstrap/timeout in solving model."
+            msg = "\nConsider increasing per timeout."
+            msg = "\nCurent value: %f" % MAX_ITERATION_TIME
+            self._logger.result(msg)
+        else:
+            self.bootstrapResult = BootstrapResult.merge(results)
+            if self.bootstrapResult.fittedStatistic is not None:
+                self.bootstrapResult.fittedStatistic.calculate()
+            self._logger.result("%d bootstrap estimates of parameters."
+                  % self.bootstrapResult.numSimulation)
+            if serializePath is not None:
+                self.serialize(serializePath)
 
     def getParameterMeans(self)->typing.List[float]:
         """

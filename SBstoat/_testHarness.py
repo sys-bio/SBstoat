@@ -144,7 +144,8 @@ class TestHarness(object):
 
     def evaluate(self, stdResiduals:float=0.1, relError:float=0.1,
           endTime:float=10.0, numPoint:int=30,
-          fractionParameterDeviation:float=0.5):
+          fractionParameterDeviation:float=0.5,
+          numIteration=NUM_BOOTSTRAP_ITERATION):
         """
         Evaluates model fitting accuracy and bootstrapping for model
  
@@ -195,7 +196,8 @@ class TestHarness(object):
         fitter.fitModel()
         self._recordResult(fitter.params, relError, self.fitModelResult)
         # Evaluate bootstrap
-        fitter.bootstrap(numIteration=NUM_BOOTSTRAP_ITERATION)
-        if fitter.bootstrapResult.numSimulation > 0:
-            self._recordResult(fitter.bootstrapResult.params,
-                  relError, self.bootstrapResult)
+        fitter.bootstrap(numIteration=numIteration)
+        if fitter.bootstrapResult is not None:
+            if fitter.bootstrapResult.numSimulation > 0:
+                self._recordResult(fitter.bootstrapResult.params,
+                      relError, self.bootstrapResult)

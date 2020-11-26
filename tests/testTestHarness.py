@@ -105,10 +105,10 @@ class TestFunctions(unittest.TestCase):
         if IGNORE_TEST:
             return
         # Smoke test
-        input_path = PATH_PAT % 19
+        input_path = PATH_PAT % 235
         harness = TestHarness(input_path, logger=LOGGER)
         harness.evaluate(stdResiduals=1.0, fractionParameterDeviation=1.0,
-              relError=2.0)
+              relError=2.0, numIteration=10)
 
     def testBug148(self):
         # "SBML error"
