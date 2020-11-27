@@ -151,6 +151,25 @@ class TestTimeseriesPlotter(unittest.TestCase):
         if IS_PLOT:
             plt.show()
 
+    def testPlotSingle8(self):
+        # Plot with nan values
+        if IGNORE_TEST:
+            return
+        def setTS(ts, mult, numNan):
+            ts = self.timeseries.copy()
+            for col in ts.colnames:
+                ts[col] = mult*ts[col]
+                ts[col][:numNan] = np.nan
+            return ts
+        #
+        numCol = 3
+        numRow = 2
+        timeseries2 = setTS(self.timeseries, 2, 3)
+        self.plotter.plotTimeSingle(self.timeseries, timeseries2=timeseries2, columns=["S1"],
+              numRow=numRow, numCol=numCol)
+        if IS_PLOT:
+            plt.show()
+
     def mkTimeseries(self):
         ts2 = self.timeseries.copy()
         ts2[ts2.colnames] = ts2[ts2.colnames] + np.multiply(ts2[ts2.colnames], ts2[ts2.colnames])

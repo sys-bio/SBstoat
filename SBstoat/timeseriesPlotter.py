@@ -202,8 +202,10 @@ class TimeseriesPlotter(object):
             -------
             StatementManager
             """
-            statement.addPosarg(timeseries[TIME])
-            statement.addPosarg(timeseries[variable])
+            times, values = self._adjustSeriesForNan(
+                  timeseries[TIME], timeseries[variable])
+            statement.addPosarg(times)
+            statement.addPosarg(values)
             return statement
         #
         def isFirstColumn(plotIdx):
@@ -330,8 +332,10 @@ class TimeseriesPlotter(object):
                     statement = StatementManager(ax.plot)
                 else:
                     statement = StatementManager(ax.scatter)
-                statement.addPosarg(timeseries[TIME])
-                statement.addPosarg(timeseries[col])
+                times, values = self._adjustSeriesForNan(
+                      timeseries[TIME], timeseries[col])
+                statement.addPosarg(times)
+                statement.addPosarg(values)
                 options.legend = timeseries.colnames
                 options.do(ax, statement=statement, plotIdx=plotIdx, lineIdx=lineIdx)
         #
@@ -628,3 +632,7 @@ class TimeseriesPlotter(object):
                   lineIdx, plotIdx=plotIdx)
         if self.isPlot:
             plt.show()
+
+    def _adjustSeriesForNan(self, times, values):
+        indices = [i for i in range(len(values)) if not np.isnan(values[i])]
+        return times[indices], values[indices]
