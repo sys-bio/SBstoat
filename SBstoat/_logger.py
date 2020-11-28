@@ -21,7 +21,7 @@ class Logger(object):
 
     # Logging levels: 1
 
-    def __init__(self, isReport=True, toFile=None, logLevel=LEVEL_MAX):
+    def __init__(self, isReport=True, toFile=None, logLevel=LEVEL_STATUS):
         self.isReport = isReport
         self.toFile = toFile
         self.startTime = time.time()
