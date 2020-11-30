@@ -5,7 +5,6 @@ if [ $# -eq 1 ]; then
 fi
 echo "Profiling file ${PPATH}"
 python -m cProfile ${PPATH} > profile.csv
-exit()
 echo " ncalls  tottime  percall  cumtime  percall filename:lineno(function)" > result.csv
 grep "^  *[1-9].*:" profile.csv >> result.csv
 sed 's/ /,/g' result.csv | sed 's/,,/,/g' | sed 's/,,/,/g' | sed 's/,,/,/g' | sed 's/^,//' > result.csv

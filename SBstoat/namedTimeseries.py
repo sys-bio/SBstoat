@@ -300,15 +300,18 @@ class NamedTimeseries(rpickle.RPickler):
         def handleStr(reference):
             indices = self._getColumnIndices(reference)
             return self.values[:, indices]
-        # indicate types
+        # Handle common case first
+        if isinstance(reference, str):
+            if reference.lower() == TIME:
+                reference = TIME
+            indices = self._indexDct[reference]
+            return self.values[:, indices]
+        # Do more complex types
         isInt = False
         isListInt = False
         isSlice = False
-        isStr = False
         isListStr = False
-        if isinstance(reference, str):
-            isStr = True
-        elif isinstance(reference, list):
+        if isinstance(reference, list):
             if isinstance(reference[0], str):
                 isListStr = True
             elif isinstance(reference[0], int):
@@ -318,10 +321,6 @@ class NamedTimeseries(rpickle.RPickler):
         elif isinstance(reference, slice):
             isSlice = True
         # Process row type references
-        if isStr:
-            if reference.lower() == TIME:
-                reference = TIME
-            return handleStr(reference)
         if isListStr:
             timeStrs = [c for c in reference if c.lower() == TIME]
             if len(timeStrs) == 1:

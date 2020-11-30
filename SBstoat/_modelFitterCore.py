@@ -110,6 +110,13 @@ class ModelFitterCore(rpickle.RPickler):
             self.observedTS = observedData
             if self.observedTS is not None:
                 self.observedTS = mkNamedTimeseries(observedData)
+            # Identify the nan values in observed
+            self._observedTSIndexDct = {}
+            for col in self.observedTS.colnames:
+                self._observedTSIndexDct[col] = np.array(
+                      [i for i in range(len(self.observedTS))
+                      if np.isnan(self.observedTS[col][i])])
+            #
             self.fittedDataTransformDct = fittedDataTransformDct
             if (selectedColumns is None) and (self.observedTS is not None):
                 selectedColumns = self.observedTS.colnames
@@ -400,7 +407,10 @@ class ModelFitterCore(rpickle.RPickler):
         if self.residualsTS is None:
             self.residualsTS = self.observedTS.subsetColumns(cols)
         self.residualsTS[cols] = self.observedTS[cols] - self.fittedTS[cols]
-        self.residualsTS[cols] = np.nan_to_num(self.residualsTS[cols], nan=0.0)
+        for col in cols:
+            if len(self._observedTSIndexDct[col]) > 0:
+                self.residualsTS[col][self._observedTSIndexDct[col]] = 0
+        #self.residualsTS[cols] = np.nan_to_num(self.residualsTS[cols], nan=0.0)
         return self.residualsTS[cols].flatten()
 
     def fitModel(self, params:lmfit.Parameters=None,
