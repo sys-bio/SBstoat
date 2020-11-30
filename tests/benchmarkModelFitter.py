@@ -25,13 +25,13 @@ MODEL = """
 """
         
 
-def main(num_iteration):
+def main(numIteration):
     """
     Calculates the time to run iterations of the benchmark.
 
     Parameters
     ----------
-    num_iteration: int
+    numIteration: int
     
     Returns
     -------
@@ -41,10 +41,10 @@ def main(num_iteration):
           ["k1", "k2"], selectedColumns=['S1', 'S3'], isPlot=False)
     fitter.fitModel()
     startTime = time.time()
-    fitter.bootstrap(numIteration=10000, reportInterval=1000)
+    fitter.bootstrap(numIteration=numIteration, reportInterval=numIteration)
     elapsedTime = time.time() - startTime
     return elapsedTime
         
 
 if __name__ == '__main__':
-    print("Elapsed time: %4.2f" % main(6000))
+    print("Elapsed time: %4.2f" % main(1000))

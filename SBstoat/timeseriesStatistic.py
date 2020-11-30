@@ -77,13 +77,13 @@ class TimeseriesStatistic(rpickle.RPickler):
         for attr in self.__dict__.keys():
             if "__" in attr:
                 continue
-            expression = "dir(self.%s)" % attr
-            if "copy" in eval(expression):
-                statement = "newStatistic.%s = self.%s.copy()" % (attr, attr)
-                exec(statement)
+            obj = self.__getattribute__(attr)
+            if "copy" in dir(obj):
+                # Use native copy
+                newObj = obj.copy()
             else:
-                statement = "newStatistic.%s = copy.deepcopy(self.%s)" % (attr, attr)
-                exec(statement)
+                newObj = copy.deepcopy(obj)
+            newStatistic.__setattr__(attr, newObj)
         return newStatistic
 
     def equals(self, other):
