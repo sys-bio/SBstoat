@@ -4,6 +4,11 @@ Created on Tue Jul  7 14:24:09 2020
 
 @author: hsauro
 @author: joseph-hellerstein
+
+Timing history
+
+date         numIteration    numProcess  Time (sec)
+11/30/2020   10,000          5           116.67
 """
 
 from SBstoat.modelFitter import ModelFitter
@@ -47,4 +52,4 @@ def main(numIteration):
         
 
 if __name__ == '__main__':
-    print("Elapsed time: %4.2f" % main(1000))
+    print("Elapsed time: %4.2f" % main(10000))
