@@ -8,7 +8,7 @@ Created on Tue Jul  7 14:24:09 2020
 Timing history
 
 date         numIteration    numProcess  Time (sec)
-11/30/2020   10,000          5           116.67
+11/30/2020   10,000          5           110.0
 """
 
 from SBstoat.modelFitter import ModelFitter

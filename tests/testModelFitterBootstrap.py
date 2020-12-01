@@ -30,8 +30,8 @@ def remove(ffile):
     if os.path.isfile(ffile):
         os.remove(ffile)
 
-IGNORE_TEST = False
-IS_PLOT = False
+IGNORE_TEST = True
+IS_PLOT = True
 TIMESERIES = th.getTimeseries()
 DIR = os.path.dirname(os.path.abspath(__file__))
 LOG_FILE = os.path.join(DIR, "testModelFitterBootstrap.log")
@@ -216,8 +216,7 @@ class TestModelFitterBootstrap(unittest.TestCase):
         self.assertTrue(result is not None)
 
     def testBootstrapErrorOnException(self):
-        if IGNORE_TEST:
-            return
+        # TESTING
         ANTIMONY_MODEL  = '''
             // Equations
             E1: T -> E ; beta*T*V ; // Target cells to exposed
