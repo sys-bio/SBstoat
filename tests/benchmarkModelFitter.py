@@ -52,8 +52,9 @@ def main(numIteration):
     startTime = time.time()
     fitter.bootstrap(numIteration=numIteration, reportInterval=numIteration)
     elapsedTime = time.time() - startTime
+    print(logger.performanceDF)
     return elapsedTime
         
 
 if __name__ == '__main__':
-    print("Elapsed time: %4.2f" % main(100))
+    print("Elapsed time: %4.2f" % main(300))

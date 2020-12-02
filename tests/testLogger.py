@@ -136,7 +136,7 @@ class TestLogger(unittest.TestCase):
                 guid = logger.startBlock(block)
                 time.sleep(sleepTime)
                 logger.endBlock(guid)
-            df = logger.performanceDf
+            df = logger.performanceDF
             self.assertLess(np.abs(sleepTime - df["mean"].mean()), sleepTime/5)
             self.assertEqual(df["count"].mean(), 1.0)
         #

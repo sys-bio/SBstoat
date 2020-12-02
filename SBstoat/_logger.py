@@ -20,7 +20,7 @@ import pandas as pd
 import numpy as np
 import sys
 import time
-from multiprocessing import Process, Manager
+from multiprocessing import Process, Manager, Value
 
 LEVEL_ACTIVITY = 1
 LEVEL_RESULT = 2
@@ -31,16 +31,18 @@ LEVEL_MAX = LEVEL_ERROR
 #
 COUNT = "count"
 MEAN = "mean"
+TOTAL = "total"
 
 
 
 class BlockSpecification(object):
     # Describes an entry for timing a block of code
-    guid = 0
+    guid = Value('i', 0)
     
     def __init__(self, block):
-        self.guid = BlockSpecification.guid
-        BlockSpecification.guid += 1
+        with BlockSpecification.guid.get_lock():
+            self.guid = BlockSpecification.guid.value
+            BlockSpecification.guid.value += 1
         self.startTime = time.time()
         self.block = block
         self.duration = None
@@ -67,10 +69,10 @@ class Logger(object):
         manager = Manager()
         # Make multiprocesor safe
         self.blockDct = manager.dict()  # key: guid, value: BlockSpecification
-        self._performanceDf = None  # Summarizes performance report
+        self._performanceDF = None  # Summarizes performance report
 
     @property
-    def performanceDf(self):
+    def performanceDF(self):
         """
         Summarizes the performance data collected.
         
@@ -80,7 +82,7 @@ class Logger(object):
             index: block name
             Columns: COUNT, MEAN
         """
-        if self._performanceDf is None:
+        if self._performanceDF is None:
             # Accumulate the durations
             dataDct = {}
             for spec in self.blockDct.values():
@@ -90,12 +92,16 @@ class Logger(object):
             #
             indices = [v for v in dataDct.keys()]
             means = [np.mean(dataDct[b]) for b in indices]
+            totals = [np.sum(dataDct[b]) for b in indices]
             counts = [len(dataDct[b]) for b in indices]
-            self._performanceDf = pd.DataFrame({
+            self._performanceDF = pd.DataFrame({
                   COUNT: counts,
                   MEAN: means,
+                  TOTAL: totals,
                   })
-        return self._performanceDf
+            self._performanceDF.index = indices
+            self._performanceDF = self._performanceDF.sort_index()
+        return self._performanceDF
     
 
     def getFileDescriptor(self):
