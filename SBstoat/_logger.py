@@ -64,6 +64,31 @@ class Logger(object):
         manager = Manager()
         # Make multiprocesor safe
         self.blockDct = manager.dict()  # key: guid, value: BlockSpecification
+        self._performanceReportSer = None  # Summarizes performance report
+
+    @property
+    def performanceReportSer(self):
+        """
+        Summarizes the performance data collected.
+        
+        Returns
+        -------
+        pd.Series
+            index: block name
+            value: time in seconds
+        """
+        if self._performanceReportSer is None:
+            # Accumulate the durations
+            dataDct = {}
+            for spec in self.blockDct.values():
+                if not spec.block in dataDct.keys():
+                    dataDct[spec.block] = []
+                dataDct[spec.block].append(spec.duration)
+            #
+            meanDct = {b: np.mean(v) for b, v in dataDct.items()}
+            self._performanceReportSer = pd.Series(meanDct)
+        return self._performanceReportSer
+    
 
     def getFileDescriptor(self):
         if self.toFile is not None:
@@ -137,29 +162,3 @@ class Logger(object):
         spec = self.blockDct[guid]
         spec.setDuration()
         self.blockDct[guid] = spec
-
-    def blockReport(self, csvPath:str)->pd.Series:
-        """
-        Writes the results of collected logs.
-        This is NOT multiprocessing safe.
-
-        Parameters
-        ----------
-        csvPath: path to CSV file to write
-
-        Returns
-        -------
-        pd.Series: index: block, value: mean times
-        """
-        # Accumulate the durations
-        dataDct = {}
-        for spec in self.blockDct.values():
-            if not spec.block in dataDct.keys():
-                dataDct[spec.block] = []
-            dataDct[spec.block].append(spec.duration)
-        #
-        meanDct = {b: np.mean(v) for b, v in dataDct.items()}
-        ser = pd.Series(meanDct)
-        ser.to_csv(csvPath)
-        return ser
-        

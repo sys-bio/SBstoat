@@ -9,6 +9,7 @@ from SBstoat import _logger
 from SBstoat._logger import BlockSpecification, Logger
 
 import io
+import numpy as np
 import os
 import time
 import unittest
@@ -124,6 +125,22 @@ class TestLogger(unittest.TestCase):
         self.logger.endBlock(guid1)
         self.assertGreater(self.logger.blockDct[guid1].duration,
               self.logger.blockDct[guid2].duration)
+
+    def testPerformanceReport(self):
+        if IGNORE_TEST:
+            return
+        def test(numBlock, sleepTime):
+            logger = Logger()
+            for idx in range(numBlock):
+                block = "blk_%d" % idx
+                guid = logger.startBlock(block)
+                time.sleep(sleepTime)
+                logger.endBlock(guid)
+            ser = logger.performanceReportSer
+            self.assertLess(np.abs(sleepTime - ser.mean()), sleepTime/5)
+        #
+        test(3, 0.1)
+        test(30, 0.1)
        
  
 class TestBlockSpecification(unittest.TestCase):
@@ -144,7 +161,6 @@ class TestBlockSpecification(unittest.TestCase):
             return
         self.spec.setDuration()
         self.assertLess(self.spec.duration, 10e-4)
-
 
 
 if __name__ == '__main__':
