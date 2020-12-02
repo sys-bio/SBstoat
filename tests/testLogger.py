@@ -141,6 +141,14 @@ class TestLogger(unittest.TestCase):
         #
         test(3, 0.1)
         test(30, 0.1)
+
+    def testJoin(self):
+        if IGNORE_TEST:
+            return
+        NAMES = ["aa", "bbb", "z"]
+        result = Logger.join(*NAMES)
+        for name in NAMES:
+            self.assertGreaterEqual(result.index(name), 0)
        
  
 class TestBlockSpecification(unittest.TestCase):

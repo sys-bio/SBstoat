@@ -96,6 +96,21 @@ class Logger(object):
         else:
             return None
 
+    @staticmethod
+    def join(*args):
+        """
+        Joins together a list of block names.
+ 
+        Parameters
+        ----------
+        *args: list-str
+        
+        Returns
+        -------
+        str
+        """
+        return "/".join(args)
+
     def _write(self, msg, numNL):
         relTime = time.time() - self.startTime
         newLineStr = ('').join(["\n" for _ in range(numNL)])
