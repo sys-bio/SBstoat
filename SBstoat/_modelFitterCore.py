@@ -252,7 +252,7 @@ class ModelFitterCore(rpickle.RPickler):
             newObservedTS = observedTS
         return newObservedTS, newSelectedColumns
 
-    def copy(self):
+    def copy(self, isKeepLogger=False):
         """
         Creates a copy of the model fitter.
         Preserves the user-specified settings and the results
@@ -272,6 +272,10 @@ class ModelFitterCore(rpickle.RPickler):
             observedTS = self.observedTS.copy()
             selectedColumns = self.selectedColumns
         #
+        if isKeepLogger:
+            logger = self._logger
+        else:
+            logger = copy.deepcopy(self._logger)
         newModelFitter = self.__class__(
               copy.deepcopy(modelSpecification),
               observedTS,
@@ -282,7 +286,7 @@ class ModelFitterCore(rpickle.RPickler):
               parameterUpperBound=self.upperBound,
               parameterDct=copy.deepcopy(self.parameterDct),
               fittedDataTransformDct=copy.deepcopy(self.fittedDataTransformDct),
-              logger=copy.deepcopy(self._logger),
+              logger=logger,
               isPlot=self._isPlot)
         if self.bootstrapResult is not None:
             newModelFitter.bootstrapResult = self.bootstrapResult.copy()

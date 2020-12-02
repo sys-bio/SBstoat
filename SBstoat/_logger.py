@@ -28,6 +28,9 @@ LEVEL_STATUS = 3
 LEVEL_EXCEPTION = 4
 LEVEL_ERROR = 5
 LEVEL_MAX = LEVEL_ERROR
+#
+COUNT = "count"
+MEAN = "mean"
 
 
 
@@ -64,10 +67,10 @@ class Logger(object):
         manager = Manager()
         # Make multiprocesor safe
         self.blockDct = manager.dict()  # key: guid, value: BlockSpecification
-        self._performanceReportSer = None  # Summarizes performance report
+        self._performanceDf = None  # Summarizes performance report
 
     @property
-    def performanceReportSer(self):
+    def performanceDf(self):
         """
         Summarizes the performance data collected.
         
@@ -75,9 +78,9 @@ class Logger(object):
         -------
         pd.Series
             index: block name
-            value: time in seconds
+            Columns: COUNT, MEAN
         """
-        if self._performanceReportSer is None:
+        if self._performanceDf is None:
             # Accumulate the durations
             dataDct = {}
             for spec in self.blockDct.values():
@@ -85,9 +88,14 @@ class Logger(object):
                     dataDct[spec.block] = []
                 dataDct[spec.block].append(spec.duration)
             #
-            meanDct = {b: np.mean(v) for b, v in dataDct.items()}
-            self._performanceReportSer = pd.Series(meanDct)
-        return self._performanceReportSer
+            indices = [v for v in dataDct.keys()]
+            means = [np.mean(dataDct[b]) for b in indices]
+            counts = [len(dataDct[b]) for b in indices]
+            self._performanceDf = pd.DataFrame({
+                  COUNT: counts,
+                  MEAN: means,
+                  })
+        return self._performanceDf
     
 
     def getFileDescriptor(self):

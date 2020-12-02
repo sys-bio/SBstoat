@@ -56,4 +56,4 @@ def main(numIteration):
         
 
 if __name__ == '__main__':
-    print("Elapsed time: %4.2f" % main(1000))
+    print("Elapsed time: %4.2f" % main(100))

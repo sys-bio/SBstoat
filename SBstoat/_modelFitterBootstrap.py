@@ -50,14 +50,16 @@ class _Arguments():
                  reportInterval:int=-1,
                  synthesizerClass=  \
                  ObservationSynthesizerRandomizedResiduals,
+                 _loggerPrefix="",
                  **kwargs: dict):
         # Same the antimony model, not roadrunner bcause of Pickle
-        self.fitter = fitter.copy()
+        self.fitter = fitter.copy(isKeepLogger=True)
         self.numIteration  = numIteration
         self.reportInterval  = reportInterval
         self.numProcess = numProcess
         self.processIdx = processIdx
         self.synthesizerClass = synthesizerClass
+        self._loggerPrefix = _loggerPrefix
         self.kwargs = kwargs
        
 
@@ -76,9 +78,12 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
     1. Only the first process generates progress reports.
         
     """
+    fitter = arguments.fitter
+    logger = fitter._logger
+    mainBlock = Logger.join(arguments._loggerPrefix, "_runBootstrap")
+    mainGuid = logger.startBlock(mainBlock)
     # Unapack arguments
     isSuccess = False
-    fitter = arguments.fitter
     lastErr = ""
     for _ in range(MAX_TRIES):
         try:
@@ -93,6 +98,7 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
     if fd is not None:
         sys.stderr = fitter._logger.getFileDescriptor()
         sys.stdout = fitter._logger.getFileDescriptor()
+    iterationGuid = None
     if not isSuccess:
         msg = "Process %d/modelFitterBootstrip/_runBootstrap" % processIdx
         fitter._logger.error(msg,  lastErr)
@@ -118,7 +124,11 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
         baseChisq = fitter.minimizerResult.redchi
         # Do the bootstrap iterations
         bootstrapError = 0
+        iterationBlock = Logger.join(mainBlock, "Iteration")
         for iteration in range(numIteration*ITERATION_MULTIPLIER):
+            if iterationGuid is not None:
+                logger.endBlock(iterationGuid)
+            iterationGuid = logger.startBlock(iterationBlock)
             newObservedTS = synthesizer.calculate()
             std = np.std(newObservedTS.flatten())
             newFitter = ModelFitterBootstrap(fitter.roadrunnerModel,
@@ -129,7 +139,7 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
                   parameterLowerBound=fitter.lowerBound,
                   parameterUpperBound=fitter.upperBound,
                   fittedDataTransformDct=fitter.fittedDataTransformDct,
-                  logger=fitter._logger,
+                  logger=logger,
                   isPlot=fitter._isPlot)
             fittedStatistic = TimeseriesStatistic(newFitter.observedTS,
                   percentiles=[])
@@ -175,6 +185,9 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
         fitter._logger.status("Process %d: completed bootstrap." % (processIdx + 1))
         bootstrapResult = BootstrapResult(fitter, numSuccessIteration, parameterDct,
               fittedStatistic, bootstrapError=bootstrapError)
+    if iterationGuid is not None:
+        logger.endBlock(iterationGuid)
+    logger.endBlock(mainGuid)
     if fd is not None:
         if not fd.closed:
             fd.close()
@@ -242,6 +255,7 @@ class ModelFitterBootstrap(mfc.ModelFitterCore):
               numIteration=numProcessIteration,
               reportInterval=reportInterval,
               synthesizerClass=synthesizerClass,
+              _loggerPrefix="bootstrap",
               **kwargs) for i in range(numProcess)]
         msg = "Running bootstrap for %d successful iterations " % numIteration
         msg += "with %d processes." % numProcess
