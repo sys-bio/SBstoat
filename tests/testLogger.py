@@ -6,9 +6,11 @@ Created on Nov 20, 2020
 """
 
 from SBstoat import _logger
+from SBstoat._logger import BlockSpecification, Logger
 
 import io
 import os
+import time
 import unittest
 
 
@@ -18,13 +20,15 @@ DIR = os.path.dirname(os.path.abspath(__file__))
 LOG_PATH = os.path.join(DIR, "testLogger.png")
 FILES = [LOG_PATH]
 MSG = "Sample text"
+BLOCK1 = "block1"
+BLOCK2 = "block2"
        
  
 class TestLogger(unittest.TestCase):
 
     def setUp(self):
         self.remove()
-        self.logger = _logger.Logger(toFile=LOG_PATH,
+        self.logger = Logger(toFile=LOG_PATH,
                logLevel=_logger.LEVEL_MAX)
     
     def tearDown(self):
@@ -56,6 +60,7 @@ class TestLogger(unittest.TestCase):
             return
         fd = self.logger.getFileDescriptor()
         self.assertIsInstance(fd, io.TextIOWrapper)
+        fd.close()
 
     def _checkMsg(self, msg):
         lines = self.read()
@@ -72,12 +77,12 @@ class TestLogger(unittest.TestCase):
     def _testApi(self, method, logLevel):
         if IGNORE_TEST:
             return
-        logger = _logger.Logger(toFile=LOG_PATH, logLevel=logLevel)
+        logger = Logger(toFile=LOG_PATH, logLevel=logLevel)
         stmt = "logger.%s(MSG)" % method
         exec(stmt)
         line1s = self._checkMsg(MSG)
         #
-        logger = _logger.Logger(toFile=LOG_PATH, logLevel=0)
+        logger = Logger(toFile=LOG_PATH, logLevel=0)
         stmt = "logger.%s(MSG)" % method
         exec(stmt)
         line2s = self.read()
@@ -102,6 +107,44 @@ class TestLogger(unittest.TestCase):
         if IGNORE_TEST:
             return
         self._testApi("status", _logger.LEVEL_EXCEPTION)
+
+    def testStartBlock(self):
+        if IGNORE_TEST:
+            return
+        guid = self.logger.startBlock(BLOCK1)
+        self.assertLess(guid, BlockSpecification.guid)
+        self.assertEqual(len(self.logger.blockDct), 1)
+
+    def testEndBlock(self):
+        if IGNORE_TEST:
+            return
+        guid1 = self.logger.startBlock(BLOCK1)
+        guid2 = self.logger.startBlock(BLOCK2)
+        self.logger.endBlock(guid2)
+        self.logger.endBlock(guid1)
+        self.assertGreater(self.logger.blockDct[guid1].duration,
+              self.logger.blockDct[guid2].duration)
+       
+ 
+class TestBlockSpecification(unittest.TestCase):
+
+    def setUp(self):
+        self.spec = BlockSpecification(BLOCK1)
+
+    def testConstructor(self):
+        if IGNORE_TEST:
+            return
+        self.assertGreater(time.time(), self.spec.startTime)
+        self.assertEqual(self.spec.block, BLOCK1)
+        self.assertLess(self.spec.guid, BlockSpecification.guid)
+        self.assertIsNone(self.spec.duration)
+
+    def testSetDuration(self):
+        if IGNORE_TEST:
+            return
+        self.spec.setDuration()
+        self.assertLess(self.spec.duration, 10e-4)
+
 
 
 if __name__ == '__main__':

@@ -7,11 +7,13 @@ Created on Tue Jul  7 14:24:09 2020
 
 Timing history
 
-date         numIteration    numProcess  Time (sec)
-11/30/2020   10,000          5           110.0
+date         Version         numIteration    numProcess  Time (sec)
+11/30/2020   1.0             10,000          5           11.29
+11/30/2020   1.1             10,000          5           110.0
 """
 
 from SBstoat.modelFitter import ModelFitter
+from SBstoat import _logger
 
 import numpy as np
 import os
@@ -42,8 +44,10 @@ def main(numIteration):
     -------
     float: time in seconds
     """
+    logger = _logger.Logger(logLevel=_logger.LEVEL_MAX)
     fitter = ModelFitter(MODEL, BENCHMARK_PATH,
-          ["k1", "k2"], selectedColumns=['S1', 'S3'], isPlot=False)
+          ["k1", "k2"], selectedColumns=['S1', 'S3'], isPlot=False,
+          logger=logger)
     fitter.fitModel()
     startTime = time.time()
     fitter.bootstrap(numIteration=numIteration, reportInterval=numIteration)
@@ -52,4 +56,4 @@ def main(numIteration):
         
 
 if __name__ == '__main__':
-    print("Elapsed time: %4.2f" % main(10000))
+    print("Elapsed time: %4.2f" % main(1000))

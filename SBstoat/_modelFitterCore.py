@@ -362,11 +362,14 @@ class ModelFitterCore(rpickle.RPickler):
         data = self.roadrunnerModel.simulate(startTime, endTime, numPoint,
               selectedColumns)
         # Select the required columns
-        dataColnames = [s[1:-1] if s[0]=="[" else s for s in list(data.colnames)]
-        columnIndices = [i for i in range(len(data.colnames))
-              if data.colnames[i] in dataColnames]
-        data = data[:, columnIndices]
-        fittedTS = self._transformFittedTS(data)
+        if True:
+            dataColnames = [s[1:-1] if s[0]=="[" else s for s in list(data.colnames)]
+            columnIndices = [i for i in range(len(data.colnames))
+                  if data.colnames[i] in dataColnames]
+            data = data[:, columnIndices]
+            fittedTS = self._transformFittedTS(data)
+        else:
+            fittedTS = NamedTimeseries(namedArray=data)
         return fittedTS
         
 
