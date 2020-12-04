@@ -130,7 +130,8 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
                 logger.endBlock(iterationGuid)
             iterationGuid = logger.startBlock(iterationBlock)
             newObservedTS = synthesizer.calculate()
-            std = np.std(newObservedTS.flatten())
+            fittingSetupBlock = Logger.join(iterationBlock, "fittingSetup")
+            fittingSetupGuid = logger.startBlock(fittingSetupBlock)
             newFitter = ModelFitterBootstrap(fitter.roadrunnerModel,
                   newObservedTS,  
                   fitter.parametersToFit,
@@ -144,6 +145,7 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
                   isPlot=fitter._isPlot)
             fittedStatistic = TimeseriesStatistic(newFitter.observedTS,
                   percentiles=[])
+            logger.endBlock(fittingSetupGuid)
             try:
                 if (iteration > 0) and (iteration != lastReport)  \
                         and (processIdx == 0):
@@ -161,7 +163,10 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
                 tryBlock = Logger.join(iterationBlock, "try")
                 tryGuid = logger.startBlock(tryBlock)
                 try:
+                    tryFitterBlock = Logger.join(tryBlock, "Fitter")
+                    tryFitterGuid = logger.startBlock(tryFitterBlock)
                     newFitter.fitModel(params=fitter.params)
+                    logger.endBlock(tryFitterGuid)
                 except Exception as err:
                     # Problem with the fit. Don't numSuccessIteration it.
                     msg = "Process %d/modelFitterBootstrap" % processIdx

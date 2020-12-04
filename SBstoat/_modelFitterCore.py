@@ -100,6 +100,7 @@ class ModelFitterCore(rpickle.RPickler):
         """
         if modelSpecification is not None:
             # Not the default constructor
+            self._loggerPrefix = _loggerPrefix
             self.modelSpecification = modelSpecification
             self.parametersToFit = parametersToFit
             self.lowerBound = parameterLowerBound
@@ -352,31 +353,53 @@ class ModelFitterCore(rpickle.RPickler):
                 return default
             else:
                 return parameter
-        #
+        ##V
+        block = Logger.join(self._loggerPrefix, "fitModel.simulate")
+        guid = self.logger.startBlock(block)
+        ## V
+        sub1Block = Logger.join(block, "sub1")
+        sub1Guid = self.logger.startBlock(sub1Block)
         startTime = set(self.observedTS.start, startTime)
         endTime = set(self.observedTS.end, endTime)
         numPoint = set(len(self.observedTS), numPoint)
+        ##  V
+        sub1aBlock = Logger.join(sub1Block, "sub1a")
+        sub1aGuid = self.logger.startBlock(sub1aBlock)
         if self.roadrunnerModel is None:
             self._initializeRoadrunnerModel()
         self.roadrunnerModel.reset()
+        ##  ^
+        self.logger.endBlock(sub1aGuid)
+        ##  V
+        sub1bBlock = Logger.join(sub1Block, "sub1b")
+        sub1bGuid = self.logger.startBlock(sub1bBlock)
         if params is not None:
           # Parameters have been specified
           self._setupModel(params)
+        ##  ^
+        self.logger.endBlock(sub1bGuid)
         # Do the simulation
         selectedColumns = list(self.selectedColumns)
         if not TIME in selectedColumns:
             selectedColumns.insert(0, TIME)
+        ## ^
+        self.logger.endBlock(sub1Guid)
+        ## V
+        roadrunnerBlock = Logger.join(block, "roadrunner")
+        roadrunnerGuid = self.logger.startBlock(roadrunnerBlock)
         data = self.roadrunnerModel.simulate(startTime, endTime, numPoint,
               selectedColumns)
+        self.logger.endBlock(roadrunnerGuid)
+        ## ^
         # Select the required columns
-        if True:
-            dataColnames = [s[1:-1] if s[0]=="[" else s for s in list(data.colnames)]
-            columnIndices = [i for i in range(len(data.colnames))
-                  if data.colnames[i] in dataColnames]
-            data = data[:, columnIndices]
-            fittedTS = self._transformFittedTS(data)
-        else:
-            fittedTS = NamedTimeseries(namedArray=data)
+        ## V
+        sub2Block = Logger.join(block, "sub2")
+        sub2Guid = self.logger.startBlock(sub2Block)
+        fittedTS = NamedTimeseries(namedArray=data)
+        self.logger.endBlock(sub2Guid)
+        ## ^
+        self.logger.endBlock(guid)
+        ##^
         return fittedTS
         
 
@@ -412,16 +435,32 @@ class ModelFitterCore(rpickle.RPickler):
         -------
         1-d ndarray of residuals
         """
+        block = Logger.join(self._loggerPrefix, "fitModel._residuals")
+        guid = self.logger.startBlock(block)
+        ##V
         self._simulate(params=params)
         cols = self.selectedColumns
+        subBlock = Logger.join(block, "sub")
+        subGuid = self.logger.startBlock(subBlock)
+        ## V
         if self.residualsTS is None:
+            # FIXME: Adds 25 sec processing
             self.residualsTS = self.observedTS.subsetColumns(cols)
         self.residualsTS[cols] = self.observedTS[cols] - self.fittedTS[cols]
+        ## ^
+        self.logger.endBlock(subGuid)
+        loopBlock = Logger.join(block, "loop")
+        loopGuid = self.logger.startBlock(loopBlock)
+        ## V
         for col in cols:
             if len(self._observedTSIndexDct[col]) > 0:
                 self.residualsTS[col][self._observedTSIndexDct[col]] = 0
-        #self.residualsTS[cols] = np.nan_to_num(self.residualsTS[cols], nan=0.0)
-        return self.residualsTS[cols].flatten()
+        arr = self.residualsTS[cols].flatten()
+        ## ^
+        self.logger.endBlock(loopGuid)
+        ##^
+        self.logger.endBlock(guid)
+        return arr
 
     def fitModel(self, params:lmfit.Parameters=None,
           max_nfev:int=100):
@@ -439,6 +478,8 @@ class ModelFitterCore(rpickle.RPickler):
         -------
         f.fitModel()
         """
+        block = Logger.join(self._loggerPrefix, "fitModel")
+        guid = self.logger.startBlock(block)
         self._initializeRoadrunnerModel()
         if self.parametersToFit is None:
             # Compute fit and residuals for base model
@@ -488,6 +529,7 @@ class ModelFitterCore(rpickle.RPickler):
                 raise ValueError(msg)
         # Ensure that residualsTS and fittedTS match the parameters
         _ = self._residuals(params=self.params)
+        self.logger.endBlock(guid)
 
     def getFittedModel(self):
         """

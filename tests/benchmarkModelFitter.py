@@ -13,8 +13,10 @@ date         Version         numIteration    numProcess  Time (sec)
 """
 
 from SBstoat.modelFitter import ModelFitter
+from SBstoat import _modelFitterCore
 from SBstoat import logging
 
+import matplotlib
 import numpy as np
 import os
 import time
@@ -46,15 +48,18 @@ def main(numIteration):
     """
     logger = logging.Logger(logLevel=logging.LEVEL_MAX)
     fitter = ModelFitter(MODEL, BENCHMARK_PATH,
-          ["k1", "k2"], selectedColumns=['S1', 'S3'], isPlot=False,
+          ["k1", "k2"], selectedColumns=['S1', 'S3'], isPlot=True,
+          method=_modelFitterCore.METHOD_LEASTSQ,
           logger=logger)
     fitter.fitModel()
     startTime = time.time()
     fitter.bootstrap(numIteration=numIteration, reportInterval=numIteration)
     elapsedTime = time.time() - startTime
-    print(fitter.logger.performanceDF)
+    print(fitter.logger.formatPerformanceDF())
+    #fitter.plotFitAll()
     return elapsedTime
         
 
 if __name__ == '__main__':
-    print("Elapsed time: %4.2f" % main(100))
+    matplotlib.use('TkAgg')
+    print("Elapsed time: %4.2f" % main(10000))

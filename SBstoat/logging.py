@@ -24,6 +24,7 @@ import numpy as np
 import sys
 import time
 
+SEPARATOR = "/"  # Separates levels in performance logs
 LEVEL_ACTIVITY = 1
 LEVEL_RESULT = 2
 LEVEL_STATUS = 3
@@ -165,6 +166,30 @@ class Logger(object):
             self._performanceDF = self.performanceDF.sort_index()
         return self._performanceDF
 
+    def formatPerformanceDF(self, numLevel=2):
+        """
+        Constructs a string that trims the index of performanceDF
+
+        Parameters
+        ----------
+        numLevel: int
+            Number of identifier separators included.
+        
+        Returns
+        -------
+        str
+        """
+        performanceDF = self.performanceDF.copy()
+        indices = self.performanceDF.index
+        newIndices = list(indices)
+        for idx, item in enumerate(indices):
+            splits = [s for s in item.split(SEPARATOR) if len(s) > 0]
+            if len(splits) > numLevel - 1:
+                newIndices[idx] = ".." + SEPARATOR +  \
+                       SEPARATOR.join(splits[-numLevel:])
+        performanceDF.index = newIndices
+        return(str(performanceDF))
+
     def getFileDescriptor(self):
         if self.toFile is not None:
             return open(self.toFile, "a")
@@ -184,7 +209,12 @@ class Logger(object):
         -------
         str
         """
-        return "/".join(args)
+        if len(args) == 1:
+            return args[0]
+        if len(args) == 2:
+            if len(args[0]) == 0:
+                return args[1]
+        return SEPARATOR.join(args)
 
     def _write(self, msg, numNL):
         relTime = time.time() - self.startTime
