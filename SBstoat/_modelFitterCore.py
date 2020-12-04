@@ -8,7 +8,7 @@ Core logic of model fitter. Does not include plots.
 """
 
 from SBstoat.namedTimeseries import NamedTimeseries, TIME, mkNamedTimeseries
-from SBstoat._logger import Logger
+from SBstoat.logging import Logger
 import SBstoat.timeseriesPlotter as tp
 from SBstoat import namedTimeseries
 from SBstoat import rpickle
@@ -126,7 +126,7 @@ class ModelFitterCore(rpickle.RPickler):
             self._isPlot = isPlot
             self._plotter = tp.TimeseriesPlotter(isPlot=self._isPlot)
             self._plotFittedTS = None  # Timeseries that is plotted
-            self._logger = logger
+            self.logger = logger
             # The following are calculated during fitting
             self.roadrunnerModel = None
             self.minimizer = None  # lmfit.minimizer
@@ -156,8 +156,8 @@ class ModelFitterCore(rpickle.RPickler):
         """
         Overrides rpickler.
         """
-        if not "_logger" in self.__dict__.keys():
-            self._logger = Logger()
+        if not "logger" in self.__dict__.keys():
+            self.logger = Logger()
 
     def _validateFittedDataTransformDct(self):
         if self.fittedDataTransformDct is not None:
@@ -241,7 +241,7 @@ class ModelFitterCore(rpickle.RPickler):
         newSelectedColumns = list(self.selectedColumns)
         if len(missingNames) > 0:
             newObservedTS = observedTS.copy()
-            self._logger.exception("Missing names in antimony export: %s"
+            self.logger.exception("Missing names in antimony export: %s"
                   % str(missingNames))
             for name in observedTS.colnames:
                 missingName = "%s_" % name
@@ -263,7 +263,7 @@ class ModelFitterCore(rpickle.RPickler):
             try:
                 modelSpecification = self.modelSpecification.getAntimony()
             except Exception as err:
-                self._logger.error("Problem wth conversion to Antimony. Details:",
+                self.logger.error("Problem wth conversion to Antimony. Details:",
                       err)
                 raise ValueError("Cannot proceed.")
             observedTS, selectedColumns = self._adjustNames(
@@ -274,9 +274,9 @@ class ModelFitterCore(rpickle.RPickler):
             selectedColumns = self.selectedColumns
         #
         if isKeepLogger:
-            logger = self._logger
-        elif self._logger is not None:
-            logger = self._logger.copy()
+            logger = self.logger
+        elif self.logger is not None:
+            logger = self.logger.copy()
         else:
             logger = None
         newModelFitter = self.__class__(
@@ -518,7 +518,7 @@ class ModelFitterCore(rpickle.RPickler):
             except Exception as err:
                 msg = "_modelFitterCore/_setupModel: Could not set value for %s"  \
                       % parameter
-                self._logger.error(msg, err)
+                self.logger.error(msg, err)
 
     def mkParams(self, parameterDct:dict=None)->lmfit.Parameters:
         """
@@ -561,7 +561,7 @@ class ModelFitterCore(rpickle.RPickler):
                 except Exception as err:
                     msg = "modelFitterCore/mkParams parameterName %s" \
                           % parameterName
-                    self._logger.error(msg, err)
+                    self.logger.error(msg, err)
             else:
                 value = np.mean([self.lowerBound, self.upperBound])
                 params.add(parameterName, value=value,

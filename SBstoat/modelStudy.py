@@ -23,7 +23,7 @@ Usage
 
 from SBstoat.namedTimeseries import NamedTimeseries, TIME, mkNamedTimeseries
 import SBstoat._plotOptions as po
-from SBstoat._logger import Logger
+from SBstoat.logging import Logger
 from SBstoat.modelFitter import ModelFitter
 
 from docstring_expander.expander import Expander
@@ -132,7 +132,7 @@ class ModelStudy(object):
               instanceNames, dataSources)
         self.fitterPathDct = {}  # Path to serialized fitters; key is instanceName
         self.fitterDct = {}  # Fitters: key is instanceName
-        self._logger = logger
+        self.logger = logger
         # Ensure that the directory exists
         if not os.path.isdir(self.dirStudyPath):
             os.makedirs(self.dirStudyPath)
@@ -144,7 +144,7 @@ class ModelStudy(object):
                 self.fitterDct[name] = ModelFitter.deserialize(filePath)
             else:
                 self.fitterDct[name] = ModelFitter(modelSpecification,
-                       dataSource, logger=self._logger,
+                       dataSource, logger=self.logger,
                        isPlot=self.isPlot, **kwargs)
                 self._serializeFitter(name)
 
@@ -198,11 +198,11 @@ class ModelStudy(object):
         Does fits for all models and serializes the results.
         """
         for name in self.instanceNames:
-            self._logger.activity("Fit for data %s" % name)
+            self.logger.activity("Fit for data %s" % name)
             fitter = self.fitterDct[name]
             fitter.fitModel()
             self._serializeFitter(name)
-            self._logger.result(fitter.reportFit())
+            self.logger.result(fitter.reportFit())
 
     def _hasBootstrapResult(self, fitter):
         result = False
@@ -224,7 +224,7 @@ class ModelStudy(object):
             fitter = self.fitterDct[name]
             if (not self.useSerialized) and (not self._hasBootstrapResult(fitter)):
                 msg = "Doing bootstrapp for instance %s" % name
-                self._logger.activity(msg)
+                self.logger.activity(msg)
                 if fitter.params is None:
                     fitter.fitModel()
                 fitter.bootstrap(**kwargs)
@@ -236,10 +236,10 @@ class ModelStudy(object):
                 if self._hasBootstrapResult(fitter):
                     msg = "Using existing bootstrap results (%d) for %s"  \
                           % (fitter.bootstrapResult.numSimulation, name)
-                    self._logger.result(msg)
+                    self.logger.result(msg)
                 else:
                     msg = "No bootstrap results for data source %s"  % name
-                    self._logger.result(msg)
+                    self.logger.result(msg)
 
     @Expander(po.KWARGS, po.BASE_OPTIONS, indent=8, header=po.HEADER)
     def plotFitAll(self, **kwargs):
@@ -260,7 +260,7 @@ class ModelStudy(object):
             newKwargs[po.SUPTITLE] = title
             fitter = self.fitterDct[name]
             if fitter.params is None:
-                self._logger.result("Must do fitModel or bootstrap before plotting.")
+                self.logger.result("Must do fitModel or bootstrap before plotting.")
             else:
                 if fitter.bootstrapResult is not None:
                     if fitter.bootstrapResult.numSimulation > 0:
@@ -285,11 +285,11 @@ class ModelStudy(object):
                               % (length, dataSource)
                         msg += "Unable to do plot for parameter %s."  \
                                % parameterName
-                        self._logger.result(msg)
+                        self.logger.result(msg)
                     else:
                         fitterDct[dataSource] = fitter
         if len(fitterDct) == 0:
-            self._logger.result("No data to plot.")
+            self.logger.result("No data to plot.")
         else:
             instanceNames = fitterDct.keys()
             trues = [f.bootstrapResult is None for f in fitterDct.values()]

@@ -19,7 +19,7 @@ from SBstoat.observationSynthesizer import  \
       ObservationSynthesizerRandomizedResiduals
 from SBstoat import _modelFitterCore as mfc
 from SBstoat import _helpers
-from SBstoat._logger import Logger
+from SBstoat.logging import Logger
 
 import inspect
 import lmfit
@@ -79,7 +79,7 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
         
     """
     fitter = arguments.fitter
-    logger = fitter._logger
+    logger = fitter.logger
     mainBlock = Logger.join(arguments._loggerPrefix, "_runBootstrap")
     mainGuid = logger.startBlock(mainBlock)
     # Unapack arguments
@@ -153,7 +153,7 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
                         msg = "Bootstrap completed %d total iterations "
                         msg += "with %d successes."
                         msg = msg % (totalIteration, totalSuccessIteration)
-                        fitter._logger.status(msg)
+                        fitter.logger.status(msg)
                         lastReport = numSuccessIteration
                 if numSuccessIteration >= numIteration:
                     # Performed the iterations
@@ -166,13 +166,13 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
                     # Problem with the fit. Don't numSuccessIteration it.
                     msg = "Process %d/modelFitterBootstrap" % processIdx
                     msg += " Fit failed on iteration %d."  % iteration
-                    fitter._logger.error(msg, err)
+                    fitter.logger.error(msg, err)
                     logger.endBlock(tryGuid)
                     continue
                 if newFitter.minimizerResult.redchi > MAX_CHISQ_MULT*baseChisq:
                     if IS_REPORT:
                         msg = "Process %d: Fit has high chisq: %2.2f on iteration %d."
-                        fitter._logger.exception(msg % (processIdx,
+                        fitter.logger.exception(msg % (processIdx,
                               newFitter.minimizerResult.redchi, iteration))
                     logger.endBlock(tryGuid)
                     continue
@@ -186,9 +186,9 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
             except Exception as err:
                 msg = "Process %d/modelFitterBootstrap" % processIdx
                 msg += " Error on iteration %d."  % iteration
-                fitter._logger.error(msg, err)
+                fitter.logger.error(msg, err)
                 bootstrapError += 1
-        fitter._logger.status("Process %d: completed bootstrap." % (processIdx + 1))
+        fitter.logger.status("Process %d: completed bootstrap." % (processIdx + 1))
         bootstrapResult = BootstrapResult(fitter, numSuccessIteration, parameterDct,
               fittedStatistic, bootstrapError=bootstrapError)
     if iterationGuid is not None:
@@ -265,7 +265,7 @@ class ModelFitterBootstrap(mfc.ModelFitterCore):
               **kwargs) for i in range(numProcess)]
         msg = "Running bootstrap for %d successful iterations " % numIteration
         msg += "with %d processes." % numProcess
-        self._logger.activity(msg)
+        self.logger.activity(msg)
         # Run separate processes for each bootstrap
         processes = []
         queue = multiprocessing.Queue()
@@ -287,7 +287,7 @@ class ModelFitterBootstrap(mfc.ModelFitterCore):
                     process.terminate()
             except Exception as err:
                 msg = "modelFitterBootstrap/Error in process management"
-                self._logger.error(msg, err)
+                self.logger.error(msg, err)
             finally:
                 pass
         else:
@@ -299,13 +299,15 @@ class ModelFitterBootstrap(mfc.ModelFitterCore):
             msg = "modelFitterBootstrap/timeout in solving model."
             msg = "\nConsider increasing per timeout."
             msg = "\nCurent value: %f" % MAX_ITERATION_TIME
-            self._logger.result(msg)
+            self.logger.result(msg)
         else:
             self.bootstrapResult = BootstrapResult.merge(results)
-            self._logger = self.bootstrapResult.fitter._logger
+            # Update the logger in place
+            _ = _helpers.copyObject(self.bootstrapResult.fitter.logger,
+                  self.logger)
             if self.bootstrapResult.fittedStatistic is not None:
                 self.bootstrapResult.fittedStatistic.calculate()
-            self._logger.result("%d bootstrap estimates of parameters."
+            self.logger.result("%d bootstrap estimates of parameters."
                   % self.bootstrapResult.numSimulation)
             if serializePath is not None:
                 self.serialize(serializePath)

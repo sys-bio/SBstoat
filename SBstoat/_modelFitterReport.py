@@ -42,4 +42,4 @@ class ModelFitterReport(ModelFitterBootstrap):
         f.reportBootstrap()
         """
         self._checkBootstrap()
-        self._logger.activity(self.bootstrapResult)
+        self.logger.activity(self.bootstrapResult)

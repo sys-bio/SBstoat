@@ -10,7 +10,7 @@ harness.evaluate(stdResiduals=0.5, maxRelativeError=0.1)
 from SBstoat.modelFitter import ModelFitter
 from SBstoat.namedTimeseries import NamedTimeseries, TIME
 from SBstoat import _helpers
-from SBstoat import _logger
+from SBstoat import logging
 from SBstoat.observationSynthesizer import ObservationSynthesizerRandomErrors
 
 import numpy as np
@@ -52,9 +52,9 @@ class TestHarness(object):
         kwargs: passed to ModelFitter constructor
         """
         if "logger" in kwargs.keys():
-            self._logger = kwargs["logger"]
+            self.logger = kwargs["logger"]
         else:
-            self._logger = _logger.Logger()
+            self.logger = logging.Logger()
         #
         self.sbmlPath = sbmlPath
         self.roadRunner = self._initializeRoadrunner()
@@ -115,7 +115,7 @@ class TestHarness(object):
         except Exception as err:
             msg = "sbmlPath is not a valid file path or URL: %s" \
                   % self.sbmlPath
-            self._logger.error("_initializeRoadrunner", err)
+            self.logger.error("_initializeRoadrunner", err)
             raise ValueError(msg)
         return te.loads(self.sbmlPath)
 
@@ -139,7 +139,7 @@ class TestHarness(object):
                   estimatedValue)
             testHarnessResult.addParameter(name, actualRelError)
             if actualRelError > relError:
-                self._logger.result("Parameter %s has high relError: %2.3f"
+                self.logger.result("Parameter %s has high relError: %2.3f"
                       % (name, actualRelError))
 
     def evaluate(self, stdResiduals:float=0.1, relError:float=0.1,
@@ -191,7 +191,7 @@ class TestHarness(object):
               selectedColumns=self.selectedColumns, parameterDct=parameterDct,
               **self.kwargs)
         msg = "Fitting the parameters %s" % str(self.parameterValueDct.keys())
-        self._logger.result(msg)
+        self.logger.result(msg)
         # Evaluate the fit
         fitter.fitModel()
         self._recordResult(fitter.params, relError, self.fitModelResult)

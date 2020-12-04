@@ -1,5 +1,6 @@
 """
-Manages logging.
+Manages logging. There are two parts: messages and performance statistics
+
 Messages are structured as follows:
     activity: some kind of significant processing
     result: outcome of the major processing
@@ -7,12 +8,12 @@ Messages are structured as follows:
     exception: an exception occurred
     error: a processing error occurred
 
-Time logging is provided as well.
+Perofrmance logging is provided as well. Usage is:
     blockGuid = logger.startBlock("My block")
     ... lots of code ...
     logger.endBlock(blockGuid)
     ... more code ...
-    logger.report(csvFile) # writes the results to a csv file
+    print(logger.performanceDF)  # performance data
 """
 
 from SBstoat import _helpers
@@ -250,7 +251,10 @@ class Logger(object):
 
     @staticmethod
     def merge(others):
-        curLogger = others[0]
+        if len(others) == 0:
+            raise ValueError("Cannot provide an empty list.")
+        newLogger = others[0]
+        curLogger = newLogger
         for other in others[1:]:
             newLogger = curLogger._merge(other)
             curLogger = newLogger
@@ -275,3 +279,13 @@ class Logger(object):
                 self.statisticDct[spec.block] = Statistic(block=spec.block)
             self.statisticDct[spec.block].update(spec.duration)
             del self.blockDct[spec.guid]
+
+    def update(self, other):
+        """
+        Copies the content of other to this object.
+
+        Parameters
+        ----------
+        other: Logger
+        """
+        _ = _helpers.copyObject(other, self)

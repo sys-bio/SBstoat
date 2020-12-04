@@ -13,7 +13,7 @@ date         Version         numIteration    numProcess  Time (sec)
 """
 
 from SBstoat.modelFitter import ModelFitter
-from SBstoat import _logger
+from SBstoat import logging
 
 import numpy as np
 import os
@@ -44,7 +44,7 @@ def main(numIteration):
     -------
     float: time in seconds
     """
-    logger = _logger.Logger(logLevel=_logger.LEVEL_MAX)
+    logger = logging.Logger(logLevel=logging.LEVEL_MAX)
     fitter = ModelFitter(MODEL, BENCHMARK_PATH,
           ["k1", "k2"], selectedColumns=['S1', 'S3'], isPlot=False,
           logger=logger)
@@ -52,7 +52,7 @@ def main(numIteration):
     startTime = time.time()
     fitter.bootstrap(numIteration=numIteration, reportInterval=numIteration)
     elapsedTime = time.time() - startTime
-    print(fitter._logger.performanceDF)
+    print(fitter.logger.performanceDF)
     return elapsedTime
         
 
