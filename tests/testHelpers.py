@@ -54,5 +54,31 @@ class TestFunctions(unittest.TestCase):
         data.insert(SIZE-10, 20)
         test(data, baseData)
 
+    def testCopyObject(self):
+        if IGNORE_TEST:
+            return
+        class Sample(object):
+            def __init__(self, a=0):
+                self.a = a
+                self.b = self.a + 1
+
+        class SampleCopy(Sample):
+            def copy(self):
+                new = SampleCopy(a=self.a)
+                new.b = self.a + 1
+                return new
+        #
+        def test(obj):
+            newObj = _helpers.copyObject(obj)
+            for item in ["a", "b"]:
+                true = obj.__getattribute__(item) ==newObj.__getattribute__(item)
+                if isinstance(true, np.ndarray):
+                    true = all(true)
+                self.assertTrue(true)
+        #
+        for cls in [Sample, SampleCopy]:
+            test(cls(np.array(range(4))))
+            test(cls(1))
+
 if __name__ == '__main__':
     unittest.main()

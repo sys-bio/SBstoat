@@ -6,7 +6,7 @@ Created on Nov 20, 2020
 """
 
 from SBstoat import _logger
-from SBstoat._logger import BlockSpecification, Logger
+from SBstoat._logger import BlockSpecification, Logger, Statistic
 
 import io
 import numpy as np
@@ -23,6 +23,7 @@ FILES = [LOG_PATH]
 MSG = "Sample text"
 BLOCK1 = "block1"
 BLOCK2 = "block2"
+COUNT = 50
        
  
 class TestLogger(unittest.TestCase):
@@ -54,7 +55,7 @@ class TestLogger(unittest.TestCase):
         if IGNORE_TEST:
             return
         self.assertFalse(self.isFile())
-        self.assertEqual(self.logger.level, _logger.LEVEL_MAX)
+        self.assertEqual(self.logger.logLevel, _logger.LEVEL_MAX)
 
     def testFileDescriptor(self):
         if IGNORE_TEST:
@@ -123,8 +124,8 @@ class TestLogger(unittest.TestCase):
         guid2 = self.logger.startBlock(BLOCK2)
         self.logger.endBlock(guid2)
         self.logger.endBlock(guid1)
-        self.assertGreater(self.logger.blockDct[guid1].duration,
-              self.logger.blockDct[guid2].duration)
+        self.assertGreater(self.logger.statisticDct[BLOCK1].total,
+              self.logger.statisticDct[BLOCK2].total)
 
     def testPerformanceReport(self):
         if IGNORE_TEST:
@@ -137,7 +138,7 @@ class TestLogger(unittest.TestCase):
                 time.sleep(sleepTime)
                 logger.endBlock(guid)
             df = logger.performanceDF
-            self.assertLess(np.abs(sleepTime - df["mean"].mean()), sleepTime/5)
+            self.assertLess(np.abs(sleepTime - df["mean"].mean()), sleepTime)
             self.assertEqual(df["count"].mean(), 1.0)
         #
         test(3, 0.1)
@@ -150,6 +151,15 @@ class TestLogger(unittest.TestCase):
         result = Logger.join(*NAMES)
         for name in NAMES:
             self.assertGreaterEqual(result.index(name), 0)
+
+    def testCopy(self):
+        if IGNORE_TEST:
+            return
+        newLogger = self.logger.copy()
+        self.assertTrue(self.logger.equals(newLogger))
+
+    
+        
        
  
 class TestBlockSpecification(unittest.TestCase):
@@ -170,6 +180,58 @@ class TestBlockSpecification(unittest.TestCase):
             return
         self.spec.setDuration()
         self.assertLess(self.spec.duration, 10e-4)
+
+ 
+class TestStatistic(unittest.TestCase):
+
+    def setUp(self):
+        self.statistic = Statistic(BLOCK1)
+
+    def testConstructor(self):
+        if IGNORE_TEST:
+            return
+        self.assertIsNone(self.statistic.mean)
+
+    def makeUpdates(self, statistic=None):
+        if statistic is None:
+            statistic = self.statistic
+        for _ in range(COUNT):
+             statistic.update(np.random.uniform())
+
+    def testUpdate(self):
+        if IGNORE_TEST:
+            return
+        self.makeUpdates()
+        self.assertEqual(COUNT, self.statistic.count)
+        self.assertLess(np.abs(self.statistic.total - COUNT*0.5), COUNT*0.2)
+
+    def testCopyEqual(self):
+        if IGNORE_TEST:
+            return
+        self.makeUpdates()
+        statistic = self.statistic.copy()
+        self.assertTrue(statistic.equals(self.statistic))
+
+    def testMerge(self):
+        if IGNORE_TEST:
+            return
+        statistic = Statistic(BLOCK1)
+        self.makeUpdates()
+        mergedStatistic = statistic.merge(self.statistic)
+        self.assertTrue(mergedStatistic.equals(self.statistic))
+        #
+        mergedStatistic = self.statistic.merge(self.statistic)
+        self.assertEqual(mergedStatistic.count, 2*COUNT)
+
+    def testSummarize(self):
+        if IGNORE_TEST:
+            return
+        self.statistic.summarize()
+        self.assertEqual(self.statistic.mean, 0)
+        #
+        self.makeUpdates()
+        self.statistic.summarize()
+        self.assertLess(np.abs(self.statistic.mean - 0.5), 0.2)
 
 
 if __name__ == '__main__':

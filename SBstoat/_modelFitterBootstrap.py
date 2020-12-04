@@ -93,15 +93,15 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
         except Exception as err:
             lastErr = err
     # Set up logging for this process
-    fd = fitter._logger.getFileDescriptor()
+    fd = logger.getFileDescriptor()
     processIdx = arguments.processIdx
     if fd is not None:
-        sys.stderr = fitter._logger.getFileDescriptor()
-        sys.stdout = fitter._logger.getFileDescriptor()
+        sys.stderr = logger.getFileDescriptor()
+        sys.stdout = logger.getFileDescriptor()
     iterationGuid = None
     if not isSuccess:
         msg = "Process %d/modelFitterBootstrip/_runBootstrap" % processIdx
-        fitter._logger.error(msg,  lastErr)
+        logger.error(msg,  lastErr)
         fittedStatistic = TimeseriesStatistic(fitter.observedTS, percentiles=[])
         bootstrapResult = BootstrapResult(fitter, 0, {},
               fittedStatistic)
@@ -140,6 +140,7 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
                   parameterUpperBound=fitter.upperBound,
                   fittedDataTransformDct=fitter.fittedDataTransformDct,
                   logger=logger,
+                  _loggerPrefix=iterationBlock,
                   isPlot=fitter._isPlot)
             fittedStatistic = TimeseriesStatistic(newFitter.observedTS,
                   percentiles=[])
@@ -157,6 +158,8 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
                 if numSuccessIteration >= numIteration:
                     # Performed the iterations
                     break
+                tryBlock = Logger.join(iterationBlock, "try")
+                tryGuid = logger.startBlock(tryBlock)
                 try:
                     newFitter.fitModel(params=fitter.params)
                 except Exception as err:
@@ -164,12 +167,14 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
                     msg = "Process %d/modelFitterBootstrap" % processIdx
                     msg += " Fit failed on iteration %d."  % iteration
                     fitter._logger.error(msg, err)
+                    logger.endBlock(tryGuid)
                     continue
                 if newFitter.minimizerResult.redchi > MAX_CHISQ_MULT*baseChisq:
                     if IS_REPORT:
                         msg = "Process %d: Fit has high chisq: %2.2f on iteration %d."
                         fitter._logger.exception(msg % (processIdx,
                               newFitter.minimizerResult.redchi, iteration))
+                    logger.endBlock(tryGuid)
                     continue
                 numSuccessIteration += 1
                 dct = newFitter.params.valuesdict()
@@ -177,6 +182,7 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
                 cols = newFitter.fittedTS.colnames
                 fittedStatistic.accumulate(newFitter.fittedTS)
                 newFitter.observedTS = synthesizer.calculate()
+                logger.endBlock(tryGuid)
             except Exception as err:
                 msg = "Process %d/modelFitterBootstrap" % processIdx
                 msg += " Error on iteration %d."  % iteration
@@ -296,6 +302,7 @@ class ModelFitterBootstrap(mfc.ModelFitterCore):
             self._logger.result(msg)
         else:
             self.bootstrapResult = BootstrapResult.merge(results)
+            self._logger = self.bootstrapResult.fitter._logger
             if self.bootstrapResult.fittedStatistic is not None:
                 self.bootstrapResult.fittedStatistic.calculate()
             self._logger.result("%d bootstrap estimates of parameters."

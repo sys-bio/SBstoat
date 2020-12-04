@@ -15,12 +15,13 @@ Time logging is provided as well.
     logger.report(csvFile) # writes the results to a csv file
 """
 
+from SBstoat import _helpers
+
 import collections
 import pandas as pd
 import numpy as np
 import sys
 import time
-from multiprocessing import Process, Manager, Value
 
 LEVEL_ACTIVITY = 1
 LEVEL_RESULT = 2
@@ -28,24 +29,28 @@ LEVEL_STATUS = 3
 LEVEL_EXCEPTION = 4
 LEVEL_ERROR = 5
 LEVEL_MAX = LEVEL_ERROR
-#
+# Dataframe columns
 COUNT = "count"
 MEAN = "mean"
 TOTAL = "total"
-
+# Attributes used in equals comparisons
+STATISTIC_ATTR_MERGE = ["count", "total"]
+STATISTIC_ATTR_EQUALS = list(STATISTIC_ATTR_MERGE)
+STATISTIC_ATTR_EQUALS.append("mean")
+LOGGER_ATTR = ["isReport", "toFile", "startTime", "logLevel", "unpairedBlocks",
+      "blockDct", "performanceDF", "statisticDct"]
 
 
 class BlockSpecification(object):
     # Describes an entry for timing a block of code
-    guid = Value('i', 0)
+    guid = 0
     
     def __init__(self, block):
-        with BlockSpecification.guid.get_lock():
-            self.guid = BlockSpecification.guid.value
-            BlockSpecification.guid.value += 1
+        self.guid = BlockSpecification.guid
+        BlockSpecification.guid += 1
         self.startTime = time.time()
         self.block = block
-        self.duration = None
+        self.duration = None  # Time duration of the block
 
     def setDuration(self):
         self.duration = time.time() - self.startTime
@@ -58,6 +63,52 @@ class BlockSpecification(object):
         return repr
 
 
+class Statistic(object):
+    # Statistics for a block
+    def __init__(self, block=None):
+        self.block = block
+        self.count = 0
+        self.total = 0.0
+        self.mean = None
+
+    def __repr__(self):
+        repr = "Statistic[block: %s, count: %d, total: %f"  \
+              % (self.block, self.count, self.total)
+        if self.mean is not None:
+            repr += "mean: %f"  % self.mean
+        repr += "]"
+        return repr
+    
+    def copy(self):
+        return _helpers.copyObject(self)
+
+    def update(self, value):
+        self.count += 1
+        self.total += value
+
+    def equals(self, other):
+        true = True
+        for attr in STATISTIC_ATTR_EQUALS:
+            result = self.__getattribute__(attr) == other.__getattribute__(attr)
+            if not isinstance(result, bool):
+                result = all(result)
+            true = true and result
+        return true
+
+    def merge(self, other):
+        newStatistic = self.copy()
+        for attr in STATISTIC_ATTR_MERGE:
+            value = self.__getattribute__(attr) + other.__getattribute__(attr)
+            newStatistic.__setattr__(attr, value)
+        return newStatistic
+
+    def summarize(self):
+        if self.count == 0:
+            self.mean = 0.0
+        else:
+            self.mean = self.total/self.count
+
+
 class Logger(object):
 
 
@@ -65,11 +116,23 @@ class Logger(object):
         self.isReport = isReport
         self.toFile = toFile
         self.startTime = time.time()
-        self.level = logLevel
-        manager = Manager()
-        # Make multiprocesor safe
-        self.blockDct = manager.dict()  # key: guid, value: BlockSpecification
+        self.logLevel = logLevel
+        self.unpairedBlocks = 0  # Count of blocks begun without an end
+        self.blockDct = {}  # key: guid, value: BlockSpecification. Must be lock protected.
         self._performanceDF = None  # Summarizes performance report
+        self.statisticDct = {}
+
+    def copy(self):
+        return _helpers.copyObject(self)
+
+    def equals(self, other):
+        true = True
+        for attr in LOGGER_ATTR:
+            result = self.__getattribute__(attr) == other.__getattribute__(attr)
+            if not isinstance(result, bool):
+                result = all(result)
+            true = true and result
+        return true
 
     @property
     def performanceDF(self):
@@ -85,24 +148,21 @@ class Logger(object):
         if self._performanceDF is None:
             # Accumulate the durations
             dataDct = {}
-            for spec in self.blockDct.values():
-                if not spec.block in dataDct.keys():
-                    dataDct[spec.block] = []
-                dataDct[spec.block].append(spec.duration)
+            self.unpairedBlocks = len(self.blockDct)
             #
-            indices = [v for v in dataDct.keys()]
-            means = [np.mean(dataDct[b]) for b in indices]
-            totals = [np.sum(dataDct[b]) for b in indices]
-            counts = [len(dataDct[b]) for b in indices]
+            indices = list(self.statisticDct.keys())
+            [s.summarize() for s in self.statisticDct.values()]
+            means = [self.statisticDct[b].mean for b in indices]
+            counts = [self.statisticDct[b].count for b in indices]
+            totals = [self.statisticDct[b].total for b in indices]
             self._performanceDF = pd.DataFrame({
                   COUNT: counts,
                   MEAN: means,
                   TOTAL: totals,
                   })
             self._performanceDF.index = indices
-            self._performanceDF = self._performanceDF.sort_index()
+            self._performanceDF = self.performanceDF.sort_index()
         return self._performanceDF
-    
 
     def getFileDescriptor(self):
         if self.toFile is not None:
@@ -137,27 +197,27 @@ class Logger(object):
 
     def activity(self, msg, preString=""):
        # Major processing activity
-       if self.isReport and (self.level >= LEVEL_ACTIVITY):
+       if self.isReport and (self.logLevel >= LEVEL_ACTIVITY):
            self._write("***%s***" %msg, 2)
     
     def result(self, msg, preString=""):
        # Result of an activity
-       if self.isReport and (self.level >= LEVEL_RESULT):
+       if self.isReport and (self.logLevel >= LEVEL_RESULT):
            self._write("\n **%s" %msg, 1)
     
     def status(self, msg, preString=""):
        # Progress message
-       if self.isReport and (self.level >= LEVEL_STATUS):
+       if self.isReport and (self.logLevel >= LEVEL_STATUS):
            self._write("    (%s)" %msg, 0)
     
     def exception(self, msg, preString=""):
        # Progress message
-       if self.isReport and (self.level >= LEVEL_EXCEPTION):
+       if self.isReport and (self.logLevel >= LEVEL_EXCEPTION):
            self._write("    (%s)" %msg, 0)
     
     def error(self, msg, excp):
        # Progress message
-       if self.isReport and (self.level >= LEVEL_ERROR):
+       if self.isReport and (self.logLevel >= LEVEL_ERROR):
            fullMsg = "%s: %s" % (msg, str(excp))
            self._write("    (%s)" % fullMsg, 0)
 
@@ -165,7 +225,6 @@ class Logger(object):
     def startBlock(self, block:str)->float:
         """
         Records the beginning of a block.
-        This is multiprocessing safe.
 
         Parameters
         ----------
@@ -179,15 +238,40 @@ class Logger(object):
         self.blockDct[spec.guid] = spec
         return spec.guid
 
+    def _merge(self, other):
+        """
+        Merges the results of another logger.
+        """
+        newLogger = self.copy()
+        for block, statistic in self.statisticDct.items():
+            otherStatistic = other.statisticDct[block]
+            newLogger.statisticDct[block] = statistic.merge(otherStatistic)
+        return newLogger
+
+    @staticmethod
+    def merge(others):
+        curLogger = others[0]
+        for other in others[1:]:
+            newLogger = curLogger._merge(other)
+            curLogger = newLogger
+        return newLogger
+        
+
     def endBlock(self, guid:int):
         """
-        Records the end of a block.
-        This is multiprocessing safe.
+        Records the end of a block. Items are removed as
+        statistics are accumulated.
 
         Parameters
         ----------
         guid: identifies the block instance
         """
-        spec = self.blockDct[guid]
-        spec.setDuration()
-        self.blockDct[guid] = spec
+        if not guid in self.blockDct.keys():
+            self.exception("missing guid: %d" % guid)
+        else:
+            spec = self.blockDct[guid]
+            spec.setDuration()
+            if not spec.block in self.statisticDct.keys():
+                self.statisticDct[spec.block] = Statistic(block=spec.block)
+            self.statisticDct[spec.block].update(spec.duration)
+            del self.blockDct[spec.guid]

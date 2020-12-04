@@ -60,6 +60,7 @@ class ModelFitterCore(rpickle.RPickler):
                  fittedDataTransformDct={},
                  logger=Logger(),
                  isPlot=True,
+                 _loggerPrefix="",
                  **bootstrapKwargs
                  ):
         """
@@ -274,8 +275,10 @@ class ModelFitterCore(rpickle.RPickler):
         #
         if isKeepLogger:
             logger = self._logger
+        elif self._logger is not None:
+            logger = self._logger.copy()
         else:
-            logger = copy.deepcopy(self._logger)
+            logger = None
         newModelFitter = self.__class__(
               copy.deepcopy(modelSpecification),
               observedTS,

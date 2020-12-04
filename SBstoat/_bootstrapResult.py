@@ -10,6 +10,7 @@ metrics that are calculated from the results.
 
 from SBstoat.namedTimeseries import NamedTimeseries, TIME, mkNamedTimeseries
 from SBstoat.timeseriesStatistic import TimeseriesStatistic
+from SBstoat._logger import Logger
 from SBstoat import rpickle
 from SBstoat import _helpers
 from SBstoat import _modelFitterCore as mfc
@@ -213,6 +214,8 @@ class BootstrapResult(rpickle.RPickler):
         bootstrapError = sum([b.bootstrapError for b in bootstrapResults])
         fittedStatistic = None
         if numIteration > 0:
+            # Merge the fitter logs
+            fitter._logger = Logger.merge([b.fitter._logger for b in bootstrapResults])
             # Merge the statistics for fitted timeseries
             fittedStatistics = [b.fittedStatistic for b in bootstrapResults]
             fittedStatistic = TimeseriesStatistic.merge(fittedStatistics)

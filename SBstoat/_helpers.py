@@ -3,6 +3,7 @@
 
 from SBstoat import _plotOptions as po
 
+import copy
 import numpy as np
 import scipy
 
@@ -142,3 +143,29 @@ def filterOutliersFromZero(data, maxSL):
             break
     #
     return sortedData
+
+def copyObject(oldObject, newInstance=None):
+    """
+    Copies the non "__" instance variables of the old object into the new instance.
+    
+    Parameters
+    ----------
+    oldObject: an existing object
+    newInstance: updated
+    """
+    if newInstance is None:
+        newInstance = oldObject.__class__()
+    for attr in oldObject.__dict__:
+        if len(attr) >= 2:
+            if attr[0:2] == "__":
+                continue
+        value = oldObject.__getattribute__(attr)
+        if "copy" in dir(value):
+            newValue = value.copy()
+        else:
+            newValue = copy.deepcopy(value)
+        try:
+            newInstance.__setattr__(attr, value)
+        except:
+            continue
+    return newInstance
