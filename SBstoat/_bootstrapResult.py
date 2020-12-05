@@ -10,7 +10,7 @@ metrics that are calculated from the results.
 
 from SBstoat.namedTimeseries import NamedTimeseries, TIME, mkNamedTimeseries
 from SBstoat.timeseriesStatistic import TimeseriesStatistic
-from SBstoat.logging import Logger
+from SBstoat.logs import Logger
 from SBstoat import rpickle
 from SBstoat import _helpers
 from SBstoat import _modelFitterCore as mfc

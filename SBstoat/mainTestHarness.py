@@ -24,7 +24,7 @@ Runs TestHarness for BioModels. Creates:
 """
 
 from SBstoat._testHarness import TestHarness
-from SBstoat.logging import Logger
+from SBstoat.logs import Logger
 
 import argparse
 import matplotlib

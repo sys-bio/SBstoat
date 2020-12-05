@@ -8,7 +8,7 @@ Core logic of model fitter. Does not include plots.
 """
 
 from SBstoat.namedTimeseries import NamedTimeseries, TIME, mkNamedTimeseries
-from SBstoat.logging import Logger
+from SBstoat.logs import Logger
 import SBstoat.timeseriesPlotter as tp
 from SBstoat import namedTimeseries
 from SBstoat import rpickle

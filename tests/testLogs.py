@@ -5,8 +5,8 @@ Created on Nov 20, 2020
 @author: joseph-hellerstein
 """
 
-from SBstoat import logging
-from SBstoat.logging import BlockSpecification, Logger, Statistic
+from SBstoat import logs
+from SBstoat.logs import BlockSpecification, Logger, Statistic
 
 import io
 import numpy as np
@@ -31,7 +31,7 @@ class TestLogger(unittest.TestCase):
     def setUp(self):
         self.remove()
         self.logger = Logger(toFile=LOG_PATH,
-               logLevel=logging.LEVEL_MAX)
+               logLevel=logs.LEVEL_MAX)
     
     def tearDown(self):
         self.remove()
@@ -55,7 +55,7 @@ class TestLogger(unittest.TestCase):
         if IGNORE_TEST:
             return
         self.assertFalse(self.isFile())
-        self.assertEqual(self.logger.logLevel, logging.LEVEL_MAX)
+        self.assertEqual(self.logger.logLevel, logs.LEVEL_MAX)
 
     def testFileDescriptor(self):
         if IGNORE_TEST:
@@ -93,22 +93,22 @@ class TestLogger(unittest.TestCase):
     def testActivity(self):
         if IGNORE_TEST:
             return
-        self._testApi("activity", logging.LEVEL_ACTIVITY)
+        self._testApi("activity", logs.LEVEL_ACTIVITY)
 
     def testResult(self):
         if IGNORE_TEST:
             return
-        self._testApi("result", logging.LEVEL_RESULT)
+        self._testApi("result", logs.LEVEL_RESULT)
 
     def testStatus(self):
         if IGNORE_TEST:
             return
-        self._testApi("status", logging.LEVEL_STATUS)
+        self._testApi("status", logs.LEVEL_STATUS)
 
     def testException(self):
         if IGNORE_TEST:
             return
-        self._testApi("status", logging.LEVEL_EXCEPTION)
+        self._testApi("status", logs.LEVEL_EXCEPTION)
 
     def testStartBlock(self):
         if IGNORE_TEST:

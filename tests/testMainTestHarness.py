@@ -6,7 +6,7 @@ Created on Nov 16, 2020
 """
 
 from SBstoat.mainTestHarness import Runner
-from SBstoat.logging import Logger
+from SBstoat.logs import Logger
 
 import os
 import unittest

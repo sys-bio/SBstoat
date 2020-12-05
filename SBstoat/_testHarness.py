@@ -10,7 +10,7 @@ harness.evaluate(stdResiduals=0.5, maxRelativeError=0.1)
 from SBstoat.modelFitter import ModelFitter
 from SBstoat.namedTimeseries import NamedTimeseries, TIME
 from SBstoat import _helpers
-from SBstoat import logging
+from SBstoat import logs
 from SBstoat.observationSynthesizer import ObservationSynthesizerRandomErrors
 
 import numpy as np
@@ -54,7 +54,7 @@ class TestHarness(object):
         if "logger" in kwargs.keys():
             self.logger = kwargs["logger"]
         else:
-            self.logger = logging.Logger()
+            self.logger = logs.Logger()
         #
         self.sbmlPath = sbmlPath
         self.roadRunner = self._initializeRoadrunner()

@@ -5,7 +5,7 @@ Created on Nov 11, 2020
 """
 
 from SBstoat._testHarness import TestHarness
-from SBstoat.logging import Logger
+from SBstoat.logs import Logger
 
 import numpy as np
 import os

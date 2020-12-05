@@ -15,7 +15,6 @@ Perofrmance logging is provided as well. Usage is:
     ... more code ...
     print(logger.performanceDF)  # performance data
 """
-
 from SBstoat import _helpers
 
 import collections

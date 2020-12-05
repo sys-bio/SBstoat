@@ -23,7 +23,7 @@ Usage
 
 from SBstoat.namedTimeseries import NamedTimeseries, TIME, mkNamedTimeseries
 import SBstoat._plotOptions as po
-from SBstoat.logging import Logger
+from SBstoat.logs import Logger
 from SBstoat.modelFitter import ModelFitter
 
 from docstring_expander.expander import Expander

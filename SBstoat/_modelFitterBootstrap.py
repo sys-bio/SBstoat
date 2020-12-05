@@ -19,7 +19,7 @@ from SBstoat.observationSynthesizer import  \
       ObservationSynthesizerRandomizedResiduals
 from SBstoat import _modelFitterCore as mfc
 from SBstoat import _helpers
-from SBstoat.logging import Logger
+from SBstoat.logs import Logger
 
 import inspect
 import lmfit

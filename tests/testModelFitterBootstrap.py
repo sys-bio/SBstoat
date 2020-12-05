@@ -8,7 +8,7 @@ Created on Aug 19, 2020
 
 from SBstoat import _modelFitterBootstrap as mfb
 from SBstoat.modelStudy import ModelStudy
-from SBstoat import logging
+from SBstoat import logs
 from SBstoat.namedTimeseries import NamedTimeseries, TIME
 from tests import _testHelpers as th
 from SBstoat.observationSynthesizer import  \
@@ -35,7 +35,7 @@ IS_PLOT = False
 TIMESERIES = th.getTimeseries()
 DIR = os.path.dirname(os.path.abspath(__file__))
 LOG_FILE = os.path.join(DIR, "testModelFitterBootstrap.log")
-LOGGER = logging.Logger()
+LOGGER = logs.Logger()
 if IGNORE_TEST:
     # Write log to std output
     FITTER = th.getFitter(cls=mfb.ModelFitterBootstrap)
@@ -257,7 +257,7 @@ class TestModelFitterBootstrap(unittest.TestCase):
               c=(0, 10, 5.2),
               )
         if IGNORE_TEST:
-            logger = logging.Logger(logLevel=logging.LEVEL_MAX)
+            logger = logs.Logger(logLevel=logs.LEVEL_MAX)
         else:
             logger = LOGGER
         study = ModelStudy(ANTIMONY_MODEL, [dataSource],
