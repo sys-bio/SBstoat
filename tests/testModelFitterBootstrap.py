@@ -17,6 +17,7 @@ from SBstoat.observationSynthesizer import  \
 
 import copy
 import lmfit
+import matplotlib
 import numpy as np
 import os
 import pandas as pd
@@ -24,14 +25,16 @@ import pickle
 import time
 import unittest
 
+matplotlib.use('TkAgg')
+
 
 
 def remove(ffile):
     if os.path.isfile(ffile):
         os.remove(ffile)
 
-IGNORE_TEST = False
-IS_PLOT = False
+IGNORE_TEST = True
+IS_PLOT = True
 TIMESERIES = th.getTimeseries()
 DIR = os.path.dirname(os.path.abspath(__file__))
 LOG_FILE = os.path.join(DIR, "testModelFitterBootstrap.log")
@@ -216,8 +219,7 @@ class TestModelFitterBootstrap(unittest.TestCase):
         self.assertTrue(result is not None)
 
     def testBootstrapErrorOnException(self):
-        if IGNORE_TEST:
-            return
+        # TESTING
         ANTIMONY_MODEL  = '''
             // Equations
             E1: T -> E ; beta*T*V ; // Target cells to exposed
@@ -266,6 +268,7 @@ class TestModelFitterBootstrap(unittest.TestCase):
                     doSerialize=False, useSerialized=False,
                     logger=logger)
         study.bootstrap(numIteration=100)
+        #study.plotFitAll()
         fitter = study.fitterDct["src_1"]
         self.assertIsNotNone(fitter.bootstrapResult)
         for name in parameterDct.keys():

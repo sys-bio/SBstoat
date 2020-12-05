@@ -151,7 +151,7 @@ class TestModelFitterCore(unittest.TestCase):
             return
         def test(method):
             fitter = ModelFitterCore(th.ANTIMONY_MODEL, self.timeseries,
-                  list(th.PARAMETER_DCT.keys()), method=method)
+                  list(th.PARAMETER_DCT.keys()), fitterMethod=method)
             fitter.fitModel()
             PARAMETER = "k2"
             diff = np.abs(th.PARAMETER_DCT[PARAMETER]
@@ -192,7 +192,7 @@ class TestModelFitterCore(unittest.TestCase):
                     if np.random.random() <= probNan:
                         nanTimeseries[col][idx] = np.nan
             fitter = ModelFitterCore(th.ANTIMONY_MODEL, nanTimeseries,
-                  list(th.PARAMETER_DCT.keys()), method=method)
+                  list(th.PARAMETER_DCT.keys()), fitterMethod=method)
             fitter.fitModel()
             diff = np.abs(th.PARAMETER_DCT[PARAMETER]
                   - fitter.params.valuesdict()[PARAMETER])

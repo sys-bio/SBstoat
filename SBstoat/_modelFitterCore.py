@@ -53,7 +53,7 @@ class ModelFitterCore(rpickle.RPickler):
 
     def __init__(self, modelSpecification, observedData,
                  parametersToFit=None,
-                 selectedColumns=None, method=METHOD_BOTH,
+                 selectedColumns=None, fitterMethods=[METHOD_BOTH],
                  parameterLowerBound=PARAMETER_LOWER_BOUND,
                  parameterUpperBound=PARAMETER_UPPER_BOUND,
                  parameterDct={},
@@ -89,7 +89,7 @@ class ModelFitterCore(rpickle.RPickler):
                    input: NamedTimeseries
                    output: array for the values of the column
         logger: Logger
-        method: str
+        fitterMethods: str/list-str
             method used for minimization
         bootstrapKwargs: dict
             Parameters used in bootstrap
@@ -123,7 +123,9 @@ class ModelFitterCore(rpickle.RPickler):
             if (selectedColumns is None) and (self.observedTS is not None):
                 selectedColumns = self.observedTS.colnames
             self.selectedColumns = selectedColumns
-            self._method = method
+            self._methods = fitterMethods
+            if isinstance(self._methods, str):
+                self._methods = [self._methods]
             self._isPlot = isPlot
             self._plotter = tp.TimeseriesPlotter(isPlot=self._isPlot)
             self._plotFittedTS = None  # Timeseries that is plotted
@@ -285,7 +287,7 @@ class ModelFitterCore(rpickle.RPickler):
               observedTS,
               copy.deepcopy(self.parametersToFit),
               selectedColumns=selectedColumns,
-              method=self._method,
+              fitterMethods=self._methods,
               parameterLowerBound=self.lowerBound,
               parameterUpperBound=self.upperBound,
               parameterDct=copy.deepcopy(self.parameterDct),
@@ -496,26 +498,34 @@ class ModelFitterCore(rpickle.RPickler):
             #   Global differential evolution to get us close to minimum
             #   A local Levenberg-Marquardt to getsus to the minimum
             isMinimized = False
-            if self._method in [METHOD_BOTH, METHOD_DIFFERENTIAL_EVOLUTION]:
-                minimizer = lmfit.Minimizer(self._residuals, params,
-                      max_nfev=max_nfev)
-                self.minimizerResult = minimizer.minimize(
-                      method=METHOD_DIFFERENTIAL_EVOLUTION,
-                      max_nfev=max_nfev)
-                params_DE = self.minimizerResult.params
-                residuals_DE = self._residuals(params=params_DE)
-                isMinimized = True
-            if self._method in [METHOD_BOTH, METHOD_LEASTSQ]:
-                minimizer = lmfit.Minimizer(self._residuals, params,
-                      max_nfev=max_nfev)
-                self.minimizerResult = minimizer.minimize(
-                      method=METHOD_LEASTSQ,
-                      max_nfev=max_nfev)
-                params_LS = self.minimizerResult.params
-                residuals_LS = self._residuals(params=params_LS)
-                isMinimized = True
+            for method in self._methods:           
+                if method in [METHOD_BOTH, METHOD_DIFFERENTIAL_EVOLUTION]:
+                    minimizer = lmfit.Minimizer(self._residuals, params,
+                          max_nfev=max_nfev)
+                    try:
+                        self.minimizerResult = minimizer.minimize(
+                              method=METHOD_DIFFERENTIAL_EVOLUTION,
+                              max_nfev=max_nfev)
+                        params_DE = self.minimizerResult.params
+                        residuals_DE = self._residuals(params=params_DE)
+                        isMinimized = True
+                    except Exception as excp:
+                        self.logger.error(
+                              "Minimizer failed using differential evolution", excp)
+                        method = METHOD_LEASTSQ
+                if method in [METHOD_BOTH, METHOD_LEASTSQ]:
+                    minimizer = lmfit.Minimizer(self._residuals, params,
+                          max_nfev=max_nfev)
+                    self.minimizerResult = minimizer.minimize(
+                          method=METHOD_LEASTSQ,
+                          max_nfev=max_nfev)
+                    params_LS = self.minimizerResult.params
+                    residuals_LS = self._residuals(params=params_LS)
+                    isMinimized = True
+                if isMinimized:
+                    break
             if not isMinimized:
-                raise ValueError("Invalid method specified: %s" % self._method)
+                raise ValueError("Minimizer failed")
             if np.std(residuals_DE) <= np.std(residuals_LS):
                 self.params = params_DE
             else:

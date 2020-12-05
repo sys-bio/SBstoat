@@ -12,6 +12,7 @@ Several considerations are made;
      method. Arguments are packaged in _Arguments.
 """
 
+import SBstoat
 from SBstoat.namedTimeseries import NamedTimeseries, TIME, mkNamedTimeseries
 from SBstoat.timeseriesStatistic import TimeseriesStatistic
 from SBstoat._bootstrapResult import BootstrapResult
@@ -76,7 +77,7 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
     Notes
     -----
     1. Only the first process generates progress reports.
-        
+    2. Uses METHOD_LEASTSQ for fitModel iterations.
     """
     fitter = arguments.fitter
     logger = fitter.logger
@@ -85,6 +86,7 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
     # Unapack arguments
     isSuccess = False
     lastErr = ""
+    # Do an initial fit
     for _ in range(MAX_TRIES):
         try:
             fitter.fitModel()  # Initialize model
@@ -136,7 +138,7 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
                   newObservedTS,  
                   fitter.parametersToFit,
                   selectedColumns=fitter.selectedColumns,
-                  method=fitter._method,
+                  fitterMethod=[SBstoat.METHOD_LEASTSQ],
                   parameterLowerBound=fitter.lowerBound,
                   parameterUpperBound=fitter.upperBound,
                   fittedDataTransformDct=fitter.fittedDataTransformDct,
