@@ -6,6 +6,7 @@ Created on Aug 19, 2020
 @author: joseph-hellerstein
 """
 
+import SBstoat
 from SBstoat import _modelFitterBootstrap as mfb
 from SBstoat.modelStudy import ModelStudy
 from SBstoat import logs
@@ -33,8 +34,8 @@ def remove(ffile):
     if os.path.isfile(ffile):
         os.remove(ffile)
 
-IGNORE_TEST = True
-IS_PLOT = True
+IGNORE_TEST = False
+IS_PLOT = False
 TIMESERIES = th.getTimeseries()
 DIR = os.path.dirname(os.path.abspath(__file__))
 LOG_FILE = os.path.join(DIR, "testModelFitterBootstrap.log")
@@ -219,7 +220,8 @@ class TestModelFitterBootstrap(unittest.TestCase):
         self.assertTrue(result is not None)
 
     def testBootstrapErrorOnException(self):
-        # TESTING
+        if IGNORE_TEST:
+            return
         ANTIMONY_MODEL  = '''
             // Equations
             E1: T -> E ; beta*T*V ; // Target cells to exposed
@@ -247,7 +249,8 @@ class TestModelFitterBootstrap(unittest.TestCase):
             log10V := log10(V)
         
         '''
-        arr = np.array([range(7), [2,5.5,4,5.5,3,0,0]])
+        arr1 = np.array([range(7), [2, 5.5,4,5.5,3,0,0]            ]) #P1
+        arr =  np.array([range(7), [3.5, 5.5, 6.5, 5.5, 3.5, 4.0, 0.0]  ]) #P4
         arr = np.resize(arr, (2, 7))
         arr = arr.transpose()
         dataSource = NamedTimeseries(array=arr, colnames=["time", "log10V"])
@@ -268,9 +271,10 @@ class TestModelFitterBootstrap(unittest.TestCase):
                     doSerialize=False, useSerialized=False,
                     logger=logger)
         study.bootstrap(numIteration=100)
-        #study.plotFitAll()
+        if IS_PLOT:
+            study.plotFitAll()
         fitter = study.fitterDct["src_1"]
-        self.assertIsNotNone(fitter.bootstrapResult)
+        #self.assertIsNotNone(fitter.bootstrapResult)
         for name in parameterDct.keys():
             value = fitter.bootstrapResult.params.valuesdict()[name]
             self.assertIsNotNone(value)

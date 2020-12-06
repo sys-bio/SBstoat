@@ -53,7 +53,9 @@ class ModelFitterCore(rpickle.RPickler):
 
     def __init__(self, modelSpecification, observedData,
                  parametersToFit=None,
-                 selectedColumns=None, fitterMethods=[METHOD_BOTH],
+                 selectedColumns=None,
+                 fitterMethods=[METHOD_BOTH],
+                 bootstrapMethods=[METHOD_LEASTSQ, METHOD_BOTH],
                  parameterLowerBound=PARAMETER_LOWER_BOUND,
                  parameterUpperBound=PARAMETER_UPPER_BOUND,
                  parameterDct={},
@@ -90,7 +92,9 @@ class ModelFitterCore(rpickle.RPickler):
                    output: array for the values of the column
         logger: Logger
         fitterMethods: str/list-str
-            method used for minimization
+            method used for minimization in fitModel
+        bootstrapMethods: str/list-str
+            method used for minimization in bootstrap
         bootstrapKwargs: dict
             Parameters used in bootstrap
 
@@ -123,9 +127,12 @@ class ModelFitterCore(rpickle.RPickler):
             if (selectedColumns is None) and (self.observedTS is not None):
                 selectedColumns = self.observedTS.colnames
             self.selectedColumns = selectedColumns
-            self._methods = fitterMethods
-            if isinstance(self._methods, str):
-                self._methods = [self._methods]
+            self._fitterMethods = fitterMethods
+            if isinstance(self._fitterMethods, str):
+                self._fitterMethods = [self._fitterMethods]
+            self._bootstrapMethods = bootstrapMethods
+            if isinstance(self._bootstrapMethods, str):
+                self._bootstrapMethods = [self._bootstrapMethods]
             self._isPlot = isPlot
             self._plotter = tp.TimeseriesPlotter(isPlot=self._isPlot)
             self._plotFittedTS = None  # Timeseries that is plotted
@@ -287,7 +294,8 @@ class ModelFitterCore(rpickle.RPickler):
               observedTS,
               copy.deepcopy(self.parametersToFit),
               selectedColumns=selectedColumns,
-              fitterMethods=self._methods,
+              fitterMethods=self._fitterMethods,
+              bootstrapMethods=self._bootstrapMethods,
               parameterLowerBound=self.lowerBound,
               parameterUpperBound=self.upperBound,
               parameterDct=copy.deepcopy(self.parameterDct),
@@ -498,7 +506,7 @@ class ModelFitterCore(rpickle.RPickler):
             #   Global differential evolution to get us close to minimum
             #   A local Levenberg-Marquardt to getsus to the minimum
             isMinimized = False
-            for method in self._methods:           
+            for method in self._fitterMethods:           
                 if method in [METHOD_BOTH, METHOD_DIFFERENTIAL_EVOLUTION]:
                     minimizer = lmfit.Minimizer(self._residuals, params,
                           max_nfev=max_nfev)

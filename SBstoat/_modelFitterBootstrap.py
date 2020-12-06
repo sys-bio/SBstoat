@@ -138,7 +138,8 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
                   newObservedTS,  
                   fitter.parametersToFit,
                   selectedColumns=fitter.selectedColumns,
-                  fitterMethod=[SBstoat.METHOD_LEASTSQ],
+                  # Use bootstrap methods for fitting
+                  fitterMethods=fitter._bootstrapMethods,
                   parameterLowerBound=fitter.lowerBound,
                   parameterUpperBound=fitter.upperBound,
                   fittedDataTransformDct=fitter.fittedDataTransformDct,
@@ -182,6 +183,8 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
                         fitter.logger.exception(msg % (processIdx,
                               newFitter.minimizerResult.redchi, iteration))
                     logger.endBlock(tryGuid)
+                    continue
+                if newFitter.params is None:
                     continue
                 numSuccessIteration += 1
                 dct = newFitter.params.valuesdict()
