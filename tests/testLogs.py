@@ -127,6 +127,16 @@ class TestLogger(unittest.TestCase):
         self.assertGreater(self.logger.statisticDct[BLOCK1].total,
               self.logger.statisticDct[BLOCK2].total)
 
+    def testNoLogPerformance(self):
+        if IGNORE_TEST:
+            return
+        logger = Logger(toFile=LOG_PATH, logPerformance=False,
+               logLevel=logs.LEVEL_MAX)
+        guid = logger.startBlock(BLOCK1)
+        self.assertEqual(len(self.logger.blockDct), 0)
+        logger.endBlock(guid)
+        self.assertEqual(len(self.logger.blockDct), 0)
+
     def testPerformanceReport(self):
         if IGNORE_TEST:
             return

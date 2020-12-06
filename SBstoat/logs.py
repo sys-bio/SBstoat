@@ -113,9 +113,11 @@ class Statistic(object):
 class Logger(object):
 
 
-    def __init__(self, isReport=True, toFile=None, logLevel=LEVEL_STATUS):
+    def __init__(self, isReport=True, toFile=None, logLevel=LEVEL_STATUS,
+          logPerformance=True):
         self.isReport = isReport
         self.toFile = toFile
+        self.logPerformance = logPerformance
         self.startTime = time.time()
         self.logLevel = logLevel
         self.unpairedBlocks = 0  # Count of blocks begun without an end
@@ -264,9 +266,12 @@ class Logger(object):
         -------
         int: identifier for the BlockSpecification
         """
-        spec = BlockSpecification(block)
-        self.blockDct[spec.guid] = spec
-        return spec.guid
+        if self.logPerformance:
+            spec = BlockSpecification(block)
+            self.blockDct[spec.guid] = spec
+            return spec.guid
+        else:
+            return None
 
     def _merge(self, other):
         """
@@ -299,15 +304,16 @@ class Logger(object):
         ----------
         guid: identifies the block instance
         """
-        if not guid in self.blockDct.keys():
-            self.exception("missing guid: %d" % guid)
-        else:
-            spec = self.blockDct[guid]
-            spec.setDuration()
-            if not spec.block in self.statisticDct.keys():
-                self.statisticDct[spec.block] = Statistic(block=spec.block)
-            self.statisticDct[spec.block].update(spec.duration)
-            del self.blockDct[spec.guid]
+        if self.logPerformance:
+            if not guid in self.blockDct.keys():
+                self.exception("missing guid: %d" % guid)
+            else:
+                spec = self.blockDct[guid]
+                spec.setDuration()
+                if not spec.block in self.statisticDct.keys():
+                    self.statisticDct[spec.block] = Statistic(block=spec.block)
+                self.statisticDct[spec.block].update(spec.duration)
+                del self.blockDct[spec.guid]
 
     def update(self, other):
         """

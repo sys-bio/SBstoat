@@ -8,8 +8,9 @@ Created on Tue Jul  7 14:24:09 2020
 Timing history
 
 date         Version         numIteration    numProcess  Time (sec)
-11/30/2020   1.0             10,000          5           11.29
+11/30/2020   1.0             10,000          5            11.29
 11/30/2020   1.1             10,000          5           110.0
+12/06/2020   1.1             10,000          5            19.41
 """
 
 from SBstoat.modelFitter import ModelFitter
@@ -22,7 +23,8 @@ import os
 import time
 
 
-BENCHMARK1_TIME = 30 # Actual is 20 sec
+IS_TEST = False
+IS_PLOT = False
 DIR = os.path.dirname(os.path.abspath(__file__))
 BENCHMARK_PATH = os.path.join(DIR, "groundtruth_2_step_0_1.txt")
 MODEL = """
@@ -46,19 +48,21 @@ def main(numIteration):
     -------
     float: time in seconds
     """
-    logger = logs.Logger(logLevel=logs.LEVEL_MAX)
+    logger = logs.Logger(logLevel=logs.LEVEL_MAX, logPerformance=IS_TEST)
     fitter = ModelFitter(MODEL, BENCHMARK_PATH,
-          ["k1", "k2"], selectedColumns=['S1', 'S3'], isPlot=True,
+          ["k1", "k2"], selectedColumns=['S1', 'S3'], isPlot=IS_PLOT,
           logger=logger)
     fitter.fitModel()
     startTime = time.time()
     fitter.bootstrap(numIteration=numIteration, reportInterval=numIteration)
     elapsedTime = time.time() - startTime
-    print(fitter.logger.formatPerformanceDF())
+    if IS_TEST:
+        print(fitter.logger.formatPerformanceDF())
     fitter.plotFitAll()
     return elapsedTime
         
 
 if __name__ == '__main__':
-    matplotlib.use('TkAgg')
+    if IS_PLOT:
+        matplotlib.use('TkAgg')
     print("Elapsed time: %4.2f" % main(10000))
