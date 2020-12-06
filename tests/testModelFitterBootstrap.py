@@ -26,7 +26,7 @@ import pickle
 import time
 import unittest
 
-matplotlib.use('TkAgg')
+#matplotlib.use('TkAgg')
 
 
 
