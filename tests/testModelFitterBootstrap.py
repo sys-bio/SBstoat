@@ -25,7 +25,7 @@ import pickle
 import time
 import unittest
 
-matplotlib.use('TkAgg')
+#matplotlib.use('TkAgg')
 
 
 
@@ -268,7 +268,7 @@ class TestModelFitterBootstrap(unittest.TestCase):
                     doSerialize=False, useSerialized=False,
                     logger=logger)
         study.bootstrap(numIteration=100)
-        #study.plotFitAll()
+        study.plotFitAll()
         fitter = study.fitterDct["src_1"]
         self.assertIsNotNone(fitter.bootstrapResult)
         for name in parameterDct.keys():
