@@ -10,7 +10,7 @@ Timing history
 date         Version         numIteration    numProcess  Time (sec)
 11/30/2020   1.0             10,000          5            11.29
 11/30/2020   1.1             10,000          5           110.0
-12/06/2020   1.1             10,000          5            16.1
+12/06/2020   1.1             10,000          5            18.1
 """
 
 from SBstoat.modelFitter import ModelFitter

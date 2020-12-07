@@ -219,9 +219,14 @@ class TestModelFitterBootstrap(unittest.TestCase):
         result = self.fitter.bootstrapResult
         self.assertTrue(result is not None)
 
-    def testBootstrapErrorOnException(self):
-        if IGNORE_TEST:
-            return
+    def mkTimeSeries(self, values, name):
+        numPoint = len(values)
+        arr =  np.array([range(numPoint), values])
+        arr = np.resize(arr, (2, numPoint))
+        arr = arr.transpose()
+        return NamedTimeseries(array=arr, colnames=["time", name])
+
+    def runVirus(self, values):
         ANTIMONY_MODEL  = '''
             // Equations
             E1: T -> E ; beta*T*V ; // Target cells to exposed
@@ -249,11 +254,7 @@ class TestModelFitterBootstrap(unittest.TestCase):
             log10V := log10(V)
         
         '''
-        arr1 = np.array([range(7), [2, 5.5,4,5.5,3,0,0]            ]) #P1
-        arr =  np.array([range(7), [3.5, 5.5, 6.5, 5.5, 3.5, 4.0, 0.0]  ]) #P4
-        arr = np.resize(arr, (2, 7))
-        arr = arr.transpose()
-        dataSource = NamedTimeseries(array=arr, colnames=["time", "log10V"])
+        dataSource = self.mkTimeSeries(values, "log10V")
         parameterDct = dict(
               beta=(0, 10e-5, 3.2e-5),
               kappa=(0, 10, 4.0),
@@ -279,6 +280,25 @@ class TestModelFitterBootstrap(unittest.TestCase):
             if fitter.bootstrapResult is not None:
                 value = fitter.bootstrapResult.params.valuesdict()[name]
                 self.assertIsNotNone(value)
+
+    def testBootstrapErrorOnException(self):
+        if IGNORE_TEST:
+            return
+        values =  [3.5, 5.5, 6.5, 5.5, 3.5, 4.0, 0.0]
+        self.runVirus(values)
+
+    def testNanBug(self):
+        if IGNORE_TEST:
+            return
+        values =  [np.nan, np.nan, np.nan, 7.880300e+00, 3.990000e+00, 
+                   2.496500e-15, 1.246900e+00, 3.142100e+00,
+                   1.845400e+00, 2.693300e+00, 1.122200e+00, 2.020000e+00,
+                   2.496500e-15, 3.167100e+00,
+                   -2.493800e-02, -2.493800e-02, 2.496500e-15, 
+                   2.493800e-02, -2.493800e-02, 2.496500e-15,
+                   2.496500e-15, 2.496500e-15, np.nan, np.nan, np.nan,
+                   np.nan, np.nan, np.nan]
+        self.runVirus(values)
 
 
 if __name__ == '__main__':

@@ -124,11 +124,6 @@ class ModelFitterCore(rpickle.RPickler):
             self.selectedColumns = selectedColumns
             # Construct array of non-nan observed values
             self._observedArr = self.observedTS[self.selectedColumns].flatten()
-            self._observedIndices = [n for n in 
-                  range(len(self._observedArr))
-                  if not np.isnan(self._observedArr[n])]
-            self._residualsArr = np.repeat(0.0, len(self.observedTS) \
-                  *len(self.observedTS.colnames))
             # Other internal state
             self._fitterMethods = fitterMethods
             if isinstance(self._fitterMethods, str):
@@ -481,15 +476,15 @@ class ModelFitterCore(rpickle.RPickler):
         tailBlock = Logger.join(block, "tail")
         tailGuid = self.logger.startBlock(tailBlock)
         ## V
-        residualsArr = np.copy(self._residualsArr)
-        residualsArr[self._observedIndices]  =  \
-              self._observedArr[self._observedIndices] \
-              - data.flatten()[self._observedIndices]
+        residualsArr = self._observedArr - data.flatten()
+        residualsArr = np.nan_to_num(residualsArr)
         ## ^
         self.logger.endBlock(tailGuid)
         ##^
         self.logger.endBlock(guid)
         #
+        if np.isnan(np.sum(residualsArr)):
+            import pdb; pdb.set_trace()
         return residualsArr
 
     def fitModel(self, params:lmfit.Parameters=None,

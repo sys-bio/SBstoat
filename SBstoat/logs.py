@@ -114,7 +114,7 @@ class Logger(object):
 
 
     def __init__(self, isReport=True, toFile=None, logLevel=LEVEL_STATUS,
-          logPerformance=True):
+          logPerformance=False):
         self.isReport = isReport
         self.toFile = toFile
         self.logPerformance = logPerformance
