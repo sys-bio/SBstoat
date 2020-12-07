@@ -47,10 +47,6 @@ class TestModelFitterCore(unittest.TestCase):
             return
         self.assertIsNone(self.fitter.roadrunnerModel)
         self.assertGreater(len(self.fitter.observedTS), 0)
-        self.assertEqual(len(self.fitter.observedTS.flatten()),
-              len(self.fitter._observedArr))
-        self.assertEqual(len(self.fitter._observedIndices),
-              len(self.fitter._observedArr))
         #
         for variable in self.fitter.selectedColumns:
             self.assertTrue(variable in th.VARIABLE_NAMES)
@@ -83,7 +79,6 @@ class TestModelFitterCore(unittest.TestCase):
         arr = self.fitter._residuals(params)
         length = len(self.fitter.observedTS.flatten())
         self.assertEqual(len(arr), length)
-        self.assertEqual(len(arr), len(self.fitter._observedIndices))
 
     def checkParameterValues(self):
         dct = self.fitter.params.valuesdict()

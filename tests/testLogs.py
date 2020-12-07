@@ -30,7 +30,7 @@ class TestLogger(unittest.TestCase):
 
     def setUp(self):
         self.remove()
-        self.logger = Logger(toFile=LOG_PATH,
+        self.logger = Logger(toFile=LOG_PATH, logPerformance=True,
                logLevel=logs.LEVEL_MAX)
     
     def tearDown(self):
@@ -141,7 +141,7 @@ class TestLogger(unittest.TestCase):
         if IGNORE_TEST:
             return
         def test(numBlock, sleepTime):
-            logger = Logger()
+            logger = Logger(logPerformance=True)
             for idx in range(numBlock):
                 block = "blk_%d" % idx
                 guid = logger.startBlock(block)

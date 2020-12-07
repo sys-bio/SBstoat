@@ -19,3 +19,4 @@ install:
 script:
   - cd biomodels; unzip biomodels.zip > /dev/null; cd ..
   - nosetests --with-coverage --cover-package=SBstoat tests
+  - python tests/benchmarkModelFitter.py
