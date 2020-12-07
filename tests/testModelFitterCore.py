@@ -47,6 +47,10 @@ class TestModelFitterCore(unittest.TestCase):
             return
         self.assertIsNone(self.fitter.roadrunnerModel)
         self.assertGreater(len(self.fitter.observedTS), 0)
+        self.assertEqual(len(self.fitter.observedTS.flatten()),
+              len(self.fitter._observedArr))
+        self.assertEqual(len(self.fitter._observedIndices),
+              len(self.fitter._observedArr))
         #
         for variable in self.fitter.selectedColumns:
             self.assertTrue(variable in th.VARIABLE_NAMES)
@@ -71,23 +75,15 @@ class TestModelFitterCore(unittest.TestCase):
         self.assertTrue(isinstance(newFitter.modelSpecification, str))
         self.assertTrue(isinstance(newFitter, ModelFitterCore))
 
-    def testSimulate(self):
-        if IGNORE_TEST:
-            return
-        self.fitter._initializeRoadrunnerModel()
-        self.fitter._simulate()
-        self.assertTrue(self.fitter.observedTS.isEqualShape(
-              self.fitter.fittedTS))
-
     def testResiduals(self):
         if IGNORE_TEST:
             return
         self.fitter._initializeRoadrunnerModel()
-        arr = self.fitter._residuals(None)
-        self.assertTrue(self.fitter.observedTS.isEqualShape(
-              self.fitter.residualsTS))
-        self.assertEqual(len(arr),
-              len(self.fitter.observedTS)*len(self.fitter.observedTS.colnames))
+        params = self.fitter.mkParams()
+        arr = self.fitter._residuals(params)
+        length = len(self.fitter.observedTS.flatten())
+        self.assertEqual(len(arr), length)
+        self.assertEqual(len(arr), len(self.fitter._observedIndices))
 
     def checkParameterValues(self):
         dct = self.fitter.params.valuesdict()
@@ -153,10 +149,11 @@ class TestModelFitterCore(unittest.TestCase):
             fitter = ModelFitterCore(th.ANTIMONY_MODEL, self.timeseries,
                   list(th.PARAMETER_DCT.keys()), fitterMethod=method)
             fitter.fitModel()
-            PARAMETER = "k2"
-            diff = np.abs(th.PARAMETER_DCT[PARAMETER]
-                  - dct[PARAMETER])
-            self.assertLess(diff, 1)
+            for parameter in ["k1", "k2", "k3", "k4", "k5"]:
+                diff = np.abs(th.PARAMETER_DCT[parameter]
+                      - dct[parameter])
+                frac = diff/dct[parameter]
+                self.assertLess(diff/dct[parameter], 0.5)
         #
         self.fitter.fitModel()
         dct = self.checkParameterValues()

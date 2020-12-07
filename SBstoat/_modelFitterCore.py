@@ -116,17 +116,20 @@ class ModelFitterCore(rpickle.RPickler):
             self.observedTS = observedData
             if self.observedTS is not None:
                 self.observedTS = mkNamedTimeseries(observedData)
-            # Identify the nan values in observed
-            self._observedTSIndexDct = {}
-            for col in self.observedTS.colnames:
-                self._observedTSIndexDct[col] = np.array(
-                      [i for i in range(len(self.observedTS))
-                      if np.isnan(self.observedTS[col][i])])
             #
             self.fittedDataTransformDct = fittedDataTransformDct
+            #
             if (selectedColumns is None) and (self.observedTS is not None):
                 selectedColumns = self.observedTS.colnames
             self.selectedColumns = selectedColumns
+            # Construct array of non-nan observed values
+            self._observedArr = self.observedTS[self.selectedColumns].flatten()
+            self._observedIndices = [n for n in 
+                  range(len(self._observedArr))
+                  if not np.isnan(self._observedArr[n])]
+            self._residualsArr = np.repeat(0.0, len(self.observedTS) \
+                  *len(self.observedTS.colnames))
+            # Other internal state
             self._fitterMethods = fitterMethods
             if isinstance(self._fitterMethods, str):
                 self._fitterMethods = [self._fitterMethods]
@@ -412,25 +415,38 @@ class ModelFitterCore(rpickle.RPickler):
         ##^
         return fittedTS
         
-
-    def _simulate(self, **kwargs):
+    def updateFittedAndResiduals(self, **kwargs)->np.ndarray:
         """
-        Runs a simulation.
+        Updates values of self.fittedTS and self.residualsTS
+        based on self.params.
 
         Parameters
         ----------
         kwargs: dict
+            arguments for simulation
 
         Instance Variables Updated
         --------------------------
         self.fittedTS
+        self.residualsTS
+
+        Returns
+        -------
+        1-d ndarray of residuals
         """
-        self.fittedTS = self.simulate(**kwargs)
+        self.fittedTS = self.simulate(**kwargs)  # Updates self.fittedTS
+        cols = self.selectedColumns
+        if self.residualsTS is None:
+            self.residualsTS = self.observedTS.subsetColumns(cols)
+        self.residualsTS[cols] = self.observedTS[cols] - self.fittedTS[cols]
+        for col in cols:
+            self.residualsTS[col] = np.nan_to_num(self.residualsTS[col])
 
     def _residuals(self, params)->np.ndarray:
         """
         Compute the residuals between objective and experimental data
-        Handle nan values in observedTS.
+        Handle nan values in observedTS. This internal-only method
+        is implemented to maximize efficieency.
 
         Parameters
         ----------
@@ -448,29 +464,33 @@ class ModelFitterCore(rpickle.RPickler):
         block = Logger.join(self._loggerPrefix, "fitModel._residuals")
         guid = self.logger.startBlock(block)
         ##V
-        self._simulate(params=params)
-        cols = self.selectedColumns
-        subBlock = Logger.join(block, "sub")
-        subGuid = self.logger.startBlock(subBlock)
+        self.roadrunnerModel.reset()
+        self._setupModel(params)
+        #
+        roadrunnerBlock = Logger.join(block, "roadrunner")
+        roadrunnerGuid = self.logger.startBlock(roadrunnerBlock)
         ## V
-        if self.residualsTS is None:
-            # FIXME: Adds 25 sec processing
-            self.residualsTS = self.observedTS.subsetColumns(cols)
-        self.residualsTS[cols] = self.observedTS[cols] - self.fittedTS[cols]
+        #
+        data = self.roadrunnerModel.simulate(
+              self.observedTS.start, self.observedTS.end,
+              len(self.observedTS),
+              self.selectedColumns)
         ## ^
-        self.logger.endBlock(subGuid)
-        loopBlock = Logger.join(block, "loop")
-        loopGuid = self.logger.startBlock(loopBlock)
+        self.logger.endBlock(roadrunnerGuid)
+        #
+        tailBlock = Logger.join(block, "tail")
+        tailGuid = self.logger.startBlock(tailBlock)
         ## V
-        for col in cols:
-            if len(self._observedTSIndexDct[col]) > 0:
-                self.residualsTS[col][self._observedTSIndexDct[col]] = 0
-        arr = self.residualsTS[cols].flatten()
+        residualsArr = np.copy(self._residualsArr)
+        residualsArr[self._observedIndices]  =  \
+              self._observedArr[self._observedIndices] \
+              - data.flatten()[self._observedIndices]
         ## ^
-        self.logger.endBlock(loopGuid)
+        self.logger.endBlock(tailGuid)
         ##^
         self.logger.endBlock(guid)
-        return arr
+        #
+        return residualsArr
 
     def fitModel(self, params:lmfit.Parameters=None,
           max_nfev:int=100):
@@ -546,7 +566,7 @@ class ModelFitterCore(rpickle.RPickler):
                 msg = "*** Minimizer failed for this model and data."
                 raise ValueError(msg)
         # Ensure that residualsTS and fittedTS match the parameters
-        _ = self._residuals(params=self.params)
+        self.updateFittedAndResiduals(params=self.params)
         self.logger.endBlock(guid)
 
     def getFittedModel(self):

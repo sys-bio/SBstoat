@@ -271,13 +271,14 @@ class TestModelFitterBootstrap(unittest.TestCase):
                     doSerialize=False, useSerialized=False,
                     logger=logger)
         study.bootstrap(numIteration=100)
-        if IS_PLOT:
+        fitter = list(study.fitterDct.values())[0]
+        if IS_PLOT and (fitter.bootstrapResult is not None):
             study.plotFitAll()
         fitter = study.fitterDct["src_1"]
-        #self.assertIsNotNone(fitter.bootstrapResult)
         for name in parameterDct.keys():
-            value = fitter.bootstrapResult.params.valuesdict()[name]
-            self.assertIsNotNone(value)
+            if fitter.bootstrapResult is not None:
+                value = fitter.bootstrapResult.params.valuesdict()[name]
+                self.assertIsNotNone(value)
 
 
 if __name__ == '__main__':
