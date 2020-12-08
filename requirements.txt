@@ -6,4 +6,5 @@ libroadrunner
 lmfit
 nose
 numpy
+pandas
 tellurium
