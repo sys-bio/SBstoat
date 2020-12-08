@@ -117,9 +117,13 @@ Here is the output:
 More details of the features of `SBstoat` can be found in this
 [tutorial](https://github.com/sys-bio/SBstoat/blob/master/notebooks/Tutorial%20on%20Utilities%20for%20Model%20Fitting.ipynb).
 
-# Installation
+# Installation and validation
 1. `pip install SBstoat`
+1.  Verify the installation
 
+    1. `git clone https://github.com/sys-bio/SBstoat.git`  to get the repository
+    1. `cd SBstoat`
+    1. `nose tests`
 
 # Developer Notes
 
