@@ -123,7 +123,7 @@ More details of the features of `SBstoat` can be found in this
 
     1. `git clone https://github.com/sys-bio/SBstoat.git`  to get the repository
     1. `cd SBstoat`
-    1. `nose tests`
+    1. `nosetests tests`
 
 # Developer Notes
 
