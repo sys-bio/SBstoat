@@ -58,6 +58,7 @@ class ModelFitterCore(rpickle.RPickler):
                  parametersToFit=None,
                  selectedColumns=None,
                  fitterMethods=METHOD_FITTER_DEFAULTS,
+                 numFitRepeat=1,
                  bootstrapMethods=METHOD_BOOTSTRAP_DEFAULTS,
                  parameterLowerBound=PARAMETER_LOWER_BOUND,
                  parameterUpperBound=PARAMETER_UPPER_BOUND,
@@ -96,6 +97,8 @@ class ModelFitterCore(rpickle.RPickler):
         logger: Logger
         fitterMethods: str/list-str
             method used for minimization in fitModel
+        numFitRepeat: int
+            number of times fitting is repeated for a method
         bootstrapMethods: str/list-str
             method used for minimization in bootstrap
         bootstrapKwargs: dict
@@ -114,6 +117,7 @@ class ModelFitterCore(rpickle.RPickler):
             self.upperBound = parameterUpperBound
             self.bootstrapKwargs = bootstrapKwargs
             self.parameterDct = self._updateParameterDct(parameterDct)
+            self._numFitRepeat = numFitRepeat
             if self.parametersToFit is None:
                 self.parametersToFit = [p for p in self.parameterDct.keys()]
             self.observedTS = observedData
@@ -527,23 +531,28 @@ class ModelFitterCore(rpickle.RPickler):
             # Choose the result with the lowest residual standard deviation
             paramDct = {}
             for method in self._fitterMethods:           
-                minimizer = lmfit.Minimizer(self._residuals, params,
-                      max_nfev=max_nfev)
-                try:
-                    minimizerResult = minimizer.minimize(
-                          method=method, max_nfev=max_nfev)
-                except Exception as excp:
-                    msg = "Error initializing minimizing for method: %s" % method
-                    self.logger.error(msg, excp)
-                    continue
-                params = minimizerResult.params
-                paramDct[method] = ParameterDescriptor(
-                      params=params.copy(),
-                      method=method,
-                      std=np.std(self._residuals(params)),
-                      minimizer=minimizer,
-                      minimizerResult=minimizerResult,
-                      )
+                for _ in range(self._numFitRepeat):
+                    minimizer = lmfit.Minimizer(self._residuals, params,
+                          max_nfev=max_nfev)
+                    try:
+                        minimizerResult = minimizer.minimize(
+                              method=method, max_nfev=max_nfev)
+                    except Exception as excp:
+                        msg = "Error minimizing for method: %s" % method
+                        self.logger.error(msg, excp)
+                        continue
+                    params = minimizerResult.params
+                    std = np.std(self._residuals(params))
+                    if method in paramDct.keys():
+                        if std >= paramDct[method].std:
+                            continue
+                    paramDct[method] = ParameterDescriptor(
+                          params=params.copy(),
+                          method=method,
+                          std=std,
+                          minimizer=minimizer,
+                          minimizerResult=minimizerResult,
+                          )
             if len(paramDct) == 0:
                 msg = "*** Minimizer failed for this model and data."
                 raise ValueError(msg)

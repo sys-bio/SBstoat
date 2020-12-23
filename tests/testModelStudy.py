@@ -71,7 +71,7 @@ class TestModelStudy(unittest.TestCase):
         dct0 = params0.valuesdict()
         dct1 = params1.valuesdict()
         for key, value in dct0.items():
-            self.assertTrue(np.isclose(value, dct1[key], rtol=0.01)) 
+            self.assertTrue(np.isclose(value, dct1[key], rtol=0.1)) 
 
     def testFitBootstrap(self):
         if IGNORE_TEST:
