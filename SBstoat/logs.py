@@ -29,7 +29,8 @@ LEVEL_RESULT = 2
 LEVEL_STATUS = 3
 LEVEL_EXCEPTION = 4
 LEVEL_ERROR = 5
-LEVEL_MAX = LEVEL_ERROR
+LEVEL_DETAILS = 6
+LEVEL_MAX = LEVEL_DETAILS
 # Dataframe columns
 COUNT = "count"
 MEAN = "mean"
@@ -252,6 +253,11 @@ class Logger(object):
        if self.isReport and (self.logLevel >= LEVEL_ERROR):
            fullMsg = "%s: %s" % (msg, str(excp))
            self._write("    (%s)" % fullMsg, 0)
+    
+    def details(self, msg, preString=""):
+       # Progress message
+       if self.isReport and (self.logLevel >= LEVEL_DETAILS):
+           self._write("    (%s)" %msg, 0)
 
     ###### BLOCK TIMINGS ######
     def startBlock(self, block:str)->float:
