@@ -230,7 +230,7 @@ class TestModelFitterCore(unittest.TestCase):
         fitter2.fitModel()
         # Should get same fit without changing the parameters
         self.assertTrue(np.isclose(np.var(fitter1.residualsTS.flatten()),
-              np.var(fitter2.residualsTS.flatten()), rtol=0.01))
+              np.var(fitter2.residualsTS.flatten()), rtol=0.1))
 
     def getFitter(self):
         fitter = th.getFitter(cls=ModelFitter)
@@ -283,7 +283,7 @@ class TestModelFitterCore(unittest.TestCase):
             parameterDct = {parameter: fullDct[parameter]}
             fitter = ModelFitter(WOLF_MODEL, ts[0:100],
                   parameterDct=parameterDct,
-                  logger=logger, fitterMethods=["differential_evolution",
+                  logger=logger, fitterMethods=[
                          "leastsq"]) 
             fitter.fitModel(max_nfev=None)
         
