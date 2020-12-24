@@ -152,7 +152,7 @@ class TestModelFitterCore(unittest.TestCase):
         self._init()
         def test(method):
             fitter = ModelFitterCore(th.ANTIMONY_MODEL, self.timeseries,
-                  list(th.PARAMETER_DCT.keys()), fitterMethod=method)
+                  list(th.PARAMETER_DCT.keys()), fitterMethods=method)
             fitter.fitModel()
             for parameter in ["k1", "k2", "k3", "k4", "k5"]:
                 diff = np.abs(th.PARAMETER_DCT[parameter]
@@ -176,7 +176,7 @@ class TestModelFitterCore(unittest.TestCase):
             compareDct = {}
             for numFitRepeat in NUM_FIT_REPEATS:
                 fitter = ModelFitterCore(th.ANTIMONY_MODEL, self.timeseries,
-                      list(th.PARAMETER_DCT.keys()), fitterMethod=method,
+                      list(th.PARAMETER_DCT.keys()), fitterMethods=method,
                       numFitRepeat=numFitRepeat)
                 fitter.fitModel()
                 compareDct[numFitRepeat] = self.checkParameterValues()
@@ -204,7 +204,7 @@ class TestModelFitterCore(unittest.TestCase):
                     if np.random.random() <= probNan:
                         nanTimeseries[col][idx] = np.nan
             fitter = ModelFitterCore(th.ANTIMONY_MODEL, nanTimeseries,
-                  list(th.PARAMETER_DCT.keys()), fitterMethod=method)
+                  list(th.PARAMETER_DCT.keys()), fitterMethods=method)
             fitter.fitModel()
             diff = np.abs(th.PARAMETER_DCT[PARAMETER]
                   - fitter.params.valuesdict()[PARAMETER])
@@ -255,8 +255,9 @@ class TestModelFitterCore(unittest.TestCase):
               list(th.PARAMETER_DCT.keys()))
         fitter2.fitModel()
         # Should get same fit without changing the parameters
-        self.assertTrue(np.isclose(np.var(fitter1.residualsTS.flatten()),
-              np.var(fitter2.residualsTS.flatten()), rtol=0.5))
+        std1 = np.var(fitter1.residualsTS.flatten())
+        std2 = np.var(fitter2.residualsTS.flatten())
+        self.assertTrue(np.isclose(std1, std2, rtol=0.2))
 
     def getFitter(self):
         fitter = th.getFitter(cls=ModelFitter)

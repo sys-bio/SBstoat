@@ -4,6 +4,7 @@
 from SBstoat import _plotOptions as po
 
 import copy
+import inspect
 import numpy as np
 import scipy
 
@@ -169,3 +170,53 @@ def copyObject(oldObject, newInstance=None):
         except:
             continue
     return newInstance
+
+def getKwargNames(func):
+    """
+    Obtains the keyword arguments in the function definition.
+
+    Parameters
+    ----------
+    func: Function
+    
+    Returns
+    -------
+    list-str
+    """
+    spec = inspect.getfullargspec(func)
+    argList = spec.args
+    numKwarg = len(spec.defaults)
+    kwargNames = argList[-numKwarg:]
+    return kwargNames
+
+def kwargs():
+    """
+    Decorator that provides adds properties to a function:
+        defined: keyword arguments in function definition
+        passed: keyword arguments/values passed
+    """
+    def decorator(function):
+        def inner(*args, **kwargs):
+            inner.defined = getKwargNames(function)
+            inner.passed = kwargs
+            inner.name = function.__qualname__
+            return function(*args, **kwargs)
+        return inner
+    return decorator
+
+def validateKwargs(function):
+    """
+    Validates that the keywords passed to the function are a subset of the
+    parameters defined.
+    The function must use the @kwargs decorator.
+
+    Parameters
+    ----------
+    function: function
+    
+    Raises: ValueError
+    """
+    missing = [p for p in function.passed.keys() for p in function.defined]
+    if len(missing) > 0:
+        raise ValueError(
+              "The following keyword parameters do not match: %s" % str(missing))

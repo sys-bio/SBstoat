@@ -8,11 +8,12 @@ Core logic of model fitter. Does not include plots.
 """
 
 from SBstoat.namedTimeseries import NamedTimeseries, TIME, mkNamedTimeseries
+from SBstoat.observationSynthesizer import  \
+      ObservationSynthesizerRandomizedResiduals
 from SBstoat.logs import Logger
 import SBstoat.timeseriesPlotter as tp
 from SBstoat import namedTimeseries
 from SBstoat import rpickle
-from SBstoat import _helpers
 
 import collections
 import copy
@@ -55,23 +56,30 @@ class ParameterSpecification(object):
 class ModelFitterCore(rpickle.RPickler):
 
     def __init__(self, modelSpecification, observedData,
-                 parametersToFit=None,
-                 selectedColumns=None,
-                 fitterMethods=METHOD_FITTER_DEFAULTS,
-                 numFitRepeat=1,
-                 bootstrapMethods=METHOD_BOOTSTRAP_DEFAULTS,
-                 parameterLowerBound=PARAMETER_LOWER_BOUND,
-                 parameterUpperBound=PARAMETER_UPPER_BOUND,
-                 parameterDct={},
-                 fittedDataTransformDct={},
-                 logger=Logger(),
-                 isPlot=True,
-                 _loggerPrefix="",
-                 **bootstrapKwargs
-                 ):
+          parametersToFit=None,
+          selectedColumns=None,
+          fitterMethods=METHOD_FITTER_DEFAULTS,
+          numFitRepeat=1,
+          bootstrapMethods=METHOD_BOOTSTRAP_DEFAULTS,
+          parameterLowerBound=PARAMETER_LOWER_BOUND,
+          parameterUpperBound=PARAMETER_UPPER_BOUND,
+          parameterDct={},
+          fittedDataTransformDct={},
+          logger=Logger(),
+          isPlot=True,
+          _loggerPrefix="",
+          # The following must be kept in sync with ModelFitterBootstrap.bootstrap
+          numIteration:int=10, 
+          reportInterval:int=1000,
+          synthesizerClass=ObservationSynthesizerRandomizedResiduals,
+          maxProcess:int=None,
+          serializePath:str=None,
+          ):
         """
+        Constructs a bootstrap estimate of parameter values.
+    
         Parameters
-        ---------
+        ----------
         modelSpecification: ExtendedRoadRunner/str
             roadrunner model or antimony model
         observedData: NamedTimeseries/str
@@ -101,8 +109,12 @@ class ModelFitterCore(rpickle.RPickler):
             number of times fitting is repeated for a method
         bootstrapMethods: str/list-str
             method used for minimization in bootstrap
-        bootstrapKwargs: dict
-            Parameters used in bootstrap
+        numIteration: number of bootstrap iterations
+        reportInterval: number of iterations between progress reports
+        synthesizerClass: object that synthesizes new observations
+            Must subclass ObservationSynthesizer
+        maxProcess: Maximum number of processes to use. Default: numCPU
+        serializePath: Where to serialize the fitter after bootstrap
 
         Usage
         -----
@@ -115,7 +127,12 @@ class ModelFitterCore(rpickle.RPickler):
             self.parametersToFit = parametersToFit
             self.lowerBound = parameterLowerBound
             self.upperBound = parameterUpperBound
-            self.bootstrapKwargs = bootstrapKwargs
+            self.bootstrapKwargs = dict(
+                  numIteration=numIteration,
+                  reportInterval=reportInterval,
+                  maxProcess=maxProcess,
+                  serializePath=serializePath,
+                  )
             self.parameterDct = self._updateParameterDct(parameterDct)
             self._numFitRepeat = numFitRepeat
             if self.parametersToFit is None:
@@ -682,4 +699,3 @@ class ModelFitterCore(rpickle.RPickler):
             fitter = rpickle.load(fd)
         fitter._initializeRoadrunnerModel()
         return fitter
-

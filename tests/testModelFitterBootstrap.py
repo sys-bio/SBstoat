@@ -79,6 +79,7 @@ class TestModelFitterBootstrap(unittest.TestCase):
     def testRunBootstrap(self):
         if IGNORE_TEST:
             return
+        self._init()
         NUM_ITERATION = 10
         MAX_DIFF = 4
         arguments = mfb._Arguments(self.fitter, 1, 0, 

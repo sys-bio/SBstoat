@@ -216,7 +216,9 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
 ##################### CLASSES #########################
 class ModelFitterBootstrap(mfc.ModelFitterCore):
 
-    def bootstrap(self, numIteration:int=10, 
+    def bootstrap(self, 
+          # The following must be kept in sync with ModelFitterCore.__init__
+          numIteration:int=10, 
           reportInterval:int=1000,
           synthesizerClass=ObservationSynthesizerRandomizedResiduals,
           maxProcess:int=None,
@@ -248,7 +250,10 @@ class ModelFitterBootstrap(mfc.ModelFitterCore):
         """
         def get(name, value):
             if name in self.bootstrapKwargs:
-                return self.bootstrapKwargs[name]
+                if self.bootstrapKwargs[name] is not None:
+                    return self.bootstrapKwargs[name]
+                else:
+                    return value
             else:
                 return value
         # Handle overrides of arguments specified in constructor
