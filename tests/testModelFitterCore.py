@@ -313,7 +313,7 @@ class TestModelFitterCore(unittest.TestCase):
                   logger=logger, fitterMethods=[
                          "differential_evolution", "leastsq"]) 
             fitter.fitModel()
-            self.assertTrue("leastsq" in fitter.reportFit())
+            self.assertTrue("J9_k" in fitter.reportFit())
         
 
 if __name__ == '__main__':
