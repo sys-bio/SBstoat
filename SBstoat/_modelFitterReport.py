@@ -22,6 +22,9 @@ class ModelFitterReport(ModelFitterBootstrap):
     def reportFit(self)->str:
         """
         Provides details of the parameter fit.
+        Notes:
+            1. Deletes lines about the optimization performance since the
+
         
         Example
         -------
@@ -30,7 +33,9 @@ class ModelFitterReport(ModelFitterBootstrap):
         self._checkFit()
         if self.minimizerResult is None:
             raise ValueError("Must do fitModel before reportFit.")
-        return str(lmfit.fit_report(self.minimizerResult))
+        reportSplit = str(lmfit.fit_report(self.minimizerResult)).split("\n")
+        newReportSplit = [r for r in reportSplit if not " # " in r]
+        return "\n".join(newReportSplit)
 
     def reportBootstrap(self):
         """
