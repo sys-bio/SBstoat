@@ -118,7 +118,7 @@ class ResidualsAnalyzer(object):
                   timeseries2=self.observedTS, **kwargs)
         else:
             self._addKeyword(kwargs, po.MARKER, [None, "o", "^"])
-            legends = ["parameter fitted", "observed"]
+            legends = ["fitted", "observed"]
             if self.meanFittedTS is not None:
                 legends.append("bootstrap fitted")
             self._addKeyword(kwargs, po.LEGEND, legends)
