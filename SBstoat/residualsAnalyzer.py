@@ -108,8 +108,10 @@ class ResidualsAnalyzer(object):
         isMultiple: plots all variables on a single plot
         #@expand
         """
-        self._addKeyword(kwargs, po.SUPTITLE,
-              "Observed vs. fitted (with shading for 95th percentile)")
+        title = "Observed vs. fitted"
+        if self.bandLowTS is not None:
+              title += " (with shading for 95th percentile)"
+        self._addKeyword(kwargs, po.SUPTITLE, title)
         if isMultiple:
             self._addKeyword(kwargs, po.MARKER, [None, "o"])
             self._plotter.plotTimeMultiple(self.fittedTS,
