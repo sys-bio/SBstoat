@@ -257,7 +257,7 @@ class TestModelFitterCore(unittest.TestCase):
         # Should get same fit without changing the parameters
         std1 = np.var(fitter1.residualsTS.flatten())
         std2 = np.var(fitter2.residualsTS.flatten())
-        self.assertTrue(np.isclose(std1, std2, rtol=0.2))
+        self.assertTrue(np.isclose(std1, std2, rtol=0.5))
 
     def getFitter(self):
         fitter = th.getFitter(cls=ModelFitter)
