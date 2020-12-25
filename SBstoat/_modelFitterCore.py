@@ -76,7 +76,7 @@ class ModelFitterCore(rpickle.RPickler):
           serializePath:str=None,
           ):
         """
-        Constructs a bootstrap estimate of parameter values.
+        Constructs estimates of parameter values. 
     
         Parameters
         ----------
@@ -118,7 +118,13 @@ class ModelFitterCore(rpickle.RPickler):
 
         Usage
         -----
-        f = ModelFitter(roadrunnerModel, "observed.csv", ['k1', 'k2'])
+        parameterDct = {
+            "k1": (1, 5, 10),  # name of parameter: low value, initial, high
+            "k2": (2, 3, 6)}
+        ftter = ModelFitter(roadrunnerModel, "observed.csv",
+            parameterDct=parameterDct)
+        fitter.fitModel()  # Do the fit
+        fitter.bootstrap()  # Estimate parameter variance with bootstrap
         """
         if modelSpecification is not None:
             # Not the default constructor
