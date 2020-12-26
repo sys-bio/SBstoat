@@ -13,6 +13,7 @@ from SBstoat._modelFitterCore import ModelFitterCore
 from SBstoat.namedTimeseries import NamedTimeseries, TIME
 import tellurium as te
 from tests import _testHelpers as th
+from tests import _testConstants as tcn
 
 import copy
 import numpy as np
@@ -23,7 +24,6 @@ import unittest
 
 IGNORE_TEST = False
 IS_PLOT = False
-IGNORE_ACCURACY = True
 TIMESERIES = th.getTimeseries()
 DIR = os.path.dirname(os.path.abspath(__file__))
 FILE_SERIALIZE = os.path.join(DIR, "modelFitterCore.pcl")
@@ -258,7 +258,7 @@ class TestModelFitterCore(unittest.TestCase):
         # Should get same fit without changing the parameters
         std1 = np.var(fitter1.residualsTS.flatten())
         std2 = np.var(fitter2.residualsTS.flatten())
-        if IGNORE_ACCURACY:
+        if tcn.IGNORE_ACCURACY:
             return
         self.assertTrue(np.isclose(std1, std2, rtol=0.1))
 

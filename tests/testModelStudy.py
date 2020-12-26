@@ -7,6 +7,7 @@ Created on Tue Aug 19, 2020
 
 from SBstoat.modelStudy import ModelStudy, mkDataSourceDct
 import tests._testHelpers as th
+from tests import _testConstants as tcn
 
 import matplotlib
 import numpy as np
@@ -16,7 +17,6 @@ import unittest
 
 
 IGNORE_TEST = False
-IGNORE_ACCURACY = True
 COLNAME = "V"
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_PATH = os.path.join(THIS_DIR, "tst_data.txt")
@@ -71,7 +71,7 @@ class TestModelStudy(unittest.TestCase):
         params1 = self.study.fitterDct[names[1]].params
         dct0 = params0.valuesdict()
         dct1 = params1.valuesdict()
-        if IGNORE_ACCURACY:
+        if tcn.IGNORE_ACCURACY:
             return
         for key, value in dct0.items():
             self.assertTrue(np.isclose(value, dct1[key], rtol=0.5)) 
