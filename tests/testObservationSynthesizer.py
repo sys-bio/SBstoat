@@ -52,9 +52,22 @@ def _setRandomMissing(timeseries):
 class TestObservationSynthesizer(unittest.TestCase):
 
     def setUp(self):
-        self.observedTS, fittedTS, residualsTS = _mkTimeseries()
+        self.observedTS, self.fittedTS, self.residualsTS = _mkTimeseries()
 
-    def testConstructor(self):
+    def testConstructor1(self):
+        if IGNORE_TEST:
+            return
+        observedDF = self.observedTS.to_dataframe()
+        fittedDF = self.fittedTS.to_dataframe()
+        residualsDF = self.residualsTS.to_dataframe()
+        synthesizer = obs.ObservationSynthesizerRandomizedResiduals(
+              observedTS=observedDF,
+              fittedTS=fittedDF, residualsTS=residualsDF)
+        for ts in [synthesizer._fittedTS, synthesizer._residualsTS,
+              synthesizer._observedTS]:
+            self.assertTrue(isinstance(ts, NamedTimeseries))
+
+    def testConstructor2(self):
         if IGNORE_TEST:
             return
         with self.assertRaises(TypeError):

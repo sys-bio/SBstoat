@@ -16,6 +16,7 @@ from SBstoat import _helpers
 
 import abc
 import numpy as np
+import pandas as pd
 import time
 import typing
 
@@ -37,9 +38,15 @@ class ObservationSynthesizer(abc.ABC):
         fittedTS: Fitted values
         residualsTS: Residual values
         """
-        self._observedTS = observedTS
-        self._fittedTS = fittedTS
-        self._residualsTS = residualsTS
+        def getTS(data):
+            if isinstance(data, pd.DataFrame):
+                return NamedTimeseries(dataframe=data)
+            else:
+                return data
+        #
+        self._observedTS = getTS(observedTS)
+        self._fittedTS = getTS(fittedTS)
+        self._residualsTS = getTS(residualsTS)
         if self._observedTS is not None:
             self._observedTS = self._observedTS.copy()
         if self._fittedTS is not None:

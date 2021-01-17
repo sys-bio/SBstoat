@@ -84,6 +84,7 @@ class TestModelFitterCore(unittest.TestCase):
     def testResiduals(self):
         if IGNORE_TEST:
             return
+        self._init()
         self.fitter._initializeRoadrunnerModel()
         params = self.fitter.mkParams()
         arr = self.fitter._residuals(params)

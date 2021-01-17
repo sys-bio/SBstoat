@@ -44,65 +44,6 @@ LOWER_PARAMETER_MULT = 0.95
 UPPER_PARAMETER_MULT = 0.95
 
 
-################### FUNCTIONS ###################
-def mkParams(parameterDct:dict, 
-      parametersToFit:list=None, 
-      logger:Logger()=None,
-      lowerBound:float=PARAMETER_LOWER_BOUND, 
-      upperBound:float=PARAMETER_UPPER_BOUND)->lmfit.Parameters:
-    """
-    Constructs lmfit parameters based on specifications.
-
-    Parameters
-    ----------
-    parameterDct: key=name, value=ParameterSpecification
-    parametersToFit: list of parameters to fit
-    logger: error logger
-    lowerBound: lower value of range for parameters
-    upperBound: upper value of range for parameters
-    
-    Returns
-    -------
-    lmfit.Parameters
-    """
-    def get(value, base_value, multiplier):
-        if value is not None:
-            return value
-        return base_value*multiplier
-    #
-    if parametersToFit is None:
-        parametersToFit = parameterDct.keys()
-    if logger is None:
-        logger = logger()
-    params = lmfit.Parameters()
-    for parameterName in parametersToFit:
-        if parameterName in parameterDct.keys():
-            specification = parameterDct[parameterName]
-            value = get(specification.value, specification.value, 1.0)
-            if value > 0:
-                lower_factor = LOWER_PARAMETER_MULT
-                upper_factor = UPPER_PARAMETER_MULT
-            else:
-                upper_factor = UPPER_PARAMETER_MULT
-                lower_factor = LOWER_PARAMETER_MULT
-            lower = get(specification.lower, specification.value,
-                  lower_factor)
-            upper = get(specification.upper, specification.value,
-                  upper_factor)
-            if np.isclose(lower - upper, 0):
-                upper = 0.0001
-            try:
-                params.add(parameterName, value=value, min=lower, max=upper)
-            except Exception as err:
-                msg = "modelFitterCore/mkParams parameterName %s" \
-                      % parameterName
-                logger.error(msg, err)
-        else:
-            value = np.mean([lowerBound, upperBound])
-            params.add(parameterName, value=value,
-                  min=lowerBound, max=upperBound)
-    return params
-
 
 ##############################
 class ParameterSpecification(object):
@@ -242,6 +183,180 @@ class ModelFitterCore(rpickle.RPickler):
             self._validateFittedDataTransformDct()
         else:
             pass
+
+    @classmethod
+    def mkParameters(cls, parameterDct:dict=None, 
+          parametersToFit:list=None, 
+          logger:Logger=Logger(),
+          lowerBound:float=PARAMETER_LOWER_BOUND, 
+          upperBound:float=PARAMETER_UPPER_BOUND)->lmfit.Parameters:
+        """
+        Constructs lmfit parameters based on specifications.
+    
+        Parameters
+        ----------
+        parameterDct: key=name, value=ParameterSpecification
+        parametersToFit: list of parameters to fit
+        logger: error logger
+        lowerBound: lower value of range for parameters
+        upperBound: upper value of range for parameters
+        
+        Returns
+        -------
+        lmfit.Parameters
+        """
+        def get(value, base_value, multiplier):
+            if value is not None:
+                return value
+            return base_value*multiplier
+        #
+        if (parametersToFit is None) and (parameterDct is None):
+            raise RuntimeError("Must specify one of these parameters.")
+        if parameterDct is None:
+            parameterDct = {}
+        if parametersToFit is None:
+            parametersToFit = parameterDct.keys()
+        if logger is None:
+            logger = logger()
+        params = lmfit.Parameters()
+        for parameterName in parametersToFit:
+            if parameterName in parameterDct.keys():
+                specification = parameterDct[parameterName]
+                value = get(specification.value, specification.value, 1.0)
+                if value > 0:
+                    lower_factor = LOWER_PARAMETER_MULT
+                    upper_factor = UPPER_PARAMETER_MULT
+                else:
+                    upper_factor = UPPER_PARAMETER_MULT
+                    lower_factor = LOWER_PARAMETER_MULT
+                lower = get(specification.lower, specification.value,
+                      lower_factor)
+                upper = get(specification.upper, specification.value,
+                      upper_factor)
+                if np.isclose(lower - upper, 0):
+                    upper = 0.0001
+                try:
+                    params.add(parameterName, value=value, min=lower, max=upper)
+                except Exception as err:
+                    msg = "modelFitterCore/mkParameters parameterName %s" \
+                          % parameterName
+                    logger.error(msg, err)
+            else:
+                value = np.mean([lowerBound, upperBound])
+                params.add(parameterName, value=value,
+                      min=lowerBound, max=upperBound)
+        return params
+
+    @classmethod
+    def initializeRoadrunnerModel(cls, modelSpecification):
+        """
+        Sets self.roadrunnerModel.
+
+        Parameters
+        ----------
+        modelSpecification: ExtendedRoadRunner/str
+
+        Returns
+        -------
+        ExtendedRoadRunner
+        """
+        if isinstance(modelSpecification,
+              te.roadrunner.extended_roadrunner.ExtendedRoadRunner):
+            roadrunnerModel = modelSpecification
+        elif isinstance(modelSpecification, str):
+            roadrunnerModel = te.loada(modelSpecification)
+        else:
+            msg = 'Invalid model.'
+            msg = msg + "\nA model must either be a Roadrunner model "
+            msg = msg + "an Antimony model."
+            raise ValueError(msg)
+        return roadrunnerModel
+
+    @classmethod
+    def setupModel(cls, roadrunner, parameters, logger=Logger()):
+        """
+        Sets up the model for use based on the parameter parameters
+
+        Parameters
+        ----------
+        roadrunner: ExtendedRoadRunner
+        parameters: lmfit.Parameters
+        logger Logger
+        """
+        pp = parameters.valuesdict()
+        for parameter in pp.keys():
+            try:
+                roadrunner.model[parameter] = pp[parameter]
+            except Exception as err:
+                msg = "_modelFitterCore.setupModel: Could not set value for %s"  \
+                      % parameter
+                self.logger.error(msg, err)
+
+    @classmethod
+    def runSimulation(cls, parameters=None,
+          roadrunner=None,
+          startTime=0,
+          endTime=5,
+          numPoint=30,
+          selectedColumns=None,
+          returnDataFrame=True,
+          _logger=Logger(),
+          _loggerPrefix="",
+          ):
+        """
+        Runs a simulation. Defaults to parameter values in the simulation.
+
+        Parameters
+       ----------
+        roadrunner: ExtendedRoadRunner/str
+            Roadrunner model
+        parameters: lmfit.Parameters
+            lmfit parameters
+        startTime: float
+            start time for the simulation
+        endTime: float
+            end time for the simulation
+        numPoint: int
+            number of points in the simulation
+        selectedColumns: list-str
+            output columns in simulation
+        returnDataFrame: bool
+            return a DataFrame
+        _logger: Logger
+        _loggerPrefix: str
+  
+
+        Return
+        ------
+        NamedTimeseries
+        """
+        def set(default, parameter):
+            # Sets to default if parameter unspecified
+            if parameter is None:
+                return default
+            else:
+                return parameter
+        if isinstance(roadrunner, str):
+            roadrunner = cls.initializeRoadrunnerModel(roadrunner)
+        else:
+            roadrunner.reset()
+        if parameters is not None:
+          # Parameters have been specified
+          cls.setupModel(roadrunner, parameters, logger=_logger)
+        # Do the simulation
+        if selectedColumns is not None:
+            newSelectedColumns = list(selectedColumns)
+            if not TIME in newSelectedColumns:
+                newSelectedColumns.insert(0, TIME)
+            data = roadrunner.simulate(startTime, endTime, numPoint,
+                  newSelectedColumns)
+        else:
+            data = roadrunner.simulate(startTime, endTime, numPoint)
+        fittedTS = NamedTimeseries(namedArray=data)
+        if returnDataFrame:
+            return fittedTS.to_dataframe()
+        else:
+            return fittedTS
     
     @classmethod
     def rpConstruct(cls):
@@ -407,16 +522,8 @@ class ModelFitterCore(rpickle.RPickler):
         """
         Sets self.roadrunnerModel.
         """
-        if isinstance(self.modelSpecification,
-              te.roadrunner.extended_roadrunner.ExtendedRoadRunner):
-            self.roadrunnerModel = self.modelSpecification
-        elif isinstance(self.modelSpecification, str):
-            self.roadrunnerModel = te.loada(self.modelSpecification)
-        else:
-            msg = 'Invalid model.'
-            msg = msg + "\nA model must either be a Roadrunner model "
-            msg = msg + "an Antimony model."
-            raise ValueError(msg)
+        self.roadrunnerModel = ModelFitterCore.initializeRoadrunnerModel(
+              self.modelSpecification)
 
     def getDefaultParameterValues(self):
         """
@@ -429,7 +536,7 @@ class ModelFitterCore(rpickle.RPickler):
             value: value of parameter
         """
         dct = {}
-        self. _initializeRoadrunnerModel()
+        self._initializeRoadrunnerModel()
         self.roadrunnerModel.reset()
         for parameterName in self.parametersToFit:
             dct[parameterName] = self.roadrunnerModel.model[parameterName]
@@ -456,54 +563,22 @@ class ModelFitterCore(rpickle.RPickler):
                 return default
             else:
                 return parameter
-        ##V
-        block = Logger.join(self._loggerPrefix, "fitModel.simulate")
-        guid = self.logger.startBlock(block)
-        ## V
-        sub1Block = Logger.join(block, "sub1")
-        sub1Guid = self.logger.startBlock(sub1Block)
         startTime = set(self.observedTS.start, startTime)
         endTime = set(self.observedTS.end, endTime)
         numPoint = set(len(self.observedTS), numPoint)
-        ##  V
-        sub1aBlock = Logger.join(sub1Block, "sub1a")
-        sub1aGuid = self.logger.startBlock(sub1aBlock)
+        #
         if self.roadrunnerModel is None:
             self._initializeRoadrunnerModel()
-        self.roadrunnerModel.reset()
-        ##  ^
-        self.logger.endBlock(sub1aGuid)
-        ##  V
-        sub1bBlock = Logger.join(sub1Block, "sub1b")
-        sub1bGuid = self.logger.startBlock(sub1bBlock)
-        if params is not None:
-          # Parameters have been specified
-          self._setupModel(params)
-        ##  ^
-        self.logger.endBlock(sub1bGuid)
-        # Do the simulation
-        selectedColumns = list(self.selectedColumns)
-        if not TIME in selectedColumns:
-            selectedColumns.insert(0, TIME)
-        ## ^
-        self.logger.endBlock(sub1Guid)
-        ## V
-        roadrunnerBlock = Logger.join(block, "roadrunner")
-        roadrunnerGuid = self.logger.startBlock(roadrunnerBlock)
-        data = self.roadrunnerModel.simulate(startTime, endTime, numPoint,
-              selectedColumns)
-        self.logger.endBlock(roadrunnerGuid)
-        ## ^
-        # Select the required columns
-        ## V
-        sub2Block = Logger.join(block, "sub2")
-        sub2Guid = self.logger.startBlock(sub2Block)
-        fittedTS = NamedTimeseries(namedArray=data)
-        self.logger.endBlock(sub2Guid)
-        ## ^
-        self.logger.endBlock(guid)
-        ##^
-        return fittedTS
+        #
+        return ModelFitterCore.runSimulation(parameters=params,
+              roadrunner=self.roadrunnerModel,
+              startTime=startTime,
+              endTime=endTime,
+              numPoint=numPoint,
+              selectedColumns=self.selectedColumns,
+              _logger=self.logger,
+              _loggerPrefix=self._loggerPrefix,
+              returnDataFrame=False)
         
     def updateFittedAndResiduals(self, **kwargs)->np.ndarray:
         """
@@ -665,23 +740,16 @@ class ModelFitterCore(rpickle.RPickler):
         self._setupModel(self.params)
         return self.roadrunnerModel
 
-    def _setupModel(self, params):
+    def _setupModel(self, parameters):
         """
         Sets up the model for use based on the parameter parameters
 
         Parameters
         ----------
-        params: lmfit.Parameters
+        parameters: lmfit.Parameters
 
         """
-        pp = params.valuesdict()
-        for parameter in self.parametersToFit:
-            try:
-                self.roadrunnerModel.model[parameter] = pp[parameter]
-            except Exception as err:
-                msg = "_modelFitterCore/_setupModel: Could not set value for %s"  \
-                      % parameter
-                self.logger.error(msg, err)
+        ModelFitterCore.setupModel(self.roadrunnerModel, parameters, logger=self.logger)
 
     def mkParams(self, parameterDct:dict=None)->lmfit.Parameters:
         """
@@ -697,7 +765,7 @@ class ModelFitterCore(rpickle.RPickler):
         """
         if parameterDct is None:
             parameterDct = self.parameterDct
-        return mkParams(parameterDct,
+        return ModelFitterCore.mkParameters(parameterDct,
               parametersToFit=self.parametersToFit,
               logger=self.logger,
               lowerBound=self.lowerBound,
