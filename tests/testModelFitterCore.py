@@ -101,6 +101,7 @@ class TestModelFitterCore(unittest.TestCase):
     def testInitializeParams(self):
         if IGNORE_TEST:
             return
+        self._init()
         LOWER = -10
         UPPER = -1
         VALUE = -5
@@ -130,7 +131,6 @@ class TestModelFitterCore(unittest.TestCase):
         fitter = ModelFitterCore(
               self.fitter.modelSpecification,
               self.fitter.observedTS,
-              #self.fitter.parametersToFit,
               parameterDct={"k1": NEW_SPECIFICATION},
               )
         params = fitter.mkParams()

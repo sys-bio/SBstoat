@@ -44,6 +44,66 @@ LOWER_PARAMETER_MULT = 0.95
 UPPER_PARAMETER_MULT = 0.95
 
 
+################### FUNCTIONS ###################
+def mkParams(parameterDct:dict, 
+      parametersToFit:list=None, 
+      logger:Logger()=None,
+      lowerBound:float=PARAMETER_LOWER_BOUND, 
+      upperBound:float=PARAMETER_UPPER_BOUND)->lmfit.Parameters:
+    """
+    Constructs lmfit parameters based on specifications.
+
+    Parameters
+    ----------
+    parameterDct: key=name, value=ParameterSpecification
+    parametersToFit: list of parameters to fit
+    logger: error logger
+    lowerBound: lower value of range for parameters
+    upperBound: upper value of range for parameters
+    
+    Returns
+    -------
+    lmfit.Parameters
+    """
+    def get(value, base_value, multiplier):
+        if value is not None:
+            return value
+        return base_value*multiplier
+    #
+    if parametersToFit is None:
+        parametersToFit = parameterDct.keys()
+    if logger is None:
+        logger = logger()
+    params = lmfit.Parameters()
+    for parameterName in parametersToFit:
+        if parameterName in parameterDct.keys():
+            specification = parameterDct[parameterName]
+            value = get(specification.value, specification.value, 1.0)
+            if value > 0:
+                lower_factor = LOWER_PARAMETER_MULT
+                upper_factor = UPPER_PARAMETER_MULT
+            else:
+                upper_factor = UPPER_PARAMETER_MULT
+                lower_factor = LOWER_PARAMETER_MULT
+            lower = get(specification.lower, specification.value,
+                  lower_factor)
+            upper = get(specification.upper, specification.value,
+                  upper_factor)
+            if np.isclose(lower - upper, 0):
+                upper = 0.0001
+            try:
+                params.add(parameterName, value=value, min=lower, max=upper)
+            except Exception as err:
+                msg = "modelFitterCore/mkParams parameterName %s" \
+                      % parameterName
+                logger.error(msg, err)
+        else:
+            value = np.mean([lowerBound, upperBound])
+            params.add(parameterName, value=value,
+                  min=lowerBound, max=upperBound)
+    return params
+
+
 ##############################
 class ParameterSpecification(object):
 
@@ -152,8 +212,10 @@ class ModelFitterCore(rpickle.RPickler):
             if (selectedColumns is None) and (self.observedTS is not None):
                 selectedColumns = self.observedTS.colnames
             self.selectedColumns = selectedColumns
-            # Construct array of non-nan observed values
-            self._observedArr = self.observedTS[self.selectedColumns].flatten()
+            if self.observedTS is not None:
+                self._observedArr = self.observedTS[self.selectedColumns].flatten()
+            else:
+                self._observedArr = None
             # Other internal state
             self._fitterMethods = fitterMethods
             if isinstance(self._fitterMethods, str):
@@ -633,41 +695,13 @@ class ModelFitterCore(rpickle.RPickler):
         -------
         lmfit.Parameters
         """
-        def get(value, base_value, multiplier):
-            if value is not None:
-                return value
-            return base_value*multiplier
-        #
         if parameterDct is None:
             parameterDct = self.parameterDct
-        params = lmfit.Parameters()
-        for parameterName in self.parametersToFit:
-            if parameterName in parameterDct.keys():
-                specification = parameterDct[parameterName]
-                value = get(specification.value, specification.value, 1.0)
-                if value > 0:
-                    lower_factor = LOWER_PARAMETER_MULT
-                    upper_factor = UPPER_PARAMETER_MULT
-                else:
-                    upper_factor = UPPER_PARAMETER_MULT
-                    lower_factor = LOWER_PARAMETER_MULT
-                lower = get(specification.lower, specification.value,
-                      lower_factor)
-                upper = get(specification.upper, specification.value,
-                      upper_factor)
-                if np.isclose(lower - upper, 0):
-                    upper = 0.0001
-                try:
-                    params.add(parameterName, value=value, min=lower, max=upper)
-                except Exception as err:
-                    msg = "modelFitterCore/mkParams parameterName %s" \
-                          % parameterName
-                    self.logger.error(msg, err)
-            else:
-                value = np.mean([self.lowerBound, self.upperBound])
-                params.add(parameterName, value=value,
-                      min=self.lowerBound, max=self.upperBound)
-        return params
+        return mkParams(parameterDct,
+              parametersToFit=self.parametersToFit,
+              logger=self.logger,
+              lowerBound=self.lowerBound,
+              upperBound=self.upperBound)
 
     def _checkFit(self):
         if self.params is None:
