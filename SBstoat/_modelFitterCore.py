@@ -42,6 +42,7 @@ NULL_STR = ""
 IS_REPORT = False
 LOWER_PARAMETER_MULT = 0.95
 UPPER_PARAMETER_MULT = 0.95
+LARGE_RESIDUAL = 1000000
 
 
 
@@ -328,7 +329,7 @@ class ModelFitterCore(rpickle.RPickler):
 
         Return
         ------
-        NamedTimeseries
+        NamedTimeseries (or None if fail to converge)
         """
         def set(default, parameter):
             # Sets to default if parameter unspecified
@@ -344,14 +345,27 @@ class ModelFitterCore(rpickle.RPickler):
           # Parameters have been specified
           cls.setupModel(roadrunner, parameters, logger=_logger)
         # Do the simulation
+        sucess = False
         if selectedColumns is not None:
             newSelectedColumns = list(selectedColumns)
             if not TIME in newSelectedColumns:
                 newSelectedColumns.insert(0, TIME)
-            data = roadrunner.simulate(startTime, endTime, numPoint,
-                  newSelectedColumns)
+            try:
+                data = roadrunner.simulate(startTime, endTime, numPoint,
+                      newSelectedColumns)
+                success = True
+            except Excption as err:
+                logger.exception("Roadrunner exception: %s", err)
+                data = None
         else:
-            data = roadrunner.simulate(startTime, endTime, numPoint)
+            try:
+                data = roadrunner.simulate(startTime, endTime, numPoint)
+                success = True
+            except Excption as err:
+                logger.exception("Roadrunner exception: %s", err)
+                data = None
+        if data is None:
+            return data
         fittedTS = NamedTimeseries(namedArray=data)
         if returnDataFrame:
             return fittedTS.to_dataframe()
@@ -600,12 +614,14 @@ class ModelFitterCore(rpickle.RPickler):
         1-d ndarray of residuals
         """
         self.fittedTS = self.simulate(**kwargs)  # Updates self.fittedTS
+        residualsArr = self._residuals(self.params)
+        numRow = len(self.fittedTS)
+        numCol = len(residualsArr)//numRow
+        residualsArr = np.reshape(residualsArr, (numRow, numCol))
         cols = self.selectedColumns
         if self.residualsTS is None:
             self.residualsTS = self.observedTS.subsetColumns(cols)
-        self.residualsTS[cols] = self.observedTS[cols] - self.fittedTS[cols]
-        for col in cols:
-            self.residualsTS[col] = np.nan_to_num(self.residualsTS[col])
+        self.residualsTS[cols] = residualsArr
 
     def _residuals(self, params)->np.ndarray:
         """
@@ -618,46 +634,24 @@ class ModelFitterCore(rpickle.RPickler):
         kwargs: dict
             arguments for simulation
 
-        Instance Variables Updated
-        --------------------------
-        self.residualsTS
-
         Returns
         -------
         1-d ndarray of residuals
         """
-        block = Logger.join(self._loggerPrefix, "fitModel._residuals")
-        guid = self.logger.startBlock(block)
-        ##V
-        self.roadrunnerModel.reset()
-        self._setupModel(params)
-        #
-        roadrunnerBlock = Logger.join(block, "roadrunner")
-        roadrunnerGuid = self.logger.startBlock(roadrunnerBlock)
-        ## V
-        #
-        data = self.roadrunnerModel.simulate(
-              self.observedTS.start, self.observedTS.end,
-              len(self.observedTS),
-              self.selectedColumns)
-        ## ^
-        self.logger.endBlock(roadrunnerGuid)
-        #
-        tailBlock = Logger.join(block, "tail")
-        tailGuid = self.logger.startBlock(tailBlock)
-        ## V
-        residualsArr = self._observedArr - data.flatten()
-        residualsArr = np.nan_to_num(residualsArr)
-        ## ^
-        self.logger.endBlock(tailGuid)
-        ##^
-        self.logger.endBlock(guid)
-        #
-        # Used for detailed debugging
-        if False:
-            self.logger.details("_residuals/std(residuals): %f" % 
-                  np.std(residualsArr))
-            self.logger.details("_residuals/params: %s" % str(params))
+        data = ModelFitterCore.runSimulation(parameters=params,
+              roadrunner=self.roadrunnerModel,
+              startTime=self.observedTS.start,
+              endTime=self.observedTS.end,
+              numPoint=len(self.observedTS),
+              selectedColumns=self.selectedColumns,
+              _logger=self.logger,
+              _loggerPrefix=self._loggerPrefix,
+              returnDataFrame=False)
+        if data is None:
+            residualsArr = np.repeat(LARGE_RESIDUAL, len(self._observedArr))
+        else:
+            residualsArr = self._observedArr - data.flatten()
+            residualsArr = np.nan_to_num(residualsArr)
         return residualsArr
 
     def fitModel(self, params:lmfit.Parameters=None,

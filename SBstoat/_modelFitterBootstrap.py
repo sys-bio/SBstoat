@@ -250,7 +250,7 @@ class ModelFitterBootstrap(mfc.ModelFitterCore):
         """
         def get(name, value):
             if name in self.bootstrapKwargs:
-                if self.bootstrapKwargs[name] is not None:
+                if self.bootstrapKwargs[name] is None:
                     return self.bootstrapKwargs[name]
                 else:
                     return value
