@@ -412,7 +412,7 @@ class TestModelFitterCore(unittest.TestCase):
             "Kmi1_2", "Kmi2_2", "Kmi3_2", "Kms_2", "Kmp_2", "wi1_2", "wi2_2", "wi3_2",
             "ms_2", "mp_2", "v_3", "kf_3", "kr_3", "Kms_3", "Kmp_3", "ms_3", "mp_3"])
         fitter.fitModel()
-        self.assertTrue(True)
+        self.assertIsNotNone(fitter.params)
         
 
 if __name__ == '__main__':
