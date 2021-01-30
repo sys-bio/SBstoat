@@ -398,20 +398,21 @@ class TestModelFitterCore(unittest.TestCase):
         Kmp_3 = 1;
         ms_3 = 1;
         mp_3 = 1;
-        
+    
         end
         ''')
         observedPath = os.path.join(DIR, "mike_bug.csv")
-        fitter = ModelFitter(model, observedPath, ["v_0", "ra_0", "kf_0", "kr_0", "Kma_0", "Kms_0", "Kmp_0", "wa_0", "ms_0",
-                                                      "mp_0", "v_1", "ri_1", "kf_1", "kr_1", "Kmi_1", "Kms_1", "Kmp_1", "wi_1",
-                                                      "ms_1", "mp_1", "v_2", "ri1_2", "ri2_2", "ri3_2", "kf_2", "kr_2",
-                                                      "Kmi1_2", "Kmi2_2", "Kmi3_2", "Kms_2", "Kmp_2", "wi1_2", "wi2_2", "wi3_2",
-                                                      "ms_2", "mp_2", "v_3", "kf_3", "kr_3", "Kms_3", "Kmp_3", "ms_3", "mp_3"])
-        try:
-            fitter.fitModel()
-        except ValueError as err:
-            pass
-        self.assertIsNone(fitter.residualsTS)
+        fitter = ModelFitter(model, observedPath, [
+            "v_0", "ra_0", "kf_0", "kr_0", "Kma_0", "Kms_0", "Kmp_0", "wa_0", "ms_0",
+                                                    
+            "mp_0", "v_1", "ri_1", "kf_1", "kr_1", "Kmi_1", "Kms_1", "Kmp_1", "wi_1",
+                                                    
+            "ms_1", "mp_1", "v_2", "ri1_2", "ri2_2", "ri3_2", "kf_2", "kr_2",
+                                                   
+            "Kmi1_2", "Kmi2_2", "Kmi3_2", "Kms_2", "Kmp_2", "wi1_2", "wi2_2", "wi3_2",
+            "ms_2", "mp_2", "v_3", "kf_3", "kr_3", "Kms_3", "Kmp_3", "ms_3", "mp_3"])
+        fitter.fitModel()
+        self.assertTrue(True)
         
 
 if __name__ == '__main__':

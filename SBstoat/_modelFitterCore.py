@@ -45,6 +45,10 @@ UPPER_PARAMETER_MULT = 0.95
 LARGE_RESIDUAL = 1000000
 
 
+BestParameters = collections.namedtuple("BestParameters",
+      "params rssq")  #  parameters, residuals sum of squares
+
+
 
 ##############################
 class ParameterSpecification(object):
@@ -182,6 +186,7 @@ class ModelFitterCore(rpickle.RPickler):
             self.bootstrapResult = None  # Result from bootstrapping
             # Validation checks
             self._validateFittedDataTransformDct()
+            self._bestParameters = BestParameters(rssq=None, params=None)
         else:
             pass
 
@@ -354,8 +359,8 @@ class ModelFitterCore(rpickle.RPickler):
                 data = roadrunner.simulate(startTime, endTime, numPoint,
                       newSelectedColumns)
                 success = True
-            except Excption as err:
-                logger.exception("Roadrunner exception: %s", err)
+            except Exception as err:
+                _logger.exception("Roadrunner exception: %s", err)
                 data = None
         else:
             try:
@@ -652,6 +657,11 @@ class ModelFitterCore(rpickle.RPickler):
         else:
             residualsArr = self._observedArr - data.flatten()
             residualsArr = np.nan_to_num(residualsArr)
+        rssq = sum(residualsArr**2)
+        if (self._bestParameters.rssq is None)  \
+              or (rssq < self._bestParameters.rssq):
+             self._bestParameters = BestParameters(
+                   params=params.copy(), rssq=rssq)
         return residualsArr
 
     def fitModel(self, params:lmfit.Parameters=None,
@@ -686,6 +696,7 @@ class ModelFitterCore(rpickle.RPickler):
             paramDct = {}
             for method in self._fitterMethods:           
                 for _ in range(self._numFitRepeat):
+                    self._bestParameters = BestParameters(params=None, rssq=None)
                     minimizer = lmfit.Minimizer(self._residuals, params,
                           max_nfev=max_nfev)
                     try:
@@ -695,13 +706,14 @@ class ModelFitterCore(rpickle.RPickler):
                         msg = "Error minimizing for method: %s" % method
                         self.logger.error(msg, excp)
                         continue
-                    params = minimizerResult.params
+                    params = self._bestParameters.params.copy()
                     std = np.std(self._residuals(params))
                     if method in paramDct.keys():
                         if std >= paramDct[method].std:
                             continue
+                    # FIXME: The best parameter may not correspond to the minimizer result
                     paramDct[method] = ParameterDescriptor(
-                          params=params.copy(),
+                          params=params,
                           method=method,
                           std=std,
                           minimizer=minimizer,

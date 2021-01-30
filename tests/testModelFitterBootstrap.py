@@ -35,8 +35,8 @@ def remove(ffile):
     if os.path.isfile(ffile):
         os.remove(ffile)
 
-IGNORE_TEST = True
-IS_PLOT = True
+IGNORE_TEST = False
+IS_PLOT = False
 TIMESERIES = th.getTimeseries()
 DIR = os.path.dirname(os.path.abspath(__file__))
 LOG_FILE = os.path.join(DIR, "testModelFitterBootstrap.log")
@@ -133,7 +133,8 @@ class TestModelFitterBootstrap(unittest.TestCase):
         timeIt(4)
 
     def testBootstrap1(self):
-        # TESTING
+        if IGNORE_TEST:
+            return
         self._init()
         self.fitter.bootstrap(numIteration=500,
               reportInterval=100, maxProcess=2,
@@ -151,7 +152,6 @@ class TestModelFitterBootstrap(unittest.TestCase):
             self.assertTrue(isUpperOk)
         self.assertIsNotNone(self.fitter.bootstrapResult)
         #
-        import pdb; pdb.set_trace()
         fitter = mfb.ModelFitterBootstrap.deserialize(FILE_SERIALIZE)
         self.assertIsNotNone(fitter.bootstrapResult)
 
