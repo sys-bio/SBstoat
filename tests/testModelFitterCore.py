@@ -52,6 +52,26 @@ class TestModelFitterCore(unittest.TestCase):
             if os.path.isfile(ffile):
                 os.remove(ffile)
 
+    def testMakeMethods(self):
+        if IGNORE_TEST:
+            return
+        self._init()
+        METHOD = "dummy"
+        def test(methods):
+            result = self.fitter._makeMethods(methods)
+            self.assertTrue(isinstance(result, list))
+            optimizerMethod = result[0]
+            self.assertEqual(optimizerMethod.method, METHOD)
+            self.assertTrue(isinstance(optimizerMethod.kwargs, dict))
+        #
+        test([METHOD])
+        test([METHOD, METHOD])
+        test([mf.ModelFitterCore.OptimizerMethod(method=METHOD, kwargs={})])
+        #
+        methods = mf.ModelFitterCore.OptimizerMethod(method=METHOD,
+              kwargs={"a": 1})
+        result = self.fitter._makeMethods([methods, methods])
+
     def testConstructor(self):
         if IGNORE_TEST:
             return
@@ -198,6 +218,7 @@ class TestModelFitterCore(unittest.TestCase):
     def testFitNanValues(self):
         if IGNORE_TEST:
             return
+        self._init()
         PARAMETER = "k2"
         def calc(method, probNan=0.2):
             nanTimeseries = self.timeseries.copy()
@@ -322,6 +343,11 @@ class TestModelFitterCore(unittest.TestCase):
     def testMikeBug(self):
         if IGNORE_TEST:
             return
+        fitter = self._makeMikeModel()
+        self.assertIsNotNone(fitter.params)
+
+    def _makeMikeModel(self, **kwargs):
+        """Makes a model from Mike's data."""
         model = te.loada('''
         function Fi(v, ri, kf, kr, i, s, p, Kmi, Kms, Kmp, wi, ms, mp)
             ((ri+(1-ri)*(1/(1+i/Kmi)))^wi)*(kf*(s/Kms)^ms-kr*(p/Kmp)^mp)/((1+(s/Kms))^ms+(1+(p/Kmp))^mp-1)
@@ -403,16 +429,25 @@ class TestModelFitterCore(unittest.TestCase):
         ''')
         observedPath = os.path.join(DIR, "mike_bug.csv")
         fitter = ModelFitter(model, observedPath, [
-            "v_0", "ra_0", "kf_0", "kr_0", "Kma_0", "Kms_0", "Kmp_0", "wa_0", "ms_0",
-                                                    
-            "mp_0", "v_1", "ri_1", "kf_1", "kr_1", "Kmi_1", "Kms_1", "Kmp_1", "wi_1",
-                                                    
-            "ms_1", "mp_1", "v_2", "ri1_2", "ri2_2", "ri3_2", "kf_2", "kr_2",
-                                                   
-            "Kmi1_2", "Kmi2_2", "Kmi3_2", "Kms_2", "Kmp_2", "wi1_2", "wi2_2", "wi3_2",
-            "ms_2", "mp_2", "v_3", "kf_3", "kr_3", "Kms_3", "Kmp_3", "ms_3", "mp_3"])
+         "v_0", "ra_0", "kf_0", "kr_0", "Kma_0", "Kms_0", "Kmp_0", "wa_0", "ms_0",
+         "mp_0", "v_1", "ri_1", "kf_1", "kr_1", "Kmi_1", "Kms_1", "Kmp_1", "wi_1",
+         "ms_1", "mp_1", "v_2", "ri1_2", "ri2_2", "ri3_2", "kf_2", "kr_2",
+         "Kmi1_2", "Kmi2_2", "Kmi3_2", "Kms_2", "Kmp_2", "wi1_2", "wi2_2", "wi3_2",
+         "ms_2", "mp_2", "v_3", "kf_3", "kr_3", "Kms_3", "Kmp_3", "ms_3", "mp_3"],
+         **kwargs)
         fitter.fitModel()
-        self.assertIsNotNone(fitter.params)
+        return fitter
+
+    def testOptimizerMethod(self):
+        if IGNORE_TEST:
+            return
+        METHOD_NAME = "differential_evolution"
+        optimizerMethod = ModelFitter.OptimizerMethod(
+            method=METHOD_NAME,
+            kwargs={ "popsize": 10000, "atol": 0.001})
+        fitter1 = self._makeMikeModel(fitterMethods=[METHOD_NAME])
+        fitter2 = self._makeMikeModel(fitterMethods=[optimizerMethod])
+        self.assertTrue(True) # Smoke test
         
 
 if __name__ == '__main__':

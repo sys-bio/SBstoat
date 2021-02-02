@@ -22,8 +22,6 @@ from SBstoat import _modelFitterCore as mfc
 from SBstoat import _helpers
 from SBstoat.logs import Logger
 
-import inspect
-import lmfit
 import multiprocessing
 import numpy as np
 import os
@@ -218,8 +216,8 @@ class ModelFitterBootstrap(mfc.ModelFitterCore):
 
     def bootstrap(self, 
           # The following must be kept in sync with ModelFitterCore.__init__
-          numIteration:int=10,
-          reportInterval:int=1000,
+          numIteration:int=None,
+          reportInterval:int=None,
           synthesizerClass=ObservationSynthesizerRandomizedResiduals,
           maxProcess:int=None,
           serializePath:str=None,
@@ -249,14 +247,14 @@ class ModelFitterBootstrap(mfc.ModelFitterCore):
         ----
         """
         def get(name, value):
-            # Handle override by the constructor
+            if value is not None:
+                return value
+            # Handle arguments specified in constructor
             if name in self.bootstrapKwargs:
                 if self.bootstrapKwargs[name] is not None:
                     return self.bootstrapKwargs[name]
-                else:
-                    return value
-            else:
-                return value
+            # None specified
+            return None
         # Handle overrides of arguments specified in constructor
         numIteration = get("numIteration", numIteration)
         reportInterval = get("reportInterval", reportInterval)

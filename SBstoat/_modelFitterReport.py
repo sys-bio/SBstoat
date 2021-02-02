@@ -9,6 +9,7 @@ Reports for model fitter
 
 from SBstoat.namedTimeseries import NamedTimeseries, TIME, mkNamedTimeseries
 from SBstoat._modelFitterBootstrap import ModelFitterBootstrap
+from SBstoat import _helpers
 
 import lmfit
 import numpy as np
@@ -30,11 +31,30 @@ class ModelFitterReport(ModelFitterBootstrap):
         -------
         f.reportFit()
         """
+        VARIABLE_STG = "[[Variables]]"
+        CORRELATION_STG = "[[Correlations]]"
         self._checkFit()
         if self.minimizerResult is None:
             raise ValueError("Must do fitModel before reportFit.")
+        valuesDct = self.params.valuesdict()
+        valuesStg = _helpers.ppDict(dict(valuesDct), indent=4)
         reportSplit = str(lmfit.fit_report(self.minimizerResult)).split("\n")
-        newReportSplit = [r for r in reportSplit if not " # " in r]
+        # Eliminate Variables section
+        inVariableSection = False
+        trimmedReportSplit = []
+        for line in reportSplit:
+            if VARIABLE_STG in line:
+                inVariableSection = True
+            if CORRELATION_STG in line:
+                inVariableSection = False
+            if inVariableSection:
+                continue
+            else:
+                trimmedReportSplit.append(line)
+        # Construct the report
+        newReportSplit = [VARIABLE_STG]
+        newReportSplit.extend(valuesStg.split("\n"))
+        newReportSplit.extend(trimmedReportSplit)
         return "\n".join(newReportSplit)
 
     def reportBootstrap(self):

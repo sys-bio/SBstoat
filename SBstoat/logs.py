@@ -114,7 +114,7 @@ class Statistic(object):
 class Logger(object):
 
 
-    def __init__(self, isReport=True, toFile=None, logLevel=LEVEL_STATUS,
+    def __init__(self, isReport=True, toFile=None, logLevel=LEVEL_ERROR,
           logPerformance=False):
         self.isReport = isReport
         self.toFile = toFile

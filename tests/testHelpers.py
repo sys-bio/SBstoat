@@ -80,5 +80,12 @@ class TestFunctions(unittest.TestCase):
             test(cls(np.array(range(4))))
             test(cls(1))
 
+    def testPpDct(self):
+        SIZE = 10
+        dct = {n: str(n) for n in range(SIZE)}
+        result = _helpers.ppDict(dct)
+        self.assertEqual(result.count("\n"), SIZE-1)
+
+
 if __name__ == '__main__':
     unittest.main()

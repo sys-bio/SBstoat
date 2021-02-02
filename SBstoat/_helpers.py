@@ -220,3 +220,24 @@ def validateKwargs(function):
     if len(missing) > 0:
         raise ValueError(
               "The following keyword parameters do not match: %s" % str(missing))
+
+def ppDict(dct, indent=0):
+    """
+    Does a pretty print of a dictionary.values.
+
+    Parameters
+    ----------
+    dct: dict
+    indent: int
+        spaes indented
+    
+    Returns
+    -------
+    str
+    """
+    spaces = "".join([" " for _ in range(indent)])
+    lines = []
+    for key, value in dct.items():
+        line = "%s%s:  %s" % (spaces, key, value)
+        lines.append(line)
+    return "\n".join(lines)

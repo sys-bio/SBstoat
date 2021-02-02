@@ -45,7 +45,7 @@ UPPER_PARAMETER_MULT = 0.95
 LARGE_RESIDUAL = 1000000
 
 
-BestParameters = collections.namedtuple("BestParameters",
+_BestParameters = collections.namedtuple("_BestParameters",
       "params rssq")  #  parameters, residuals sum of squares
 
 
@@ -60,6 +60,16 @@ class ParameterSpecification(object):
 
 
 class ModelFitterCore(rpickle.RPickler):
+
+    # Subclasses used in interface
+    OptimizerMethod = collections.namedtuple("OptimizerMethod",
+          "method kwargs")
+    class OptimizerMethod(object):
+
+        def __init__(self, method, kwargs):
+            self.method = method
+            self.kwargs = kwargs
+
 
     def __init__(self, modelSpecification, observedData,
           parametersToFit=None,
@@ -109,11 +119,11 @@ class ModelFitterCore(rpickle.RPickler):
                    input: NamedTimeseries
                    output: array for the values of the column
         logger: Logger
-        fitterMethods: str/list-str
+        fitterMethods: str/list-str/list-OptimizerMethod
             method used for minimization in fitModel
         numFitRepeat: int
             number of times fitting is repeated for a method
-        bootstrapMethods: str/list-str
+        bootstrapMethods: str/list-str/list-OptimizerMethod
             method used for minimization in bootstrap
         numIteration: number of bootstrap iterations
         reportInterval: number of iterations between progress reports
@@ -163,13 +173,8 @@ class ModelFitterCore(rpickle.RPickler):
             else:
                 self._observedArr = None
             # Other internal state
-            self._fitterMethods = fitterMethods
-            if isinstance(self._fitterMethods, str):
-                if self._fitterMethods == METHOD_BOTH:
-                    self._fitterMethods = METHOD_FITTER_DEFAULTS
-                else:
-                    self._fitterMethods = [self._fitterMethods]
-            self._bootstrapMethods = bootstrapMethods
+            self._fitterMethods = self._makeMethods(fitterMethods)
+            self._bootstrapMethods = self._makeMethods(bootstrapMethods)
             if isinstance(self._bootstrapMethods, str):
                 self._bootstrapMethods = [self._bootstrapMethods]
             self._isPlot = isPlot
@@ -186,9 +191,44 @@ class ModelFitterCore(rpickle.RPickler):
             self.bootstrapResult = None  # Result from bootstrapping
             # Validation checks
             self._validateFittedDataTransformDct()
-            self._bestParameters = BestParameters(rssq=None, params=None)
+            self._bestParameters = _BestParameters(rssq=None, params=None)
         else:
             pass
+
+    def _makeMethods(self, methods):
+        """
+        Creates a method dictionary.
+
+        Parameters
+        ----------
+        methods: str/list-str/dict
+            method used for minimization in fitModel
+            dict: key-method, value-optional parameters
+
+        Returns
+        -------
+        list-OptimizerMethod
+            key: method name
+            value: dict of optional parameters
+        """
+        if isinstance(methods, str):
+            if methods == METHOD_BOTH:
+                methods = METHOD_FITTER_DEFAULTS
+            else:
+                methods = [methods]
+        if isinstance(methods, list):
+            if isinstance(methods[0], str):
+                results = [ModelFitterCore.OptimizerMethod(method=m, kwargs={})
+                      for m in methods]
+            else:
+                results = methods
+        else:
+            raise RuntimeError("Must be a list")
+        trues = [isinstance(m, ModelFitterCore.OptimizerMethod) for m in results]
+        if not all(trues):
+            raise ValueError("Invalid methods: %s" % str(methods))
+        return results
+    
 
     @classmethod
     def mkParameters(cls, parameterDct:dict=None, 
@@ -366,8 +406,8 @@ class ModelFitterCore(rpickle.RPickler):
             try:
                 data = roadrunner.simulate(startTime, endTime, numPoint)
                 success = True
-            except Excption as err:
-                logger.exception("Roadrunner exception: %s", err)
+            except Exception as err:
+                _logger.exception("Roadrunner exception: %s", err)
                 data = None
         if data is None:
             return data
@@ -660,7 +700,7 @@ class ModelFitterCore(rpickle.RPickler):
         rssq = sum(residualsArr**2)
         if (self._bestParameters.rssq is None)  \
               or (rssq < self._bestParameters.rssq):
-             self._bestParameters = BestParameters(
+             self._bestParameters = _BestParameters(
                    params=params.copy(), rssq=rssq)
         return residualsArr
 
@@ -681,7 +721,7 @@ class ModelFitterCore(rpickle.RPickler):
         f.fitModel()
         """
         ParameterDescriptor = collections.namedtuple("ParameterDescriptor",
-              "params method std minimizer minimizerResult")
+              "params method rssq kwargs minimizer minimizerResult")
         block = Logger.join(self._loggerPrefix, "fitModel")
         guid = self.logger.startBlock(block)
         self._initializeRoadrunnerModel()
@@ -693,42 +733,44 @@ class ModelFitterCore(rpickle.RPickler):
                 params = self.mkParams()
             # Fit the model to the data using one or more methods.
             # Choose the result with the lowest residual standard deviation
-            paramDct = {}
-            for method in self._fitterMethods:           
+            paramResults = []
+            for idx, optimizerMethod in enumerate(self._fitterMethods):
+                method = optimizerMethod.method
+                kwargs = optimizerMethod.kwargs
                 for _ in range(self._numFitRepeat):
-                    self._bestParameters = BestParameters(params=None, rssq=None)
+                    self._bestParameters = _BestParameters(params=None, rssq=None)
                     minimizer = lmfit.Minimizer(self._residuals, params,
                           max_nfev=max_nfev)
                     try:
                         minimizerResult = minimizer.minimize(
-                              method=method, max_nfev=max_nfev)
+                              method=method, max_nfev=max_nfev, **kwargs)
                     except Exception as excp:
                         msg = "Error minimizing for method: %s" % method
                         self.logger.error(msg, excp)
                         continue
                     params = self._bestParameters.params.copy()
-                    std = np.std(self._residuals(params))
-                    if method in paramDct.keys():
-                        if std >= paramDct[method].std:
+                    rssq = np.sum(self._residuals(params)**2)
+                    if len(paramResults) > idx:
+                        if rssq >= paramResults[idx].rssq:
                             continue
-                    # FIXME: The best parameter may not correspond to the minimizer result
-                    paramDct[method] = ParameterDescriptor(
+                    parameterDescriptor = ParameterDescriptor(
                           params=params,
                           method=method,
-                          std=std,
+                          rssq=rssq,
+                          kwargs=dict(kwargs),
                           minimizer=minimizer,
                           minimizerResult=minimizerResult,
                           )
-            if len(paramDct) == 0:
+                    paramResults.append(parameterDescriptor)
+            if len(paramResults) == 0:
                 msg = "*** Minimizer failed for this model and data."
                 raise ValueError(msg)
             # Select the result that has the smallest residuals
-            sortedMethods = sorted(paramDct.keys(),
-                  key=lambda m: paramDct[m].std)
+            sortedMethods = sorted(paramResults, key=lambda r: r.rssq)
             bestMethod = sortedMethods[0]
-            self.params = paramDct[bestMethod].params
-            self.minimizer= paramDct[bestMethod].minimizer
-            self.minimizerResult = paramDct[bestMethod].minimizerResult
+            self.params = bestMethod.params
+            self.minimizer= bestMethod.minimizer
+            self.minimizerResult = bestMethod.minimizerResult
         # Ensure that residualsTS and fittedTS match the parameters
         self.updateFittedAndResiduals(params=self.params)
         self.logger.endBlock(guid)
