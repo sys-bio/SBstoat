@@ -8,7 +8,6 @@ Container for the results of bootstrapping. Provides
 metrics that are calculated from the results.
 """
 
-from SBstoat.namedTimeseries import NamedTimeseries, TIME, mkNamedTimeseries
 from SBstoat.timeseriesStatistic import TimeseriesStatistic
 from SBstoat.logs import Logger
 from SBstoat import rpickle
@@ -19,7 +18,6 @@ import copy
 import lmfit
 import numpy as np
 import pandas as pd
-import typing
 
 PERCENTILES = [2.5, 50, 97.55]  # Percentile for confidence limits
 MIN_COUNT_PERCENTILE = 100  # Minimum number of values required to get percentiles
@@ -83,13 +81,13 @@ class BootstrapResult(rpickle.RPickler):
         ### PRIVATE
         # Fitting parameters from result
         self._params = None
-    
+
     @classmethod
     def rpConstruct(cls):
         """
         Overrides rpickler.rpConstruct to create a method that
         constructs an instance without arguments.
-        
+
         Returns
         -------
         Instance of cls
@@ -101,7 +99,7 @@ class BootstrapResult(rpickle.RPickler):
 
     def __str__(self) -> str:
         """
-        Bootstrap report.       
+        Bootstrap report.
         """
         report = _helpers.Report()
         report.addHeader("Bootstrap Report.")
@@ -121,11 +119,11 @@ class BootstrapResult(rpickle.RPickler):
     def params(self)->lmfit.Parameters:
         """
         Constructs parameters from bootstrap result.
-        
+
         Returns
         -------
         """
-        if not "_params" in self.__dict__.keys():
+        if "_params" not in self.__dict__.keys():
             self._params = None
         if self._params is None:
             self._params = lmfit.Parameters()
@@ -144,12 +142,12 @@ class BootstrapResult(rpickle.RPickler):
     def simulate(self, numSample:int=1000, numPoint:int=100)->TimeseriesStatistic:
         """
         Runs a simulation using the parameters from the bootstrap.
-        
+
         Parameters
         ----------
         numSample: number of fitted parameters to sample
         numPoint: number of points in the simulation
-        
+
         Returns
         -------
         TimeseriesStatistic
@@ -169,16 +167,15 @@ class BootstrapResult(rpickle.RPickler):
     def _sampleParams(self, numSample:int):
         """
         Samples the parameters obtained in bootstrapping.
-    
+
         Parameters
         ----------
         numSample: number of samples returned
-        
+
         Returns
         -------
         list-lmfit.Parameters
         """
-        names = [k for k in self.parameterDct.keys()]
         df = pd.DataFrame(self.parameterDct)
         df_sample = df.sample(numSample, replace=True, axis=0)
         dcts = df_sample.to_dict('records')
@@ -215,7 +212,7 @@ class BootstrapResult(rpickle.RPickler):
         fittedStatistic = None
         if numIteration > 0:
             # Merge the fitter logs
-            fitter.logger = Logger.merge([b.fitter.logger 
+            fitter.logger = Logger.merge([b.fitter.logger
                   for b in bootstrapResults])
             # Merge the statistics for fitted timeseries
             fittedStatistics = [b.fittedStatistic for b in bootstrapResults]

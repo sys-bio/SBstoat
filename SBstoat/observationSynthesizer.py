@@ -17,12 +17,8 @@ from SBstoat import _helpers
 import abc
 import numpy as np
 import pandas as pd
-import time
-import typing
 
 
-# FIXME: Get same random sequence in different processes.
-#        Consider using the last digit in time.time() as a seed.
 class ObservationSynthesizer(abc.ABC):
 
 
@@ -41,8 +37,7 @@ class ObservationSynthesizer(abc.ABC):
         def getTS(data):
             if isinstance(data, pd.DataFrame):
                 return NamedTimeseries(dataframe=data)
-            else:
-                return data
+            return data
         #
         self._observedTS = getTS(observedTS)
         self._fittedTS = getTS(fittedTS)
@@ -132,7 +127,7 @@ class ObservationSynthesizerRandomizedResiduals(ObservationSynthesizer):
         for column in self.columns:
             if len(self._filteredResidualsDct[column]) == 0:
                 msg = "No residuals left after filtering."
-                msg +- " Make filter less restrictive."
+                msg += " Make filter less restrictive."
                 raise ValueError(msg)
             newObservedTS[column] += np.random.choice(
                 self._filteredResidualsDct[column], numRow, replace=True)

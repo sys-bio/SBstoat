@@ -11,9 +11,12 @@ date         Version         numIteration    numProcess  Time (sec)
 11/30/2020   1.0             10,000          5            11.29
 11/30/2020   1.1             10,000          5           110.0
 12/06/2020   1.1             10,000          5            18.1
+02/03/2021*  1.3             10,000          5            33.6
+
+*Using only leastsq, 100 function evaluations
 """
 
-from SBstoat.modelFitter import ModelFitter
+from SBstoat import modelFitter as mf
 import SBstoat
 from SBstoat import logs
 
@@ -48,10 +51,15 @@ def main(numIteration):
     -------
     float: time in seconds
     """
-    logger = logs.Logger(logLevel=logs.LEVEL_MAX, logPerformance=IS_TEST)
-    fitter = ModelFitter(MODEL, BENCHMARK_PATH,
+    logger = logs.Logger(logLevel=logs.LEVEL_STATUS, logPerformance=IS_TEST)
+    optimizerMethod = mf.ModelFitter.OptimizerMethod(SBstoat.METHOD_LEASTSQ,
+          {"max_nfev": 100})
+    fitter = mf.ModelFitter(MODEL, BENCHMARK_PATH,
           ["k1", "k2"], selectedColumns=['S1', 'S3'], isPlot=IS_PLOT,
-          logger=logger)
+          logger=logger,
+          fitterMethods=[optimizerMethod],
+          bootstrapMethods=[optimizerMethod],
+          )
     fitter.fitModel()
     startTime = time.time()
     fitter.bootstrap(numIteration=numIteration, reportInterval=numIteration)

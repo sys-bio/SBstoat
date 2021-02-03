@@ -263,12 +263,6 @@ class ModelFitterBootstrap(mfc.ModelFitterCore):
         numProcess = max(int(numIteration/ITERATION_PER_PROCESS), 1)
         numProcess = min(numProcess, maxProcess)
         numProcessIteration = int(np.ceil(numIteration/numProcess))
-        args_list = [_Arguments(self, numProcess, i,
-              numIteration=numProcessIteration,
-              reportInterval=reportInterval,
-              synthesizerClass=synthesizerClass,
-              _loggerPrefix="bootstrap",
-              **kwargs) for i in range(numProcess)]
         msg = "Running bootstrap for %d successful iterations " % numIteration
         msg += "with %d processes." % numProcess
         self.logger.activity(msg)
@@ -278,6 +272,12 @@ class ModelFitterBootstrap(mfc.ModelFitterCore):
         results = []
         # Set to False for debug so not doing multiple processes
         if True:
+            args_list = [_Arguments(self, numProcess, i,
+                  numIteration=numProcessIteration,
+                  reportInterval=reportInterval,
+                  synthesizerClass=synthesizerClass,
+                  _loggerPrefix="bootstrap",
+                  **kwargs) for i in range(numProcess)]
             for args in args_list:
                 p = multiprocessing.Process(target=_runBootstrap,
                       args=(args, queue,))
@@ -298,9 +298,15 @@ class ModelFitterBootstrap(mfc.ModelFitterCore):
                 pass
         else:
             # Keep to debug _runBootstrap single threaded
-            results = []
-            for args in args_list:
-                results.append(_runBootstrap(args))
+            thisNumProcess = 1
+            thisProcessIdx = 0
+            args = _Arguments(self, thisNumProcess, thisProcessIdx,
+                  numIteration=numIteration,
+                  reportInterval=reportInterval,
+                  synthesizerClass=synthesizerClass,
+                  _loggerPrefix="bootstrap",
+                  **kwargs)
+            results = [_runBootstrap(args)]
         if len(results) == 0:
             msg = "modelFitterBootstrap/timeout in solving model."
             msg = "\nConsider increasing per timeout."
