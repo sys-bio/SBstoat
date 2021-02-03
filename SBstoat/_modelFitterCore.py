@@ -8,20 +8,14 @@ Core logic of model fitter. Does not include plots.
 """
 
 from SBstoat.namedTimeseries import NamedTimeseries, TIME, mkNamedTimeseries
-from SBstoat.observationSynthesizer import  \
-      ObservationSynthesizerRandomizedResiduals
 from SBstoat.logs import Logger
 import SBstoat.timeseriesPlotter as tp
-from SBstoat import namedTimeseries
 from SBstoat import rpickle
 
 import collections
 import copy
 import lmfit
 import numpy as np
-import pandas as pd
-import random
-import roadrunner
 import tellurium as te
 import typing
 
@@ -51,7 +45,7 @@ _BestParameters = collections.namedtuple("_BestParameters",
 
 
 ##############################
-class ParameterSpecification(object):
+class ParameterSpecification():
 
     def __init__(self, lower=None, value=None, upper=None):
         self.lower = lower
@@ -62,9 +56,7 @@ class ParameterSpecification(object):
 class ModelFitterCore(rpickle.RPickler):
 
     # Subclasses used in interface
-    OptimizerMethod = collections.namedtuple("OptimizerMethod",
-          "method kwargs")
-    class OptimizerMethod(object):
+    class OptimizerMethod():
 
         def __init__(self, method, kwargs):
             self.method = method
@@ -74,26 +66,25 @@ class ModelFitterCore(rpickle.RPickler):
     def __init__(self, modelSpecification, observedData,
           parametersToFit=None,
           selectedColumns=None,
-          fitterMethods=METHOD_FITTER_DEFAULTS,
+          fitterMethods=None,
           numFitRepeat=1,
-          bootstrapMethods=METHOD_BOOTSTRAP_DEFAULTS,
+          bootstrapMethods=None,
           parameterLowerBound=PARAMETER_LOWER_BOUND,
           parameterUpperBound=PARAMETER_UPPER_BOUND,
-          parameterDct={},
-          fittedDataTransformDct={},
+          parameterDct=None,
+          fittedDataTransformDct=None,
           logger=Logger(),
           isPlot=True,
           _loggerPrefix="",
           # The following must be kept in sync with ModelFitterBootstrap.bootstrap
-          numIteration:int=10, 
+          numIteration:int=10,
           reportInterval:int=1000,
-          synthesizerClass=ObservationSynthesizerRandomizedResiduals,
           maxProcess:int=None,
           serializePath:str=None,
           ):
         """
-        Constructs estimates of parameter values. 
-    
+        Constructs estimates of parameter values.
+
         Parameters
         ----------
         modelSpecification: ExtendedRoadRunner/str
@@ -127,8 +118,6 @@ class ModelFitterCore(rpickle.RPickler):
             method used for minimization in bootstrap
         numIteration: number of bootstrap iterations
         reportInterval: number of iterations between progress reports
-        synthesizerClass: object that synthesizes new observations
-            Must subclass ObservationSynthesizer
         maxProcess: Maximum number of processes to use. Default: numCPU
         serializePath: Where to serialize the fitter after bootstrap
 
@@ -155,10 +144,10 @@ class ModelFitterCore(rpickle.RPickler):
                   maxProcess=maxProcess,
                   serializePath=serializePath,
                   )
-            self.parameterDct = self._updateParameterDct(parameterDct)
+            self.parameterDct = ModelFitterCore._updateParameterDct(parameterDct)
             self._numFitRepeat = numFitRepeat
             if self.parametersToFit is None:
-                self.parametersToFit = [p for p in self.parameterDct.keys()]
+                self.parametersToFit = list(self.parameterDct.keys())
             self.observedTS = observedData
             if self.observedTS is not None:
                 self.observedTS = mkNamedTimeseries(observedData)
@@ -173,8 +162,10 @@ class ModelFitterCore(rpickle.RPickler):
             else:
                 self._observedArr = None
             # Other internal state
-            self._fitterMethods = self._makeMethods(fitterMethods)
-            self._bootstrapMethods = self._makeMethods(bootstrapMethods)
+            self._fitterMethods = self._makeMethods(fitterMethods,
+                  METHOD_FITTER_DEFAULTS)
+            self._bootstrapMethods = self._makeMethods(bootstrapMethods,
+                  METHOD_BOOTSTRAP_DEFAULTS)
             if isinstance(self._bootstrapMethods, str):
                 self._bootstrapMethods = [self._bootstrapMethods]
             self._isPlot = isPlot
@@ -195,7 +186,7 @@ class ModelFitterCore(rpickle.RPickler):
         else:
             pass
 
-    def _makeMethods(self, methods):
+    def _makeMethods(self, methods, default):
         """
         Creates a method dictionary.
 
@@ -211,6 +202,8 @@ class ModelFitterCore(rpickle.RPickler):
             key: method name
             value: dict of optional parameters
         """
+        if methods is None:
+            methods = default
         if isinstance(methods, str):
             if methods == METHOD_BOTH:
                 methods = METHOD_FITTER_DEFAULTS
@@ -228,17 +221,17 @@ class ModelFitterCore(rpickle.RPickler):
         if not all(trues):
             raise ValueError("Invalid methods: %s" % str(methods))
         return results
-    
+
 
     @classmethod
-    def mkParameters(cls, parameterDct:dict=None, 
-          parametersToFit:list=None, 
+    def mkParameters(cls, parameterDct:dict=None,
+          parametersToFit:list=None,
           logger:Logger=Logger(),
-          lowerBound:float=PARAMETER_LOWER_BOUND, 
+          lowerBound:float=PARAMETER_LOWER_BOUND,
           upperBound:float=PARAMETER_UPPER_BOUND)->lmfit.Parameters:
         """
         Constructs lmfit parameters based on specifications.
-    
+
         Parameters
         ----------
         parameterDct: key=name, value=ParameterSpecification
@@ -246,7 +239,7 @@ class ModelFitterCore(rpickle.RPickler):
         logger: error logger
         lowerBound: lower value of range for parameters
         upperBound: upper value of range for parameters
-        
+
         Returns
         -------
         lmfit.Parameters
@@ -336,7 +329,7 @@ class ModelFitterCore(rpickle.RPickler):
             except Exception as err:
                 msg = "_modelFitterCore.setupModel: Could not set value for %s"  \
                       % parameter
-                self.logger.error(msg, err)
+                logger.error(msg, err)
 
     @classmethod
     def runSimulation(cls, parameters=None,
@@ -370,42 +363,33 @@ class ModelFitterCore(rpickle.RPickler):
             return a DataFrame
         _logger: Logger
         _loggerPrefix: str
-  
+
 
         Return
         ------
         NamedTimeseries (or None if fail to converge)
         """
-        def set(default, parameter):
-            # Sets to default if parameter unspecified
-            if parameter is None:
-                return default
-            else:
-                return parameter
         if isinstance(roadrunner, str):
             roadrunner = cls.initializeRoadrunnerModel(roadrunner)
         else:
             roadrunner.reset()
         if parameters is not None:
-          # Parameters have been specified
-          cls.setupModel(roadrunner, parameters, logger=_logger)
+            # Parameters have been specified
+            cls.setupModel(roadrunner, parameters, logger=_logger)
         # Do the simulation
-        sucess = False
         if selectedColumns is not None:
             newSelectedColumns = list(selectedColumns)
-            if not TIME in newSelectedColumns:
+            if TIME not in newSelectedColumns:
                 newSelectedColumns.insert(0, TIME)
             try:
                 data = roadrunner.simulate(startTime, endTime, numPoint,
                       newSelectedColumns)
-                success = True
             except Exception as err:
-                _logger.exception("Roadrunner exception: %s", err)
+                _logger.exception("Roadrunner exception: ", err)
                 data = None
         else:
             try:
                 data = roadrunner.simulate(startTime, endTime, numPoint)
-                success = True
             except Exception as err:
                 _logger.exception("Roadrunner exception: %s", err)
                 data = None
@@ -413,27 +397,28 @@ class ModelFitterCore(rpickle.RPickler):
             return data
         fittedTS = NamedTimeseries(namedArray=data)
         if returnDataFrame:
-            return fittedTS.to_dataframe()
+            result = fittedTS.to_dataframe()
         else:
-            return fittedTS
-    
+            result = fittedTS
+        return result
+
     @classmethod
     def rpConstruct(cls):
         """
         Overrides rpickler.rpConstruct to create a method that
         constructs an instance without arguments.
-        
+
         Returns
         -------
         Instance of cls
         """
         return cls(None, None, None)
-    
+
     def rpRevise(self):
         """
         Overrides rpickler.
         """
-        if not "logger" in self.__dict__.keys():
+        if "logger" not in self.__dict__.keys():
             self.logger = Logger()
 
     def _validateFittedDataTransformDct(self):
@@ -444,16 +429,16 @@ class ModelFitterCore(rpickle.RPickler):
                 excess = set(keySet).difference(selectedColumnsSet)
                 if len(excess) > 0:
                     msg = "Columns not in selectedColumns: %s"  % str(excess)
-                    raise ValueError(excess)
+                    raise ValueError(msg)
 
     def _transformFittedTS(self, data):
         """
         Updates the fittedTS taking into account required transformations.
- 
+
         Parameters
         ----------
         data: np.ndarray
- 
+
         Results
         ----------
         NamedTimeseries
@@ -466,18 +451,21 @@ class ModelFitterCore(rpickle.RPickler):
                 if func is not None:
                     fittedTS[column] = func(fittedTS)
         return fittedTS
-        
-    def _updateParameterDct(self, parameterDct):
+
+    @staticmethod
+    def _updateParameterDct(parameterDct):
         """
         Handles values that are tuples instead of ParameterSpecification.
         """
+        if parameterDct is None:
+            parameterDct = {}
         dct = dict(parameterDct)
         for name, value in parameterDct.items():
             if isinstance(value, tuple):
                 dct[name] = ParameterSpecification(lower=value[0],
                       upper=value[1], value=value[2])
         return dct
-        
+
     @staticmethod
     def addParameter(parameterDct: dict,
           name: str, lower: float, upper: float, value: float):
@@ -491,7 +479,7 @@ class ModelFitterCore(rpickle.RPickler):
         lower: lower range of parameter value
         upper: upper range of parameter value
         value: initial value
-        
+
         Returns
         -------
         dict
@@ -577,7 +565,7 @@ class ModelFitterCore(rpickle.RPickler):
             newModelFitter.params = self.params
         return newModelFitter
 
-    def _initializeRoadrunnerModel(self):
+    def initializeRoadRunnerModel(self):
         """
         Sets self.roadrunnerModel.
         """
@@ -587,7 +575,7 @@ class ModelFitterCore(rpickle.RPickler):
     def getDefaultParameterValues(self):
         """
         Obtain the original values of parameters.
-        
+
         Returns
         -------
         dict:
@@ -595,7 +583,7 @@ class ModelFitterCore(rpickle.RPickler):
             value: value of parameter
         """
         dct = {}
-        self._initializeRoadrunnerModel()
+        self.initializeRoadRunnerModel()
         self.roadrunnerModel.reset()
         for parameterName in self.parametersToFit:
             dct[parameterName] = self.roadrunnerModel.model[parameterName]
@@ -616,18 +604,18 @@ class ModelFitterCore(rpickle.RPickler):
         ------
         NamedTimeseries
         """
-        def set(default, parameter):
+        def setValue(default, parameter):
             # Sets to default if parameter unspecified
             if parameter is None:
                 return default
-            else:
-                return parameter
-        startTime = set(self.observedTS.start, startTime)
-        endTime = set(self.observedTS.end, endTime)
-        numPoint = set(len(self.observedTS), numPoint)
+            return parameter
+        #
+        startTime = setValue(self.observedTS.start, startTime)
+        endTime = setValue(self.observedTS.end, endTime)
+        numPoint = setValue(len(self.observedTS), numPoint)
         #
         if self.roadrunnerModel is None:
-            self._initializeRoadrunnerModel()
+            self.initializeRoadRunnerModel()
         #
         return ModelFitterCore.runSimulation(parameters=params,
               roadrunner=self.roadrunnerModel,
@@ -638,7 +626,7 @@ class ModelFitterCore(rpickle.RPickler):
               _logger=self.logger,
               _loggerPrefix=self._loggerPrefix,
               returnDataFrame=False)
-        
+
     def updateFittedAndResiduals(self, **kwargs)->np.ndarray:
         """
         Updates values of self.fittedTS and self.residualsTS
@@ -700,12 +688,11 @@ class ModelFitterCore(rpickle.RPickler):
         rssq = sum(residualsArr**2)
         if (self._bestParameters.rssq is None)  \
               or (rssq < self._bestParameters.rssq):
-             self._bestParameters = _BestParameters(
-                   params=params.copy(), rssq=rssq)
+            self._bestParameters = _BestParameters(
+                  params=params.copy(), rssq=rssq)
         return residualsArr
 
-    def fitModel(self, params:lmfit.Parameters=None,
-          max_nfev:int=100):
+    def fitModel(self, params:lmfit.Parameters=None):
         """
         Fits the model by adjusting values of parameters based on
         differences between simulated and provided values of
@@ -714,7 +701,6 @@ class ModelFitterCore(rpickle.RPickler):
         Parameters
         ----------
         params: starting values of parameters
-        max_nfev: maximum number of function evaluations
 
         Example
         -------
@@ -724,7 +710,7 @@ class ModelFitterCore(rpickle.RPickler):
               "params method rssq kwargs minimizer minimizerResult")
         block = Logger.join(self._loggerPrefix, "fitModel")
         guid = self.logger.startBlock(block)
-        self._initializeRoadrunnerModel()
+        self.initializeRoadRunnerModel()
         if self.parametersToFit is None:
             # Compute fit and residuals for base model
             self.params = None
@@ -739,11 +725,10 @@ class ModelFitterCore(rpickle.RPickler):
                 kwargs = optimizerMethod.kwargs
                 for _ in range(self._numFitRepeat):
                     self._bestParameters = _BestParameters(params=None, rssq=None)
-                    minimizer = lmfit.Minimizer(self._residuals, params,
-                          max_nfev=max_nfev)
+                    minimizer = lmfit.Minimizer(self._residuals, params, **kwargs)
                     try:
                         minimizerResult = minimizer.minimize(
-                              method=method, max_nfev=max_nfev, **kwargs)
+                              method=method, **kwargs)
                     except Exception as excp:
                         msg = "Error minimizing for method: %s" % method
                         self.logger.error(msg, excp)
@@ -806,7 +791,7 @@ class ModelFitterCore(rpickle.RPickler):
         Parameters
         ----------
         parameterDct: key=name, value=ParameterSpecification
-        
+
         Returns
         -------
         lmfit.Parameters
@@ -853,5 +838,5 @@ class ModelFitterCore(rpickle.RPickler):
         """
         with open(path, "rb") as fd:
             fitter = rpickle.load(fd)
-        fitter._initializeRoadrunnerModel()
+        fitter.initializeRoadRunnerModel()
         return fitter

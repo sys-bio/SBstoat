@@ -12,8 +12,6 @@ Several considerations are made;
      method. Arguments are packaged in _Arguments.
 """
 
-import SBstoat
-from SBstoat.namedTimeseries import NamedTimeseries, TIME, mkNamedTimeseries
 from SBstoat.timeseriesStatistic import TimeseriesStatistic
 from SBstoat._bootstrapResult import BootstrapResult
 from SBstoat.observationSynthesizer import  \
@@ -24,11 +22,7 @@ from SBstoat.logs import Logger
 
 import multiprocessing
 import numpy as np
-import os
-import pandas as pd
-import random
 import sys
-import time
 import typing
 
 MAX_CHISQ_MULT = 5
@@ -60,7 +54,7 @@ class _Arguments():
         self.synthesizerClass = synthesizerClass
         self._loggerPrefix = _loggerPrefix
         self.kwargs = kwargs
-       
+
 
 ################# FUNCTIONS ####################
 def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
@@ -133,7 +127,7 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
             fittingSetupBlock = Logger.join(iterationBlock, "fittingSetup")
             fittingSetupGuid = logger.startBlock(fittingSetupBlock)
             newFitter = ModelFitterBootstrap(fitter.roadrunnerModel,
-                  newObservedTS,  
+                  newObservedTS,
                   fitter.parametersToFit,
                   selectedColumns=fitter.selectedColumns,
                   # Use bootstrap methods for fitting
@@ -207,14 +201,13 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
             fd.close()
     if queue is None:
         return bootstrapResult
-    else:
-        queue.put(bootstrapResult)
+    queue.put(bootstrapResult)
 
 
 ##################### CLASSES #########################
 class ModelFitterBootstrap(mfc.ModelFitterCore):
 
-    def bootstrap(self, 
+    def bootstrap(self,
           # The following must be kept in sync with ModelFitterCore.__init__
           numIteration:int=None,
           reportInterval:int=None,
@@ -224,7 +217,7 @@ class ModelFitterBootstrap(mfc.ModelFitterCore):
           **kwargs: dict):
         """
         Constructs a bootstrap estimate of parameter values.
-    
+
         Parameters
         ----------
         numIteration: number of bootstrap iterations
@@ -234,7 +227,7 @@ class ModelFitterBootstrap(mfc.ModelFitterCore):
         maxProcess: Maximum number of processes to use. Default: numCPU
         serializePath: Where to serialize the fitter after bootstrap
         kwargs: arguments passed to ObservationSynthesizer
-              
+
         Example
         -------
             f.bootstrap()
@@ -261,12 +254,11 @@ class ModelFitterBootstrap(mfc.ModelFitterCore):
         synthesizerClass = get("synthesizerClass", synthesizerClass)
         maxProcess = get("maxProcess", maxProcess)
         serializePath = get("serializePath", serializePath)
-        # Other initializations       
+        # Other initializations
         if maxProcess is None:
             maxProcess = multiprocessing.cpu_count()
         if self.minimizerResult is None:
             self.fitModel()
-        base_redchi = self.minimizerResult.redchi
         # Run processes
         numProcess = max(int(numIteration/ITERATION_PER_PROCESS), 1)
         numProcess = min(numProcess, maxProcess)
@@ -329,36 +321,34 @@ class ModelFitterBootstrap(mfc.ModelFitterCore):
     def getParameterMeans(self)->typing.List[float]:
         """
         Returns a list of values mean values of parameters from bootstrap.
-      
+
         Return
         ------
         NamedTimeseries
-              
+
         Example
         -------
               f.getParameterMeans()
         """
         if self._checkBootstrap(isError=False):
             return self.bootstrapResult.parameterMeanDct.values()
-        else:
-            return [self.params[p].value for p in self.parametersToFit]
+        return [self.params[p].value for p in self.parametersToFit]
 
     def getParameterStds(self)->typing.List[float]:
         """
         Returns a list of values std values of parameters from bootstrap.
-      
+
         Return
         ------
         NamedTimeseries
-              
+
         Example
         -------
               f.getParameterStds()
         """
         if self._checkBootstrap(isError=False):
             return list(self.bootstrapResult.parameterStdDct.values())
-        else:
-            raise ValueError("***Must run bootstrap to get parameter stds.")
+        raise ValueError("***Must run bootstrap to get parameter stds.")
 
     def _checkBootstrap(self, isError:bool=True)->bool:
         """
@@ -368,6 +358,5 @@ class ModelFitterBootstrap(mfc.ModelFitterCore):
         if self.bootstrapResult is None:
             if isError:
                 raise ValueError("Must use bootstrap first.")
-            else:
-                return False
+            return False
         return True

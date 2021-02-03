@@ -58,7 +58,7 @@ class TestModelFitterCore(unittest.TestCase):
         self._init()
         METHOD = "dummy"
         def test(methods):
-            result = self.fitter._makeMethods(methods)
+            result = self.fitter._makeMethods(methods, None)
             self.assertTrue(isinstance(result, list))
             optimizerMethod = result[0]
             self.assertEqual(optimizerMethod.method, METHOD)
@@ -70,7 +70,7 @@ class TestModelFitterCore(unittest.TestCase):
         #
         methods = mf.ModelFitterCore.OptimizerMethod(method=METHOD,
               kwargs={"a": 1})
-        result = self.fitter._makeMethods([methods, methods])
+        result = self.fitter._makeMethods([methods, methods], None)
 
     def testConstructor(self):
         if IGNORE_TEST:
@@ -105,7 +105,7 @@ class TestModelFitterCore(unittest.TestCase):
         if IGNORE_TEST:
             return
         self._init()
-        self.fitter._initializeRoadrunnerModel()
+        self.fitter.initializeRoadRunnerModel()
         params = self.fitter.mkParams()
         arr = self.fitter._residuals(params)
         length = len(self.fitter.observedTS.flatten())
@@ -429,10 +429,10 @@ class TestModelFitterCore(unittest.TestCase):
         ''')
         observedPath = os.path.join(DIR, "mike_bug.csv")
         fitter = ModelFitter(model, observedPath, [
-         "v_0", "ra_0", "kf_0", "kr_0", "Kma_0", "Kms_0", "Kmp_0", "wa_0", "ms_0",
-         "mp_0", "v_1", "ri_1", "kf_1", "kr_1", "Kmi_1", "Kms_1", "Kmp_1", "wi_1",
-         "ms_1", "mp_1", "v_2", "ri1_2", "ri2_2", "ri3_2", "kf_2", "kr_2",
-         "Kmi1_2", "Kmi2_2", "Kmi3_2", "Kms_2", "Kmp_2", "wi1_2", "wi2_2", "wi3_2",
+         #"v_0", "ra_0", "kf_0", "kr_0", "Kma_0", "Kms_0", "Kmp_0", "wa_0", "ms_0",
+         #"mp_0", "v_1", "ri_1", "kf_1", "kr_1", "Kmi_1", "Kms_1", "Kmp_1", "wi_1",
+         #"ms_1", "mp_1", "v_2", "ri1_2", "ri2_2", "ri3_2", "kf_2", "kr_2",
+         #"Kmi1_2", "Kmi2_2", "Kmi3_2", "Kms_2", "Kmp_2", "wi1_2", "wi2_2", "wi3_2",
          "ms_2", "mp_2", "v_3", "kf_3", "kr_3", "Kms_3", "Kmp_3", "ms_3", "mp_3"],
          **kwargs)
         fitter.fitModel()
