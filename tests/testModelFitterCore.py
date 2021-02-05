@@ -432,7 +432,7 @@ class TestModelFitterCore(unittest.TestCase):
          #"v_0", "ra_0", "kf_0", "kr_0", "Kma_0", "Kms_0", "Kmp_0", "wa_0", "ms_0",
          #"mp_0", "v_1", "ri_1", "kf_1", "kr_1", "Kmi_1", "Kms_1", "Kmp_1", "wi_1",
          #"ms_1", "mp_1", "v_2", "ri1_2", "ri2_2", "ri3_2", "kf_2", "kr_2",
-         #"Kmi1_2", "Kmi2_2", "Kmi3_2", "Kms_2", "Kmp_2", "wi1_2", "wi2_2", "wi3_2",
+         "Kmi1_2", "Kmi2_2", "Kmi3_2", "Kms_2", "Kmp_2", "wi1_2", "wi2_2", "wi3_2",
          "ms_2", "mp_2", "v_3", "kf_3", "kr_3", "Kms_3", "Kmp_3", "ms_3", "mp_3"],
          **kwargs)
         fitter.fitModel()
@@ -441,10 +441,10 @@ class TestModelFitterCore(unittest.TestCase):
     def testOptimizerMethod(self):
         if IGNORE_TEST:
             return
-        METHOD_NAME = "differential_evolution"
+        METHOD_NAME = 'differential_evolution'
         optimizerMethod = ModelFitter.OptimizerMethod(
             method=METHOD_NAME,
-            kwargs={ "popsize": 10000, "atol": 0.001})
+            kwargs={ "popsize": 100, "atol": 0.001})
         fitter1 = self._makeMikeModel(fitterMethods=[METHOD_NAME])
         fitter2 = self._makeMikeModel(fitterMethods=[optimizerMethod])
         self.assertTrue(True) # Smoke test

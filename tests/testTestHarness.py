@@ -45,7 +45,7 @@ class TestFunctions(unittest.TestCase):
     def testConstructorInvalid(self):
         if IGNORE_TEST:
             return
-        with self.assertRaises(ValueError):
+        with self.assertRaises(RuntimeError):
             self.harness = TestHarness("dummy", VARIABLE_NAMES, PARAMETER_NAMES,
                   logger=LOGGER)
 
@@ -65,10 +65,10 @@ class TestFunctions(unittest.TestCase):
                 harness.evaluate(stdResiduals=1.0, fractionParameterDeviation=1.0,
                       relError=2.0)
                 nonErroredModels.append(modelNum)
-                values = [v for v in 
+                values = [v for v in
                       harness.fitModelResult.parameterRelErrorDct.values()]
                 fitModelRelerrors.extend(values)
-                values = [v for v in 
+                values = [v for v in
                       harness.bootstrapResult.parameterRelErrorDct.values()]
                 bootstrapRelerrors.extend(values)
             except:
@@ -115,7 +115,6 @@ class TestFunctions(unittest.TestCase):
         harness = TestHarness(input_path, logger=LOGGER)
         harness.evaluate(stdResiduals=1.0, fractionParameterDeviation=1.0,
               relError=2.0)
-
 
 
 if __name__ == '__main__':

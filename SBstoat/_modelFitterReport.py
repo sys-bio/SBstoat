@@ -26,7 +26,7 @@ class ModelFitterReport(ModelFitterBootstrap):
         Notes:
             1. Deletes lines about the optimization performance since the
 
-        
+
         Example
         -------
         f.reportFit()
@@ -61,7 +61,7 @@ class ModelFitterReport(ModelFitterBootstrap):
         """
         Prints a report of the bootstrap results.
         ----------
-        
+
         Example
         -------
         f.reportBootstrap()

@@ -21,20 +21,17 @@ Usage
     modelstudy.plotParameterEstimates()
 """
 
-from SBstoat.namedTimeseries import NamedTimeseries, TIME, mkNamedTimeseries
+from SBstoat.namedTimeseries import NamedTimeseries, TIME
 import SBstoat._plotOptions as po
 from SBstoat.logs import Logger
 from SBstoat.modelFitter import ModelFitter
 
 from docstring_expander.expander import Expander
 import inspect
-import lmfit
 import matplotlib.pylab as plt
 import numpy as np
 import os
 import pandas as pd
-import shutil
-import typing
 import warnings
 
 
@@ -59,7 +56,7 @@ def mkDataSourceDct(filePath, colName, dataSourceNames=None, isTimeColumns=True)
         if None, then column headers are used (or column number)
     isTimeColumns: boolean
         Columns are time. If False, rows are time.
-    
+
     Returns
     -------
     dict: key is instance name; value is NamedTimeseries
@@ -79,7 +76,7 @@ def mkDataSourceDct(filePath, colName, dataSourceNames=None, isTimeColumns=True)
     dataDF = dataDF.rename(columns=dct)
     dataDF.index.name = "time"
     # Construct the data source dictionary
-    dataDF.index = [t for t in range(len(dataDF))]
+    dataDF.index = range(len(dataDF))
     dataDF.index.name = TIME
     dataTS = NamedTimeseries(dataframe=dataDF)
     dataSourceDct = {d: dataTS.subsetColumns([d]) for d in dataDF.columns}
@@ -90,7 +87,7 @@ def mkDataSourceDct(filePath, colName, dataSourceNames=None, isTimeColumns=True)
 
 
 ############## CLASSES ###################
-class ModelStudy(object):
+class ModelStudy():
 
     def __init__(self, modelSpecification, dataSources,
           dirStudyPath=None,
@@ -162,7 +159,7 @@ class ModelStudy(object):
         # Value of newDataSourceDct
         if isinstance(dataSources, dict):
             newDataSourceDct = dict(dataSources)
-            newInstanceNames = [k for k in newDataSourceDct.keys()]
+            newInstanceNames = list(newDataSourceDct.keys())
         elif isinstance(dataSources, list):
             newDataSourceDct = {n: dataSources[i]
                   for i, n in enumerate(newInstanceNames)}
@@ -181,7 +178,7 @@ class ModelStudy(object):
         ----------
         name: str
             Name of the fitter instance/data source
-        
+
         Returns
         -------
         str
@@ -214,7 +211,7 @@ class ModelStudy(object):
     def bootstrap(self, **kwargs):
         """
         Does bootstrap for models that have not bootstrap. Serializes the result.
-        
+
         Parameters
         ----------
         kwargs: dict
@@ -232,7 +229,7 @@ class ModelStudy(object):
                     # Not a valid bootstrap result
                     fitter.bootstrapResult = None
                 self._serializeFitter(name)
-            else: 
+            else:
                 if self._hasBootstrapResult(fitter):
                     msg = "Using existing bootstrap results (%d) for %s"  \
                           % (fitter.bootstrapResult.numSimulation, name)
@@ -267,7 +264,7 @@ class ModelStudy(object):
                         fitter.plotFitAll(**newKwargs)
 
     @Expander(po.KWARGS, po.BASE_OPTIONS, indent=8, header=po.HEADER)
-    def plotParameterEstimates(self, **kwargs):
+    def plotParameterEstimates(self):
         """
         Parameters
         ----------
@@ -295,11 +292,11 @@ class ModelStudy(object):
             trues = [f.bootstrapResult is None for f in fitterDct.values()]
             if any(trues):
                 raise ValueError("\n***Must do bootstrap before getting report.")
-            fitter = [v for v in fitterDct.values()][0]
+            fitter = list(fitterDct.values())[0]
             parameters = fitter.parametersToFit
             parameterDct = fitter.getDefaultParameterValues()
             # Construct plot
-            fig, axes = plt.subplots(len(parameters),1, figsize=(12,10))
+            _, axes = plt.subplots(len(parameters),1, figsize=(12,10))
             for pos, pName in enumerate(parameters):
                 ax = axes[pos]
                 means = [f.bootstrapResult.parameterMeanDct[pName]

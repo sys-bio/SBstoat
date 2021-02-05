@@ -220,13 +220,15 @@ class TestTimeseriesPlotter(unittest.TestCase):
         self.plotter.plotValuePairs(self.timeseries, 
               [("S1", "S2"), ("S2", "S3"), ("S4", "S5")],
               numCol=2, numRow=2, alpha=0.3)
-        self.plotter.plotValuePairs(self.timeseries, [("S1", "S2"), ("S2", "S3")], numRow=2)
+        self.plotter.plotValuePairs(self.timeseries,
+              [("S1", "S2"), ("S2", "S3")], numRow=2)
         self.plotter.plotValuePairs(self.timeseries, [("S1", "S2")])
 
     def testPlotHistograms(self):
         if IGNORE_TEST:
             return
         self.plotter.plotHistograms(self.timeseries, numCol=2, alpha=0.3)
+        self.plotter.plotHistograms(self.timeseries, numCol=2, alpha=0.3,                        bins=100)
 
     def testPlotValuePairsBug(self):
         if IGNORE_TEST:

@@ -5,7 +5,7 @@ Created on Aug 2020
 @author: joseph-hellerstein
 
 Manages the layout of a matrix of plots.
-    LayoutManager - abstract class 
+    LayoutManager - abstract class
     LayoutManagerSingle - single plot
     LayoutManagerMatrix - dense matrix of plots
     LayoutManagerLowerTriangular - plots in lower triangle
@@ -16,7 +16,7 @@ import numpy as np
 
 
 ########################################
-class LayoutManager(object):
+class LayoutManager():
     """
     Manages the position of plots on the figure by creating
     a mapping from a linear sequence of plots to positions
@@ -48,7 +48,7 @@ class LayoutManager(object):
     def _initializeAxes(self):
         """
         Common codes for setAxes() methods.
-        
+
         Returns
         -------
         Maplotlib.Figure, Matplotlib.Axes
@@ -63,7 +63,7 @@ class LayoutManager(object):
         Implements the mapping from a linear sequence to positions in
         a two dimension grid for the figure.
         Must override.
-        
+
         Returns
         -------
         Maplotlib.Figure, Matplotlib.Axes, list-tuple
@@ -77,7 +77,7 @@ class LayoutManager(object):
         Parameters
         ----------
         index: int
-        
+
         Returns
         -------
         int, int
@@ -93,7 +93,7 @@ class LayoutManager(object):
         Parameters
         ----------
         index: int
-        
+
         Returns
         -------
         Matplotlib.axes
@@ -126,7 +126,7 @@ class LayoutManagerSingle(LayoutManager):
     def _setAxes(self):
         """
         len(self.axes) == 1
-        
+
         Returns
         -------
         Maplotlib.Figure, Matplotlib.Axes
@@ -147,7 +147,7 @@ class LayoutManagerMatrix(LayoutManager):
         """
         Linearizes the matrix counting across rows and then down
         by column.
-        
+
         Returns
         -------
         Maplotlib.Figure, Matplotlib.Axes
@@ -200,7 +200,7 @@ class LayoutManagerLowerTriangular(LayoutManager):
         """
         Linearizes the lower triangular matrix counting down successive columns
         starting at row=col.
-        
+
         Returns
         -------
         Maplotlib.Figure, Matplotlib.Axes
@@ -209,7 +209,7 @@ class LayoutManagerLowerTriangular(LayoutManager):
         axisPositions = []
         row = 0
         col = 0
-        for index in range(self.numPlotPosition):
+        for _ in range(self.numPlotPosition):
             if row >= col:
                 ax = plt.subplot2grid(
                       (self.options.numRow, self.options.numCol), (row, col))

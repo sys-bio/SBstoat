@@ -14,7 +14,6 @@ from SBstoat import logs
 from SBstoat.observationSynthesizer import ObservationSynthesizerRandomErrors
 
 import numpy as np
-import os
 import tellurium as te
 import typing
 
@@ -25,7 +24,7 @@ MAX_PARAMETER = 5  # Maximum number of parameters estimated
 NUM_BOOTSTRAP_ITERATION = 100
 
 
-class TestHarnessResult(object):
+class TestHarnessResult():
 
     def __init__(self):
         self.parameterRelErrorDct = {}
@@ -37,7 +36,7 @@ class TestHarnessResult(object):
         return str(self.parameterRelErrorDct)
 
 
-class TestHarness(object):
+class TestHarness():
 
     def __init__(self, sbmlPath:str,
           parametersToFit:typing.List[str]=None,
@@ -84,7 +83,7 @@ class TestHarness(object):
                 pass
         #
         if len(parametersToFit) > maxParameter:
-             parametersToFit = parametersToFit[:maxParameter]
+            parametersToFit = parametersToFit[:maxParameter]
         return parametersToFit
 
     def _checkNamesInModel(self, names:typing.List[str], errorMsgPattern:str):
@@ -95,12 +94,12 @@ class TestHarness(object):
         ----------
         names: what to check
         errorMsgPattern: string pattern taking one argument (name) for error msg
-        
+
         Raises ValueError
         """
         diffs = set(names).difference(self.roadRunner.model.keys())
         if len(diffs) > 0:
-            raise ValueError(errorMsgPatter % str(diffs))
+            raise ValueError(errorMsgPattern % str(diffs))
 
     def _initializeRoadrunner(self):
         """
@@ -111,12 +110,12 @@ class TestHarness(object):
         Roadrunner
         """
         try:
-            rr = te.loads(self.sbmlPath)
+            _ = te.loads(self.sbmlPath)
         except Exception as err:
             msg = "sbmlPath is not a valid file path or URL: %s" \
                   % self.sbmlPath
             self.logger.error("_initializeRoadrunner", err)
-            raise ValueError(msg)
+            raise err
         return te.loads(self.sbmlPath)
 
     def _validate(self):
@@ -128,7 +127,7 @@ class TestHarness(object):
         if self.selectedColumns is not None:
             self._checkNamesInModel(self.selectedColumns, errorMsgPattern)
         # Validate the parameter names
-        errorMsgPatter = "Parameter name is not in model: %s"
+        errorMsgPattern = "Parameter name is not in model: %s"
         self._checkNamesInModel(self.parametersToFit, errorMsgPattern)
 
     def _recordResult(self, params, relError, testHarnessResult):
@@ -148,7 +147,7 @@ class TestHarness(object):
           numIteration=NUM_BOOTSTRAP_ITERATION):
         """
         Evaluates model fitting accuracy and bootstrapping for model
- 
+
         Parameters
         ----------
         stdResiduals: Standard deviations of variable used in constructing reiduals
@@ -162,7 +161,7 @@ class TestHarness(object):
             data = self.roadRunner.simulate(0, endTime, numPoint)
         else:
             allColumns = list(self.selectedColumns)
-            if not TIME in allColumns:
+            if TIME not in allColumns:
                 allColumns.append(TIME)
             data = self.roadRunner.simulate(0, endTime, numPoint, allColumns)
         bracketTime = "[%s]" % TIME

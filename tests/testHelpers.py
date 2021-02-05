@@ -24,7 +24,7 @@ class TestFunctions(unittest.TestCase):
         result = _helpers.calcRelError(1.5, 1)
         self.assertEqual(result, 1.0/3)
         result = _helpers.calcRelError(1.5, 1, isAbsolute=False)
-        self.assertEquals(result, -1.0/3)
+        self.assertEqual(result, -1.0/3)
         #
         result = _helpers.calcRelError(0, 1)
         self.assertTrue(np.isnan(result))

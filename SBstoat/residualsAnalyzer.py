@@ -6,26 +6,23 @@
 Codes that provide various analyses of residuals.
 
 There are 3 types of timeseries: observed, fitted, and residuals
-(observed - fitted). 
+(observed - fitted).
 
 Plots are organized by the timeseries and the characteristic analyzed. These
 characteristics are: (a) over time, (b) histogram.
 """
 
-from SBstoat.namedTimeseries import NamedTimeseries, TIME, mkNamedTimeseries
+from SBstoat.namedTimeseries import NamedTimeseries
 import SBstoat._plotOptions as po
 from SBstoat import timeseriesPlotter as tp
-from SBstoat import _helpers
 
 from docstring_expander.expander import Expander
 import numpy as np
-import pandas as pd
-import typing
 
 PLOT = "plot"
 
 
-class ResidualsAnalyzer(object):
+class ResidualsAnalyzer():
 
     def __init__(self, observedTS:NamedTimeseries, fittedTS:NamedTimeseries,
               residualsTS:NamedTimeseries=None, meanFittedTS=None,
@@ -61,7 +58,8 @@ class ResidualsAnalyzer(object):
         ### Plotter
         self._plotter = tp.TimeseriesPlotter(isPlot=isPlot)
 
-    def _addKeyword(self, kwargs:dict, key:str, value:object):
+    @staticmethod
+    def _addKeyword(kwargs:dict, key:str, value:object):
         if not key in kwargs:
             kwargs[key] = value
 
@@ -70,7 +68,7 @@ class ResidualsAnalyzer(object):
     def plotAll(self, **kwargs:dict):
         """
         Does all residual plots.
-    
+
         Parameters
         ----------
         #@expand
@@ -87,76 +85,69 @@ class ResidualsAnalyzer(object):
     def plotResidualsOverTime(self, **kwargs:dict):
         """
         Plots residuals of a fit over time.
-    
+
         Parameters
         ----------
         #@expand
         """
-        self._addKeyword(kwargs, po.MARKER, "o")
-        self._addKeyword(kwargs, po.SUPTITLE, "Residuals Over Time")
+        ResidualsAnalyzer._addKeyword(kwargs, po.MARKER, "o")
+        ResidualsAnalyzer._addKeyword(kwargs, po.SUPTITLE, "Residuals Over Time")
         self._plotter.plotTimeSingle(self.residualsTS, **kwargs)
 
     @Expander(po.KWARGS, po.BASE_OPTIONS, indent=8,
           header=po.HEADER)
-    def plotFittedObservedOverTime(self, isMultiple:bool=False,
-          **kwargs:dict):
+    def plotFittedObservedOverTime(self, **kwargs:dict):
         """
         Plots the fit with observed data over time.
-    
+
         Parameters
         ----------
-        isMultiple: plots all variables on a single plot
         #@expand
         """
         title = "Observed vs. fitted"
         if self.bandLowTS is not None:
-              title += " (with shading for 95th percentile)"
-        self._addKeyword(kwargs, po.SUPTITLE, title)
-        if isMultiple:
-            self._addKeyword(kwargs, po.MARKER, [None, "o"])
-            self._plotter.plotTimeMultiple(self.fittedTS,
-                  timeseries2=self.observedTS, **kwargs)
-        else:
-            self._addKeyword(kwargs, po.MARKER, [None, "o", "^"])
-            legends = ["fitted", "observed"]
-            if self.meanFittedTS is not None:
-                legends.append("bootstrap fitted")
-            self._addKeyword(kwargs, po.LEGEND, legends)
-            self._addKeyword(kwargs, po.COLOR, ["b", "b", "r"])
-            self._plotter.plotTimeSingle(
-                  self.fittedTS,
-                  timeseries2=self.observedTS,
-                  meanTS=self.meanFittedTS, stdTS=self.stdFittedTS, 
-                  bandLowTS=self.bandLowTS,
-                  bandHighTS=self.bandHighTS,
-                  **kwargs)
+            title += " (with shading for 95th percentile)"
+        ResidualsAnalyzer._addKeyword(kwargs, po.SUPTITLE, title)
+        ResidualsAnalyzer._addKeyword(kwargs, po.MARKER, [None, "o", "^"])
+        legends = ["fitted", "observed"]
+        if self.meanFittedTS is not None:
+            legends.append("bootstrap fitted")
+        ResidualsAnalyzer._addKeyword(kwargs, po.LEGEND, legends)
+        ResidualsAnalyzer._addKeyword(kwargs, po.COLOR, ["b", "b", "r"])
+        self._plotter.plotTimeSingle(
+              self.fittedTS,
+              timeseries2=self.observedTS,
+              meanTS=self.meanFittedTS, stdTS=self.stdFittedTS,
+              bandLowTS=self.bandLowTS,
+              bandHighTS=self.bandHighTS,
+              **kwargs)
 
     @Expander(po.KWARGS, po.BASE_OPTIONS, includes=[po.BINS], indent=8,
           header=po.HEADER)
     def plotResidualsHistograms(self, **kwargs:dict):
         """
         Plots histographs of parameter values from a bootstrap.
-        
+
         Parameters
         ----------
         parameters: List of parameters to do pairwise plots
         #@expand
         """
-        self._addKeyword(kwargs, po.SUPTITLE, "Residual Distributions")
+        ResidualsAnalyzer._addKeyword(kwargs, po.SUPTITLE, "Residual Distributions")
         self._plotter.plotHistograms(self.residualsTS, **kwargs)
 
     @Expander(po.KWARGS, po.BASE_OPTIONS, indent=8,
           header=po.HEADER)
-    def plotResidualAutoCorrelations(self, **kwargs:dict):
+    def plotResidualsAutoCorrelations(self, **kwargs:dict):
         """
         Plots auto correlations between residuals of columns.
-        
+
         Parameters
         ----------
         parameters: List of parameters to do pairwise plots
         #@expand
         """
-        self._addKeyword(kwargs, po.SUPTITLE, "Residual Autocorrelations")
+        ResidualsAnalyzer._addKeyword(kwargs, po.SUPTITLE, "Residual Autocorrelations")
         self._plotter.plotAutoCorrelations(self.residualsTS, **kwargs)
 
     @Expander(po.KWARGS, po.BASE_OPTIONS, indent=8,
@@ -164,11 +155,11 @@ class ResidualsAnalyzer(object):
     def plotResidualCrossCorrelations(self, **kwargs:dict):
         """
         Plots cross correlations between residuals of columns.
-        
+
         Parameters
         ----------
         parameters: List of parameters to do pairwise plots
         #@expand
         """
-        self._addKeyword(kwargs, po.SUPTITLE, "Residual Cross Correlations")
+        ResidualsAnalyzer._addKeyword(kwargs, po.SUPTITLE, "Residual Cross Correlations")
         self._plotter.plotCrossCorrelations(self.residualsTS, **kwargs)

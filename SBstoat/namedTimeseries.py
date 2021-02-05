@@ -26,7 +26,7 @@ Usage:
    colnames = ["time", "S1", "S2"]
    newTimeseries = mkNamedTimeseries(colnames, timeseries[colnames])
    # Create a new timeseries that excludes time 0
-   ts2 = timeseries[1:] 
+   ts2 = timeseries[1:]
    # Create a new column variable
    timeseries["S8"] = timeseries["time"]**2 + 3*timeseries["S1"]
    timeseries["S9"] = 10  # Assign a constant to all rows
@@ -34,7 +34,6 @@ Usage:
 
 from SBstoat import rpickle
 
-import collections
 import copy
 import csv
 import numpy as np
@@ -48,7 +47,7 @@ TIME = "time"
 def mkNamedTimeseries(*args):
     """
     Constructs a NamedTimeseries from different arguments.
-    
+
     Parameters
     ----------
     args: list
@@ -61,28 +60,28 @@ def mkNamedTimeseries(*args):
     if len(args) == 1:
         if isinstance(args[0], NamedTimeseries):
             return args[0]
-        elif isinstance(args[0], str):
+        if isinstance(args[0], str):
             return NamedTimeseries(csvPath=args[0])
     raise ValueError("Specification for NameTimeseries: %s"
           % str(args))
-    
+
 
 def arrayEquals(arr1, arr2):
     """
         Tests equality of two numpy arrays.
-        
+
         Parameters
         ---------
         arr1: numpy array
         arr2: numpy array
-        
+
         Returns
         -------
         boolean
     """
     if np.shape(arr1) != np.shape(arr2):
         return False
-    value = sum([np.abs(v1 - v2) for v1, v2 in 
+    value = sum([np.abs(v1 - v2) for v1, v2 in
         zip(arr1.flatten(), arr2.flatten())])
     return np.isclose(value, 0)
 
@@ -103,7 +102,7 @@ def cleanColnames(colnames):
 
 ################## CLASSES ########################
 class NamedTimeseries(rpickle.RPickler):
-          
+
     def __init__(self,
           csvPath=None,
           colnames=None, array=None,
@@ -125,11 +124,11 @@ class NamedTimeseries(rpickle.RPickler):
         timeseries: NamedTimeseries
         isNone: bool
             Initialization to None values
-               
+
        Usage
        -----
            data = NamedTimeseries(csvPath="mydata.csv")
-     
+
        Notes
        -----
            At one of the following most be non-None:
@@ -140,7 +139,7 @@ class NamedTimeseries(rpickle.RPickler):
         if timeseries is not None:
             # Copy the existing object
             for k in timeseries.__dict__.keys():
-                self.__setattr__(k, 
+                self.__setattr__(k,
                       copy.deepcopy(timeseries.__dict__[k]))
         else:
             if csvPath is not None:
@@ -170,17 +169,17 @@ class NamedTimeseries(rpickle.RPickler):
             self.allColnames = []  # all column names
             self.colnames = []  # Names of non-time columns
             self._indexDct = {} # index for columns
-            [self._addColname(n) for n in allColnames]
+            _ = [self._addColname(n) for n in allColnames]
             times = self.values[:, self._indexDct[TIME]]
             self.start = min(times)
             self.end = max(times)
-    
+
     @classmethod
     def rpConstruct(cls):
         """
         Overrides rpickler.rpConstruct to create a method that
         constructs an instance without arguments.
-        
+
         Returns
         -------
         Instance of cls
@@ -204,7 +203,7 @@ class NamedTimeseries(rpickle.RPickler):
             The value may be 0 or 1 dimenson for a new column.
             If reference is a list of columns, then the dimension
             must be <length of timeseries> X <number of columns in reference>
-            
+
             Parameters
             ---------
             reference: str or str/list-str
@@ -214,26 +213,25 @@ class NamedTimeseries(rpickle.RPickler):
         if indices is None:
             # New column
             if not isinstance(reference, str):
-                 raise ValueError("New column must be a string.")
-            else:
-                # New column is being added
-                self._addColname(reference)
+                raise ValueError("New column must be a string.")
+            # New column is being added
+            self._addColname(reference)
+            numDim = len(np.shape(value))
+            numRow = np.shape(self.values)[0]
+            if numDim == 0:
+                # Make it 1-d
+                value = np.repeat(value, numRow)
                 numDim = len(np.shape(value))
-                numRow = np.shape(self.values)[0]
-                if numDim == 0:
-                    # Make it 1-d
-                    value = np.repeat(value, numRow)
-                    numDim = len(np.shape(value))
-                if numDim == 1:
-                    if len(value) != numRow:
-                        raise ValueError("New column has %d elements not %d"
-                              % (len(value), numRow))
-                    arr = np.reshape(value, (numRow, 1))
-                else: 
-                    msg = "New column must be a scalar or a 1-d array"
-                    raise ValueError(msg)
-                self.values = np.concatenate([self.values, arr],
-                      axis=1)
+            if numDim == 1:
+                if len(value) != numRow:
+                    raise ValueError("New column has %d elements not %d"
+                          % (len(value), numRow))
+                arr = np.reshape(value, (numRow, 1))
+            else:
+                msg = "New column must be a scalar or a 1-d array"
+                raise ValueError(msg)
+            self.values = np.concatenate([self.values, arr],
+                  axis=1)
         else:
             # Not a new column
             if isinstance(value, np.ndarray):
@@ -245,13 +243,13 @@ class NamedTimeseries(rpickle.RPickler):
     def _getColumnIndices(self, reference, isValidate=True):
         """
             Returns indices for reference.
-            
+
             Parameters
             ---------
             reference: str/list-str
             isValidate: boolean
                 raise an error if index doesn't exist
-    
+
             Returns
             -------
             list-int
@@ -262,13 +260,12 @@ class NamedTimeseries(rpickle.RPickler):
             elif isinstance(reference, list):
                 indices = [v for k, v in self._indexDct.items() if k in reference]
             else:
-                raise (KeyKerror)
+                raise KeyError
         except KeyError:
             if isValidate:
                 raise ValueError(
                       "NamedTimeseries invalid index: %s" % reference)
-            else:
-                indices = None
+            indices = None
         return indices
 
     def __delitem__(self, reference):
@@ -286,7 +283,7 @@ class NamedTimeseries(rpickle.RPickler):
         Returns data for the requested variables or rows.
         Columns are specified by a str or list-str.
         Rows are indicated by an int, list-int, or slice.
-        
+
         Parameters
         ---------
         reference: str/list-str/slice/list-int/int
@@ -344,26 +341,25 @@ class NamedTimeseries(rpickle.RPickler):
             indices = allIndices[reference]
             return NamedTimeseries(colnames=self.allColnames,
                   array=self.values[indices, :])
-            indices = self._getColumnIndices(reference)
         #
         raise ValueError("Invalid reference to NamedTimeseries.")
 
     def __len__(self):
-       return np.shape(self.values)[0]
-       
+        return np.shape(self.values)[0]
+
     def _load(self, filePath):
         """
         Load data from a CSV file.
-        
+
         Parameters
         ----------
-        
+
         filePath: str
               Path to the file containing time series data. Data should be arranged
               in columns, first colums representing time, remaining columns will
               be whatever timeseries data is avaialble.
         selectedVariables : list of strings
-              List of names of floating species that are the columns in the 
+              List of names of floating species that are the columns in the
               time series data. If the list of names is missing then it is assumed that
               all the time series columns should be used in the fit
 
@@ -373,7 +369,7 @@ class NamedTimeseries(rpickle.RPickler):
             list-str: colnames
             array: values
         """
-        # Open the data file and look for the header line         
+        # Open the data file and look for the header line
         try:
             with open(filePath, 'r') as f:
                 reader = csv.reader(f, delimiter=DELIMITER)
@@ -391,7 +387,7 @@ class NamedTimeseries(rpickle.RPickler):
     def flatten(self):
         """
         Creates a one dimensional array of values
-        
+
         Returns
         ------
         array
@@ -404,14 +400,14 @@ class NamedTimeseries(rpickle.RPickler):
         """
             Selects a subset of rows based on time values by using
             a boolean valued selector function.
-            
+
             Parameters
             ----------
-     
+
             selectorFunction: Function
                 argument: time value
                 returns: boolean
-            
+
             Returns
             ------
             array
@@ -449,7 +445,7 @@ class NamedTimeseries(rpickle.RPickler):
         Parameters
         ----------
         other: NamedTimeseries
-        
+
         Returns
         -------
         bool
@@ -459,13 +455,13 @@ class NamedTimeseries(rpickle.RPickler):
             return False
         checks = []
         for col in self.allColnames:
-             checks.append(arrayEquals(self[col], other[col]))
-        return all(checks)   
+            checks.append(arrayEquals(self[col], other[col]))
+        return all(checks)
 
     def to_dataframe(self):
         """
         Creates a pandas dataframe from the NamedTimeseries.
-        
+
         Returns
         ------
         pd.DataFrame
@@ -494,7 +490,7 @@ class NamedTimeseries(rpickle.RPickler):
         Parameters
         ----------
         others: single or list-NamedTimeseries
-        
+
         Returns
         ------
         NamedTimeseries
@@ -527,7 +523,7 @@ class NamedTimeseries(rpickle.RPickler):
         Parameters
         ----------
         others: single or list-NamedTimeseries
-        
+
         Returns
         ------
         NamedTimeseries
@@ -550,8 +546,7 @@ class NamedTimeseries(rpickle.RPickler):
     def _getStringOrListstring(self, arg):
         if isinstance(arg, str):
             return [arg]
-        else:
-            return arg
+        return arg
 
     def subsetColumns(self, colnames):
         """
@@ -560,7 +555,7 @@ class NamedTimeseries(rpickle.RPickler):
         Parameters
         ----------
         colnames: single column name or list of column names
-        
+
         Returns
         ------
         NamedTimeseries
@@ -580,7 +575,7 @@ class NamedTimeseries(rpickle.RPickler):
         Parameters
         ----------
         otherTS: NamedTimeseries
-        
+
         Returns
         ------
         boolean
@@ -600,7 +595,7 @@ class NamedTimeseries(rpickle.RPickler):
         column: str
         reference: float
             value that is searched/interpolated
-        
+
         Returns
         ------
         float
@@ -619,18 +614,18 @@ class NamedTimeseries(rpickle.RPickler):
                 times.append(timeArr[idx])
             elif last == 0:
                 # Do nothing
-                pass         
+                pass
             elif last == value:
                 # Does not cross 0
                 pass
             elif last != value:
                 # Interpolate
                 if last < value:
-                  lrgIdx = idx
-                  smlIdx = idx - 1
+                    lrgIdx = idx
+                    smlIdx = idx - 1
                 else:
-                  lrgIdx = idx - 1
-                  smlIdx = idx
+                    lrgIdx = idx - 1
+                    smlIdx = idx
                 frac = (reference - valueArr[smlIdx])/(
                       valueArr[lrgIdx] - valueArr[smlIdx])
                 timeDiff = timeArr[lrgIdx] - timeArr[smlIdx]

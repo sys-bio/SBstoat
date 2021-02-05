@@ -16,7 +16,6 @@ from SBstoat import rpickle
 
 import copy
 import numpy as np
-import typing
 
 
 PERCENTILES = [5.0, 50.0, 95.0]  # Percentiles calculated
@@ -24,8 +23,7 @@ PERCENTILES = [5.0, 50.0, 95.0]  # Percentiles calculated
 
 class TimeseriesStatistic(rpickle.RPickler):
 
-    def __init__(self, prototypeTS:NamedTimeseries,
-          percentiles:list=PERCENTILES):
+    def __init__(self, prototypeTS:NamedTimeseries, percentiles:list=None):
         """
         Parameters
         ----------
@@ -39,6 +37,8 @@ class TimeseriesStatistic(rpickle.RPickler):
             self.colnames = self.prototypeTS.colnames
             self.sumTS = self.prototypeTS.copy(isInitialize=True)
             self.ssqTS = self.prototypeTS.copy(isInitialize=True)
+            if percentiles is None:
+                percentiles = PERCENTILES
             self.percentiles = percentiles
             self._timeseries_list = []  # List of timeseries accumulated
             # Means
@@ -50,13 +50,13 @@ class TimeseriesStatistic(rpickle.RPickler):
         else:
             # rpConstruct initializations.
             pass
-    
+
     @classmethod
     def rpConstruct(cls):
         """
         Overrides rpickler.rpConstruct to create a method that
         constructs an instance without arguments.
-        
+
         Returns
         -------
         Instance of cls
@@ -66,7 +66,7 @@ class TimeseriesStatistic(rpickle.RPickler):
     def copy(self):
         """
         Makes a copy of the object, including internal state.
-        
+
         Returns
         -------
         TimeseriesStatistic
@@ -93,7 +93,7 @@ class TimeseriesStatistic(rpickle.RPickler):
         Parameters
         ----------
         other: TimeseriesStatistic
-        
+
         Returns
         -------
         bool

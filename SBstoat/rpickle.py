@@ -16,7 +16,7 @@ import os
 import pickle
 
 
-class Serialization(object):
+class Serialization():
     """RPickler serialization of an object and its sub-objects."""
 
     def __init__(self, obj):
@@ -40,7 +40,7 @@ class Serialization(object):
     def deserialize(self):
         """
         Recursively deserializes objects.
- 
+
         Returns
         -------
         self.cls
@@ -62,14 +62,14 @@ class Serialization(object):
         return "Serialization of %s" % str(self.cls)
 
 
-class RPickler(object):
+class RPickler():
     # Used by classes that implement robust pickling.
-    
+
     @classmethod
     def rpConstruct(cls):
         """
         Provides a default construction of an object.
-        
+
         Returns
         -------
         Instance of cls
@@ -81,7 +81,6 @@ class RPickler(object):
         Provides a hook to modify instance variables after they have
         been initialized by RPickle.
         """
-        pass
 
 
 def dump(obj, fd):
@@ -93,18 +92,9 @@ def dump(obj, fd):
     obj: object to be serialized
     fd: file descriptor
     """
-    # Construct the module name
-    fsplits = os.path.split(__file__)
-    module = os.path.splitext(fsplits[1])[0]
-    project = os.path.split(fsplits[0])[1]
-    full_module_name = "%s.%s" % (project, module)
     # Construct the serialization
     serialization = Serialization(obj)
     serialization.serialize()
-    # Save and clear globals so not serialized
-    global_dct = globals()
-    save_global_dct = dict(global_dct)
-    keys = list(global_dct.keys())
     # Serialize
     pickle.dump(serialization, fd)
 
@@ -115,11 +105,10 @@ def load(fd):
     Parameters
     ----------
     fd: file descriptor
-    
+
     Returns
     -------
     object
     """
     serialization = pickle.load(fd)
     return serialization.deserialize()
-

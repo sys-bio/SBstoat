@@ -6,6 +6,7 @@ Created on Tue Jul  7 14:24:09 2020
 @author: joseph-hellerstein
 """
 
+import SBstoat
 from SBstoat.modelFitter import ModelFitter
 from tests import _testHelpers as th
 
@@ -16,11 +17,15 @@ import unittest
 
 IGNORE_TEST = False
 IS_PLOT = False
-if not IGNORE_TEST:
-    TIMESERIES = th.getTimeseries()
-    FITTER = th.getFitter(cls=ModelFitter, isPlot=IS_PLOT)
-    FITTER.fitModel()
-    FITTER.bootstrap(numIteration=10)
+TIMESERIES = th.getTimeseries()
+optimizerMethod = ModelFitter.OptimizerMethod(SBstoat.METHOD_LEASTSQ,
+      kwargs={"max_nfev": 100})
+FITTER = th.getFitter(cls=ModelFitter, isPlot=IS_PLOT,
+      fitterMethods=[optimizerMethod],
+      bootstrapMethods=[optimizerMethod],
+      )
+FITTER.fitModel()
+FITTER.bootstrap(numIteration=10)
 ANTIMONY_MODEL_BENCHMARK = """
 # Reactions   
     J1: S1 -> S2; k1*S1
@@ -39,6 +44,9 @@ class TestModelFitter(unittest.TestCase):
     def setUp(self):
         if IGNORE_TEST:
             return
+        self._init()
+
+    def _init(self):
         self.timeseries = TIMESERIES
         self.fitter = FITTER
 
@@ -50,10 +58,9 @@ class TestModelFitter(unittest.TestCase):
     def testPlotFitAll(self):
         if IGNORE_TEST:
             return
-        self.fitter.plotFitAll(isMultiple=True, numPoint=3,
-              params=self.fitter.params)
+        self._init()
+        self.fitter.plotFitAll(numPoint=3, params=self.fitter.params)
         self.fitter.plotFitAll()
-        self.fitter.plotFitAll(isMultiple=True)
 
     def testPlotParameterEstimates(self):
         if IGNORE_TEST:
@@ -92,7 +99,7 @@ class TestModelFitter(unittest.TestCase):
         print(fitter.reportFit())
         print (fitter.getParameterMeans())  
         
-        fitter.bootstrap(numIteration=2000,
+        fitter.bootstrap(numIteration=1000,
               reportInterval=500)
               #calcObservedFunc=ModelFitter.calcObservedTSNormal, std=0.01)
         fitter.plotParameterEstimatePairs(['k1', 'k2'],

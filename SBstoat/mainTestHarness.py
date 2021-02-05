@@ -31,7 +31,6 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import os
-import pandas as pd
 import pickle
 
 # Handle problem with module load
@@ -150,9 +149,11 @@ class Runner(object):
             if isinstance(value, list):
                 isEqual = self._isListSame(value, other.__getattribute__(key))
                 if not isEqual:
+                    import pdb; pdb.set_trace()
                     return False
             elif any([isinstance(value, t) for t in [int, str, float, bool]]):
                 if self.__getattribute__(key) != other.__getattribute__(key):
+                    import pdb; pdb.set_trace()
                     return False
             else:
                 pass
@@ -190,16 +191,16 @@ class Runner(object):
                 self.modelParameterDct[modelNum] =  \
                       list(harness.fitModelResult.parameterRelErrorDct.keys())
                 # Relative error in initial fit
-                values = [v for v in 
+                values = [v for v in
                       harness.fitModelResult.parameterRelErrorDct.values()]
                 self.fitModelRelerrors.extend(values)
                 # Relative error in bootstrap
-                values = [v for v in 
+                values = [v for v in
                       harness.bootstrapResult.parameterRelErrorDct.values()]
                 self.bootstrapRelerrors.extend(values)
                 # Count models without exceptions
                 self.nonErroredModels.append(modelNum)
-                self.numNoError =  len(self.nonErroredModels)
+                self.numNoError = len(self.nonErroredModels)
                 if modelNum % self.reportInterval == 0:
                     self.logger.result("Processed model %d" % modelNum)
                 self.save()
@@ -234,7 +235,7 @@ class Runner(object):
         """
         Does all plots.
         """
-        fig, axes = plt.subplots(1, 2)
+        _, axes = plt.subplots(1, 2)
         maxBin1 = self._plotRelativeErrors(axes[0], self.fitModelRelerrors,
               FIT_MODEL)
         maxBin2 = self._plotRelativeErrors(axes[1], self.bootstrapRelerrors,
@@ -254,7 +255,7 @@ class Runner(object):
         plt.suptitle(suptitle)
         plt.show()
         plt.savefig(self.figPath)
-    
+
     def _plotRelativeErrors(self, ax, relErrors, title, isYLabel=True):
         """
         Plots histogram of relative errors.
@@ -264,7 +265,7 @@ class Runner(object):
         ax: Matplotlib.axes
         relErrors: list-float
         title: str
-        
+
         Returns
         -------
         float: maximum number in a bin
@@ -276,7 +277,7 @@ class Runner(object):
             ax.set_ylabel("number parameters")
         ax.set_xlim([0, 1])
         return max(rr[0])
-    
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='SBstoat tests for BioModels.')

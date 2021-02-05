@@ -12,7 +12,7 @@ INDENTATION = "  "
 NULL_STR = ""
 
 
-def updatePlotDocstring(target, keyphrase=None):
+def updatePlotDocstring(target):
     """
     Changes the docstring of plot function to include all
     plot options.
@@ -60,7 +60,7 @@ class Report():
     def _getIndentStr(self):
         return NULL_STR.join(np.repeat(
               INDENTATION, self.numIndent))
-    
+
     def addHeader(self, title:str):
         indentStr = self._getIndentStr()
         self.reportStr+= "\n%s%s" % (indentStr, title)
@@ -82,7 +82,7 @@ def calcRelError(actual:float, estimated:float, isAbsolute:bool=True):
     actual: actual value
     estimated: estimated values
     isAbsolute: return absolute value
-    
+
     Returns
     -------
     float
@@ -107,7 +107,7 @@ def filterOutliersFromZero(data, maxSL):
         Maximum significance level to accept a difference in variance
         A larger maxSL means more filtering since it's more likely that an
         extreme value will be filtered.
-    
+
     Returns
     -------
     np.array
@@ -116,7 +116,7 @@ def filterOutliersFromZero(data, maxSL):
         """
         Calculates the significance level that the variance of the first array
         is larger than the variance of the second array.
-        
+
         Returns
         -------
         float
@@ -148,7 +148,7 @@ def filterOutliersFromZero(data, maxSL):
 def copyObject(oldObject, newInstance=None):
     """
     Copies the non "__" instance variables of the old object into the new instance.
-    
+
     Parameters
     ----------
     oldObject: an existing object
@@ -166,7 +166,7 @@ def copyObject(oldObject, newInstance=None):
         else:
             newValue = copy.deepcopy(value)
         try:
-            newInstance.__setattr__(attr, value)
+            newInstance.__setattr__(attr, newValue)
         except:
             continue
     return newInstance
@@ -178,7 +178,7 @@ def getKwargNames(func):
     Parameters
     ----------
     func: Function
-    
+
     Returns
     -------
     list-str
@@ -196,11 +196,11 @@ def kwargs():
         passed: keyword arguments/values passed
     """
     def decorator(function):
-        def inner(*args, **kwargs):
+        def inner(*args, **kwwargs):
             inner.defined = getKwargNames(function)
-            inner.passed = kwargs
+            inner.passed = kwwargs
             inner.name = function.__qualname__
-            return function(*args, **kwargs)
+            return function(*args, **kwwargs)
         return inner
     return decorator
 
@@ -213,7 +213,7 @@ def validateKwargs(function):
     Parameters
     ----------
     function: function
-    
+
     Raises: ValueError
     """
     missing = [p for p in function.passed.keys() for p in function.defined]
@@ -230,7 +230,7 @@ def ppDict(dct, indent=0):
     dct: dict
     indent: int
         spaes indented
-    
+
     Returns
     -------
     str

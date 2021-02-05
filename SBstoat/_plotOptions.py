@@ -18,7 +18,6 @@ from SBstoat._statementManager import StatementManager
 
 from docstring_expander.kwarg import Kwarg
 import matplotlib.pyplot as plt
-import numpy as np
 
 
 PLOT = "plot"  # identifies a plotting function
@@ -47,8 +46,8 @@ XTICKLABELS = "xticklabels"
 YLABEL = "ylabel"
 YTICKLABELS = "yticklabels"
 YLIM = "ylim"
-   
- 
+
+
 #########################
 class ExKwarg(Kwarg):
     """Extends Kwarg with scope information."""
@@ -56,13 +55,13 @@ class ExKwarg(Kwarg):
     PLOT = "plot"
     LINE = "line"
 
-    def __init__(self, name:str, scope:str, doc:str=None, 
+    def __init__(self, name:str, scope:str, doc:str=None,
               dtype:type=None, default:object=None):
         self.scope = scope
         super().__init__(name, dtype=dtype, default=default)
         shortScope = "(%s)" % self.scope[0]
         self.doc = "%s %s" % (shortScope, doc)
-        
+
 
 # Options common to most plots
 BASE_OPTIONS = [COLUMNS, COLOR, LEGEND, LINESTYLE, MARKER, NUM_COL, MARKERSIZE,
@@ -112,8 +111,8 @@ to all instances of its scope. If it has multiple values, then the
 index of the value corresponds to the instance within the scope.
 A figure scope is always single valued.
 """
-   
- 
+
+
 #########################
 class PlotOptions(object):
     """
@@ -199,7 +198,7 @@ class PlotOptions(object):
             index of the plot
         lineIdx: int
             index of the line
-       
+
         Returns
         -------
         object
@@ -232,7 +231,8 @@ class PlotOptions(object):
             except:
                 pass
             raise ValueError("Invalid data type for option %s" % name)
-        return value[idxDct[exkwarg.scope]]
+        result = value[idxDct[exkwarg.scope]]
+        return result
 
     def do(self, ax, statement:StatementManager=None, **kwargs):
         """

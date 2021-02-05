@@ -6,7 +6,7 @@
 @author: joseph-hellerstein
 
 A ModelFitter estimates parameters of a roadrunner model by using observed values
-of floating species concentrations to construct fitted values with 
+of floating species concentrations to construct fitted values with
 small residuals (the difference between fitted and observed values).
 
 Properties of interest are:
@@ -35,11 +35,9 @@ The code is arranged as a hierarchy of classes that use the previous class:
     modelFitter - plot routines
 """
 
-from SBstoat.namedTimeseries import NamedTimeseries, TIME, mkNamedTimeseries
+from SBstoat.namedTimeseries import NamedTimeseries, TIME
 import SBstoat._bootstrapResult as bsr
 import SBstoat._plotOptions as po
-from SBstoat import timeseriesPlotter as tp
-from SBstoat import _helpers
 from SBstoat._modelFitterReport import ModelFitterReport
 from SBstoat.residualsAnalyzer import ResidualsAnalyzer
 
@@ -47,7 +45,6 @@ from docstring_expander.expander import Expander
 import lmfit
 import numpy as np
 import pandas as pd
-import typing
 
 
 LOW_PERCENTILE = bsr.PERCENTILES[0]
@@ -56,7 +53,7 @@ HIGH_PERCENTILE = bsr.PERCENTILES[-1]
 
 class ModelFitter(ModelFitterReport):
 
-    # TODO: The docstring for this method should contain all of the options
+    # NOTE : The docstring for this method should contain all of the options
     #       in PlotOptions
     def plot(self, kind:str, params=None, numPoint=None, **kwargs):
         """
@@ -67,7 +64,7 @@ class ModelFitter(ModelFitterReport):
         to all instances of its scope. If it has multiple values, then the
         index of the value corresponds to the instance within the scope.
         A figure scope is always single valued.
-    
+
         Parameters
         ----------
         kind: name of plot type
@@ -135,11 +132,11 @@ class ModelFitter(ModelFitterReport):
 
     @Expander(po.KWARGS, po.BASE_OPTIONS, indent=8,
           header=po.HEADER)
-    def plotResidualsAll(self, 
+    def plotResidualsAll(self,
           params:lmfit.Parameters=None, numPoint:int=None, **kwargs):
         """
         Plots a set of residual plots
-    
+
         Parameters
         ----------
         #@expand
@@ -156,7 +153,7 @@ class ModelFitter(ModelFitterReport):
           params:lmfit.Parameters=None, numPoint:int=None, **kwargs):
         """
         Plots residuals of a fit over time.
-    
+
         Parameters
         ----------
         #@expand
@@ -168,15 +165,13 @@ class ModelFitter(ModelFitterReport):
         analyzer.plotResidualsOverTime(**kwargs)
 
     @Expander(po.KWARGS, po.BASE_OPTIONS, indent=8, header=po.HEADER)
-    def plotFitAll(self, isMultiple=False,
+    def plotFitAll(self,
           params:lmfit.Parameters=None, numPoint:int=None, **kwargs):
         """
         Plots the fitted with observed data over time.
-    
+
         Parameters
         ----------
-        isMultiple: bool
-            plots all variables on a single plot
         #@expand
         """
         self._updateFit(params, numPoint)
@@ -210,7 +205,7 @@ class ModelFitter(ModelFitterReport):
     def plotParameterEstimatePairs(self, parameters=None, **kwargs):
         """
         Does pairwise plots of parameter estimates.
-        
+
         Parameters
         ----------
         parameters: list-str
@@ -236,7 +231,7 @@ class ModelFitter(ModelFitterReport):
     def plotParameterHistograms(self, parameters=None, **kwargs):
         """
         Plots histographs of parameter values from a bootstrap.
-        
+
         Parameters
         ----------
         parameters: list-str
@@ -254,7 +249,7 @@ class ModelFitter(ModelFitterReport):
 
         Parameters
         ----------
-        
+
         Returns
         -------
         """

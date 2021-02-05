@@ -7,7 +7,7 @@ Created on Tue Jul  7 14:24:09 2020
 
     A TimeseriesPlotter visualizes timeseries data, especially for comparing
     time series.
-    
+
     All plots are line plots with the x-axis as time. The following
     can be varied:
       single or multiple columns in a plot
@@ -17,7 +17,6 @@ Created on Tue Jul  7 14:24:09 2020
 from SBstoat import _plotOptions as po
 from SBstoat import _layoutManager as lm
 from SBstoat.namedTimeseries import NamedTimeseries, TIME
-from SBstoat import _helpers
 from SBstoat._statementManager import StatementManager
 
 import copy
@@ -27,7 +26,8 @@ import numpy as np
 import typing
 
 
-EXPAND_KEYPHRASE = "Expansion keyphrase. Expands to help(PlotOptions()). Do not remove. (See timeseriesPlotter.EXPAND_KEYPRHASE.)"
+EXPAND_KEYPHRASE = "Expansion keyphrase. Expands to help(PlotOptions()). "
+EXPAND_KEYPHRASE += "Do not remove. (See timeseriesPlotter.EXPAND_KEYPRHASE.)"
 LABEL1 = "1"
 LABEL2 = "2"
 COLORS = ['r', 'g', 'b', 'c', 'pink', 'grey']
@@ -48,15 +48,15 @@ DEFAULT_MARKER = "o"
 
 
 ########################################
-class TimeseriesPlotter(object):
-          
+class TimeseriesPlotter():
+
     def __init__(self, isPlot=True):
         """
         Parameters
         ---------
         isPlot: boolean
             display the plot
-               
+
         Example
         -------
         plotter = TimeseriesPlotter(timeseries)
@@ -64,10 +64,11 @@ class TimeseriesPlotter(object):
         """
         self.isPlot = isPlot
 
-    def _mkPlotOptionsMatrix(self, timeseries1, maxCol=None, **kwargs):
+    @staticmethod
+    def _mkPlotOptionsMatrix(timeseries1, maxCol=None, **kwargs):
         """
         Creates PlotOptions for a dense matrix of plots.
-        
+
         Parameters
         ----------
         timeseries1: NamedTimeseries
@@ -83,6 +84,13 @@ class TimeseriesPlotter(object):
             assigns values to options.numRow, options.numCol
         """
         options = po.PlotOptions()
+        # bins
+        if po.BINS in kwargs.keys():
+            bins = kwargs[po.BINS]
+        else:
+            bins = None
+        options.bins = bins
+        # Second timeseries
         if po.TIMESERIES2 in kwargs.keys():
             options.timeseries2 = kwargs[po.TIMESERIES2]
         if maxCol is None:
@@ -91,7 +99,7 @@ class TimeseriesPlotter(object):
             else:
                 maxCol = len(timeseries1.colnames)
         # States
-        hasRow, hasCol = self._getOptionValueState(kwargs, options)
+        hasRow, hasCol = TimeseriesPlotter._getOptionValueState(kwargs, options)
         # Assignments based on state
         if hasRow and hasCol:
             # Have been assigned
@@ -101,15 +109,16 @@ class TimeseriesPlotter(object):
         elif (not hasRow) and hasCol:
             options.numRow = int(maxCol/options.numCol)
         else:
-           options.numRow = 1
-           options.numCol = maxCol
+            options.numRow = 1
+            options.numCol = maxCol
         if maxCol > options.numRow*options.numCol:
-           options.numRow += 1
+            options.numRow += 1
         options.initialize(timeseries1, **kwargs)
         #
         return options
 
-    def _getOptionValueState(self, kwargs, options):
+    @staticmethod
+    def _getOptionValueState(kwargs, options):
         hasCol = False
         hasRow = False
         if po.NUM_ROW in kwargs:
@@ -120,12 +129,12 @@ class TimeseriesPlotter(object):
             hasCol = True
         return hasRow, hasCol
 
-    def _mkPlotOptionsLowerTriangular(self, timeseries1,
-         numPlot,  **kwargs):
+    @staticmethod
+    def _mkPlotOptionsLowerTriangular(timeseries1, numPlot,  **kwargs):
         """
         Creates PlotOptions for a lower triangular matrix of plots.
         2*len(pairs) - N = N**2
-        
+
         Parameters
         ----------
         timeseries1: NamedTimeseries
@@ -166,13 +175,13 @@ class TimeseriesPlotter(object):
         ax_spec: Optionally specified axis for all lines
         position: (int, int) - position of ax_spec
         #@expand
-               
+
         Example
         -------
         plotter = TimeseriesPlotter()
         plotter.plotTimeSingle(timeseries)
         """
-        options = self._mkPlotOptionsMatrix(timeseries1, **kwargs)
+        options = TimeseriesPlotter._mkPlotOptionsMatrix(timeseries1, **kwargs)
         # Adjust rows and columns
         numPlot = len(options.columns)  # Number of plots
         if po.NUM_COL in kwargs.keys():
@@ -190,14 +199,14 @@ class TimeseriesPlotter(object):
             timeseries:NamedTimeseries, variable:str):
             """
             Creates a plotting statement.
-   
+
             Parameters
             ----------
             ax: plotting axes
             initialStatement: statement if initialized
             timeseries: what to plot
             variable: variable to plot
-            
+
             Returns
             -------
             StatementManager
@@ -211,23 +220,20 @@ class TimeseriesPlotter(object):
         def isFirstColumn(plotIdx):
             if layout is not None:
                 return layout.isFirstColumn(plotIdx)
-            else:
-                if position is not None:
-                    return position[1]  == 0
-                else:
-                    return True
+            if position is not None:
+                return position[1]  == 0
+            return True
         #
         def isLastRow(plotIdx):
             if layout is not None:
                 return layout.isLastRow(plotIdx)
+            if po.NUM_ROW in kwargs.keys():
+                numRow = kwargs[po.NUM_ROW]
             else:
-                if po.NUM_ROW in kwargs.keys():
-                    numRow = kwargs[po.NUM_ROW]
-                else:
-                    return True
-                if position is None:
-                    return True
-                return position[0] + 1 == numRow
+                return True
+            if position is None:
+                return True
+            return position[0] + 1 == numRow
         #
         def mkBand(ts, variable, plotIdx, lineIdx):
             initialStatement = StatementManager(ax.fill_between)
@@ -312,11 +318,11 @@ class TimeseriesPlotter(object):
         """
         numPlot = 2 if po.TIMESERIES2 in kwargs else 1
         maxCol = numPlot
-        options = self._mkPlotOptionsMatrix(timeseries1, maxCol=maxCol, **kwargs)
-        if not po.COLOR in kwargs.keys():
+        options = TimeseriesPlotter._mkPlotOptionsMatrix(timeseries1, maxCol=maxCol, **kwargs)
+        if po.COLOR not in kwargs.keys():
             colors = list(COLORS)
             while len(colors) < len(timeseries1.colnames):
-                 colors.extend(COLORS)
+                colors.extend(COLORS)
             options.color = colors
         #
         def multiPlot(ax:plt.Axes, timeseries:NamedTimeseries,
@@ -344,7 +350,7 @@ class TimeseriesPlotter(object):
             options.numRow = 1
             options.numCol = 1
         else:
-            if (po.NUM_ROW in kwargs):
+            if po.NUM_ROW in kwargs:
                 options.numCol = int(np.ceil(2/options.numRow))
             else:
                 options.numRow = int(np.ceil(2/options.numCol))
@@ -360,18 +366,17 @@ class TimeseriesPlotter(object):
         if self.isPlot:
             plt.show()
 
-    def _mkManager(self, options, numPlot, 
-          isLowerTriangular=False):
+    def _mkManager(self, options, numPlot, isLowerTriangular=False):
         if numPlot == 1:
             layout = lm.LayoutManagerSingle(
                    options, numPlot)
         elif isLowerTriangular:
-            options.set(po.TITLE_POSITION, 
+            options.set(po.TITLE_POSITION,
                 (POS_MID, POS_TOP))
             layout = lm.LayoutManagerLowerTriangular(
                    options, numPlot)
         else:
-            options.set(po.TITLE_POSITION, 
+            options.set(po.TITLE_POSITION,
                 (POS_MID, POS_TOP))
             layout = lm.LayoutManagerMatrix(options,
                   numPlot)
@@ -380,7 +385,7 @@ class TimeseriesPlotter(object):
     @Expander(po.KWARGS, po.BASE_OPTIONS,
           excludes=[po.NUM_ROW, po.NUM_COL], indent=8,
           header=po.HEADER)
-    def plotValuePairs(self, timeseries, pairs, 
+    def plotValuePairs(self, timeseries, pairs,
               isLowerTriangular=False, **kwargs):
         """
         Constructs plots of values of column pairs for a single
@@ -393,10 +398,10 @@ class TimeseriesPlotter(object):
         """
         numPlot = len(pairs)
         if isLowerTriangular:
-            options = self._mkPlotOptionsLowerTriangular(
+            options = TimeseriesPlotter._mkPlotOptionsLowerTriangular(
                   timeseries, numPlot, **kwargs)
         else:
-            options = self._mkPlotOptionsMatrix(timeseries,
+            options = TimeseriesPlotter._mkPlotOptionsMatrix(timeseries,
                   maxCol=numPlot, **kwargs)
         if options.marker is None:
             options.marker = DEFAULT_MARKER
@@ -443,12 +448,7 @@ class TimeseriesPlotter(object):
         timeseries: NamedTimeseries
         #@expand
         """
-        if po.BINS in kwargs.keys():
-            bins = kwargs[po.BINS]
-            del kwargs[po.BINS]
-        else:
-            bins = None
-        options = self._mkPlotOptionsMatrix(timeseries, **kwargs)
+        options = TimeseriesPlotter._mkPlotOptionsMatrix(timeseries, **kwargs)
         numPlot = len(options.columns)
         layout = self._mkManager(options, numPlot)
         baseOptions = copy.deepcopy(options)
@@ -476,13 +476,13 @@ class TimeseriesPlotter(object):
 
     @Expander(po.KWARGS, po.BASE_OPTIONS, indent=8,
           header=po.HEADER)
-    def plotCompare(self, 
-           ts1: NamedTimeseries, 
+    def plotCompare(self,
+           ts1: NamedTimeseries,
            ts2: NamedTimeseries,
            **kwargs: dict):
         """
         Plots columns against each other.
-        
+
         Parameters
         ----------
         #@expand
@@ -499,12 +499,13 @@ class TimeseriesPlotter(object):
         Constructs options and layout for autocorrelation plots.
         """
         if isLowerTriangular:
-            options = self._mkPlotOptionsLowerTriangular(timeseries, numPlot,
-                  **kwargs)
+            options = TimeseriesPlotter._mkPlotOptionsLowerTriangular(
+                  timeseries, numPlot, **kwargs)
         else:
-            options = self._mkPlotOptionsMatrix(timeseries, **kwargs)
+            options = TimeseriesPlotter._mkPlotOptionsMatrix(timeseries, **kwargs)
             numPlot = len(options.columns)
-        layout = self._mkManager(options, numPlot, isLowerTriangular=isLowerTriangular)
+        layout = self._mkManager(options, numPlot,
+              isLowerTriangular=isLowerTriangular)
         options.set(po.XLABEL, "lag")
         options.set(po.YLABEL, "autocorrelation")
         options.set(po.YLIM, [-1.2, 1.2])
@@ -532,12 +533,12 @@ class TimeseriesPlotter(object):
 
     @Expander(po.KWARGS, po.BASE_OPTIONS, indent=8,
           header=po.HEADER)
-    def plotAutoCorrelations(self, timeseries:NamedTimeseries, 
+    def plotAutoCorrelations(self, timeseries:NamedTimeseries,
            **kwargs:dict):
         """
         Plots autocorrelations for a timeseries.
         Uses the Barlet bound to estimate confidence intervals.
-        
+
         Parameters
         ----------
         #@expand
@@ -583,7 +584,7 @@ class TimeseriesPlotter(object):
         """
         Constructs pairs of cross correlation plots.
         Uses the Barlet bound to estimate confidence intervals.
-        
+
         Parameters
         ----------
         #@expand

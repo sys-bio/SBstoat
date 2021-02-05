@@ -1,7 +1,7 @@
 """Provides for incremental construction of python statements."""
 
 
-class StatementManager(object):
+class StatementManager():
 
     def __init__(self, func):
         """

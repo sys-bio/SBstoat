@@ -7,4 +7,5 @@ lmfit
 nose
 numpy
 pandas
+pylint
 tellurium

@@ -385,7 +385,7 @@ class ModelFitterCore(rpickle.RPickler):
                 data = roadrunner.simulate(startTime, endTime, numPoint,
                       newSelectedColumns)
             except Exception as err:
-                _logger.exception("Roadrunner exception: ", err)
+                _logger.error("Roadrunner exception: ", err)
                 data = None
         else:
             try:
@@ -692,7 +692,7 @@ class ModelFitterCore(rpickle.RPickler):
                   params=params.copy(), rssq=rssq)
         return residualsArr
 
-    def fitModel(self, params:lmfit.Parameters=None):
+    def fitModel(self, params:lmfit.Parameters=None, max_nfev=100):
         """
         Fits the model by adjusting values of parameters based on
         differences between simulated and provided values of
@@ -708,28 +708,31 @@ class ModelFitterCore(rpickle.RPickler):
         """
         ParameterDescriptor = collections.namedtuple("ParameterDescriptor",
               "params method rssq kwargs minimizer minimizerResult")
+        MAX_NFEV = "max_nfev"
         block = Logger.join(self._loggerPrefix, "fitModel")
         guid = self.logger.startBlock(block)
         self.initializeRoadRunnerModel()
-        if self.parametersToFit is None:
-            # Compute fit and residuals for base model
-            self.params = None
-        else:
+        self.params = None
+        if self.parametersToFit is not None:
             if params is None:
                 params = self.mkParams()
             # Fit the model to the data using one or more methods.
             # Choose the result with the lowest residual standard deviation
             paramResults = []
+            lastExcp = None
             for idx, optimizerMethod in enumerate(self._fitterMethods):
                 method = optimizerMethod.method
                 kwargs = optimizerMethod.kwargs
+                if MAX_NFEV not in kwargs:
+                    kwargs[MAX_NFEV] = max_nfev
                 for _ in range(self._numFitRepeat):
                     self._bestParameters = _BestParameters(params=None, rssq=None)
-                    minimizer = lmfit.Minimizer(self._residuals, params, **kwargs)
+                    minimizer = lmfit.Minimizer(self._residuals, params)
                     try:
                         minimizerResult = minimizer.minimize(
                               method=method, **kwargs)
                     except Exception as excp:
+                        lastExcp = excp
                         msg = "Error minimizing for method: %s" % method
                         self.logger.error(msg, excp)
                         continue
@@ -749,13 +752,14 @@ class ModelFitterCore(rpickle.RPickler):
                     paramResults.append(parameterDescriptor)
             if len(paramResults) == 0:
                 msg = "*** Minimizer failed for this model and data."
-                raise ValueError(msg)
-            # Select the result that has the smallest residuals
-            sortedMethods = sorted(paramResults, key=lambda r: r.rssq)
-            bestMethod = sortedMethods[0]
-            self.params = bestMethod.params
-            self.minimizer= bestMethod.minimizer
-            self.minimizerResult = bestMethod.minimizerResult
+                self.logger.error(msg, lastExcp)
+            else:
+                # Select the result that has the smallest residuals
+                sortedMethods = sorted(paramResults, key=lambda r: r.rssq)
+                bestMethod = sortedMethods[0]
+                self.params = bestMethod.params
+                self.minimizer= bestMethod.minimizer
+                self.minimizerResult = bestMethod.minimizerResult
         # Ensure that residualsTS and fittedTS match the parameters
         self.updateFittedAndResiduals(params=self.params)
         self.logger.endBlock(guid)

@@ -17,10 +17,7 @@ Perofrmance logging is provided as well. Usage is:
 """
 from SBstoat import _helpers
 
-import collections
 import pandas as pd
-import numpy as np
-import sys
 import time
 
 SEPARATOR = "/"  # Separates levels in performance logs
@@ -43,10 +40,10 @@ LOGGER_ATTR = ["isReport", "toFile", "startTime", "logLevel", "unpairedBlocks",
       "blockDct", "performanceDF", "statisticDct"]
 
 
-class BlockSpecification(object):
+class BlockSpecification():
     # Describes an entry for timing a block of code
     guid = 0
-    
+
     def __init__(self, block):
         self.guid = BlockSpecification.guid
         BlockSpecification.guid += 1
@@ -58,14 +55,14 @@ class BlockSpecification(object):
         self.duration = time.time() - self.startTime
 
     def __repr__(self):
-        repr = "guid: %d, block: %s, startTime: %f"  \
+        result = "guid: %d, block: %s, startTime: %f"  \
               % (self.guid, self.block, self.startTime)
         if self.duration is not None:
-            repr += ", duration: %f" % self.duration
-        return repr
+            result += ", duration: %f" % self.duration
+        return result
 
 
-class Statistic(object):
+class Statistic():
     # Statistics for a block
     def __init__(self, block=None):
         self.block = block
@@ -74,13 +71,13 @@ class Statistic(object):
         self.mean = None
 
     def __repr__(self):
-        repr = "Statistic[block: %s, count: %d, total: %f"  \
+        result = "Statistic[block: %s, count: %d, total: %f"  \
               % (self.block, self.count, self.total)
         if self.mean is not None:
-            repr += "mean: %f"  % self.mean
-        repr += "]"
-        return repr
-    
+            result += "mean: %f"  % self.mean
+        result += "]"
+        return result
+
     def copy(self):
         return _helpers.copyObject(self)
 
@@ -111,8 +108,7 @@ class Statistic(object):
             self.mean = self.total/self.count
 
 
-class Logger(object):
-
+class Logger():
 
     def __init__(self, isReport=True, toFile=None, logLevel=LEVEL_ERROR,
           logPerformance=False):
@@ -142,7 +138,7 @@ class Logger(object):
     def performanceDF(self):
         """
         Summarizes the performance data collected.
-        
+
         Returns
         -------
         pd.Series
@@ -151,11 +147,10 @@ class Logger(object):
         """
         if self._performanceDF is None:
             # Accumulate the durations
-            dataDct = {}
             self.unpairedBlocks = len(self.blockDct)
             #
             indices = list(self.statisticDct.keys())
-            [s.summarize() for s in self.statisticDct.values()]
+            _ = [s.summarize() for s in self.statisticDct.values()]
             means = [self.statisticDct[b].mean for b in indices]
             counts = [self.statisticDct[b].count for b in indices]
             totals = [self.statisticDct[b].total for b in indices]
@@ -176,7 +171,7 @@ class Logger(object):
         ----------
         numLevel: int
             Number of identifier separators included.
-        
+
         Returns
         -------
         str
@@ -190,23 +185,22 @@ class Logger(object):
                 newIndices[idx] = ".." + SEPARATOR +  \
                        SEPARATOR.join(splits[-numLevel:])
         performanceDF.index = newIndices
-        return(str(performanceDF))
+        return str(performanceDF)
 
     def getFileDescriptor(self):
         if self.toFile is not None:
             return open(self.toFile, "a")
-        else:
-            return None
+        return None
 
     @staticmethod
     def join(*args):
         """
         Joins together a list of block names.
- 
+
         Parameters
         ----------
         *args: list-str
-        
+
         Returns
         -------
         str
@@ -228,36 +222,36 @@ class Logger(object):
             with open(self.toFile, "a") as fd:
                 fd.write(newMsg)
 
-    def activity(self, msg, preString=""):
-       # Major processing activity
-       if self.isReport and (self.logLevel >= LEVEL_ACTIVITY):
-           self._write("***%s***" %msg, 2)
-    
-    def result(self, msg, preString=""):
-       # Result of an activity
-       if self.isReport and (self.logLevel >= LEVEL_RESULT):
-           self._write("\n **%s" %msg, 1)
-    
-    def status(self, msg, preString=""):
-       # Progress message
-       if self.isReport and (self.logLevel >= LEVEL_STATUS):
-           self._write("    (%s)" %msg, 0)
-    
-    def exception(self, msg, preString=""):
-       # Progress message
-       if self.isReport and (self.logLevel >= LEVEL_EXCEPTION):
-           self._write("    (%s)" %msg, 0)
-    
+    def activity(self, msg):
+        # Major processing activity
+        if self.isReport and (self.logLevel >= LEVEL_ACTIVITY):
+            self._write("***%s***" %msg, 2)
+
+    def result(self, msg):
+        # Result of an activity
+        if self.isReport and (self.logLevel >= LEVEL_RESULT):
+            self._write("\n **%s" %msg, 1)
+
+    def status(self, msg):
+        # Progress message
+        if self.isReport and (self.logLevel >= LEVEL_STATUS):
+            self._write("    (%s)" %msg, 0)
+
+    def exception(self, msg):
+        # Progress message
+        if self.isReport and (self.logLevel >= LEVEL_EXCEPTION):
+            self._write("    (%s)" %msg, 0)
+
     def error(self, msg, excp):
-       # Progress message
-       if self.isReport and (self.logLevel >= LEVEL_ERROR):
-           fullMsg = "%s: %s" % (msg, str(excp))
-           self._write("    (%s)" % fullMsg, 0)
-    
-    def details(self, msg, preString=""):
-       # Progress message
-       if self.isReport and (self.logLevel >= LEVEL_DETAILS):
-           self._write("    (%s)" %msg, 0)
+        # Progress message
+        if self.isReport and (self.logLevel >= LEVEL_ERROR):
+            fullMsg = "%s: %s" % (msg, str(excp))
+            self._write("    (%s)" % fullMsg, 0)
+
+    def details(self, msg):
+        # Progress message
+        if self.isReport and (self.logLevel >= LEVEL_DETAILS):
+            self._write("    (%s)" %msg, 0)
 
     ###### BLOCK TIMINGS ######
     def startBlock(self, block:str)->float:
@@ -267,7 +261,7 @@ class Logger(object):
         Parameters
         ----------
         block: name of the block
-        
+
         Returns
         -------
         int: identifier for the BlockSpecification
@@ -276,8 +270,7 @@ class Logger(object):
             spec = BlockSpecification(block)
             self.blockDct[spec.guid] = spec
             return spec.guid
-        else:
-            return None
+        return None
 
     def _merge(self, other):
         """
@@ -299,7 +292,7 @@ class Logger(object):
             newLogger = curLogger._merge(other)
             curLogger = newLogger
         return newLogger
-        
+
 
     def endBlock(self, guid:int):
         """
