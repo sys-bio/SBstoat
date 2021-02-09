@@ -770,7 +770,8 @@ class ModelFitterCore(rpickle.RPickler):
         parameters: lmfit.Parameters
 
         """
-        ModelFitterCore.setupModel(self.roadrunnerModel, parameters, logger=self.logger)
+        ModelFitterCore.setupModel(self.roadrunnerModel, parameters,
+              logger=self.logger)
 
     def mkParams(self, parameterDct:dict=None)->lmfit.Parameters:
         """

@@ -2,8 +2,11 @@
 
 from SBstoat.logs import Logger
 from SBstoat import _helpers
+from SBstoat import _constants as cn
 
+import collections
 import lmfit
+import numpy as np
 
 _BestParameters = collections.namedtuple("_BestParameters",
       "params rssq")  #  parameters, residuals sum of squares
@@ -12,7 +15,7 @@ ParameterDescriptor = collections.namedtuple("ParameterDescriptor",
 
 class Optimizer(object):
 
-    def self __init__(self, function, initialParams, methods, logger=None):
+    def __init__(self, function, initialParams, methods, logger=None):
         """
         Parameters
         ----------
@@ -37,7 +40,7 @@ class Optimizer(object):
         self.minimizer = None
         self.minimizerResult = None
 
-    def do(self): 
+    def optimize(self): 
         """
         Performs the optimization on the function.
         Result is self.params
@@ -47,8 +50,6 @@ class Optimizer(object):
         for idx, optimizerMethod in enumerate(self._methods):
             method = optimizerMethod.method
             kwargs = optimizerMethod.kwargs
-            if cn.MAX_NFEV not in kwargs:
-                kwargs[cn.MAX_NFEV] = max_nfev
             self._bestParameters = _BestParameters(params=None, rssq=None)
             minimizer = lmfit.Minimizer(self._function, params)
             try:
@@ -116,3 +117,32 @@ class Optimizer(object):
         newReportSplit.extend(valuesStg.split("\n"))
         newReportSplit.extend(trimmedReportSplit)
         return "\n".join(newReportSplit)
+
+    @staticmethod
+    def mkOptimizerMethod(methodNames=None, methodKwargs=None, maxFev=100):
+        """
+        Constructs an OptimizerMethod
+        Parameters
+        ----------
+        methodNames: list-str/str
+        methodKwargs: list-dict/dict
+
+        Returns
+        -------
+        list-OptimizerMethod
+        """
+        if methodNames is None:
+            methodNames = [cn.METHOD_LEASTSQ]
+        if isinstance(methodNames, str):
+            methodNames = [methodNames]
+        if methodKwargs is None:
+            methodKwargs = {}
+        # Ensure that there is a limit of function evaluations
+        newMethodKwargs = dict(methodKwargs)
+        if cn.MAX_NFEV not in newMethodKwargs.keys():
+            newMethodKwargs[cn.MAX_NFEV] = maxFev
+        methodKwargs = np.repeat(newMethodKwargs, len(methodNames))
+        #
+        result = [_helpers.OptimizerMethod(n, k) for n, k  \
+              in zip(methodNames, methodKwargs)]
+        return result
