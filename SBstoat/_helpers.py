@@ -241,3 +241,12 @@ def ppDict(dct, indent=0):
         line = "%s%s:  %s" % (spaces, key, value)
         lines.append(line)
     return "\n".join(lines)
+
+
+class OptimizerMethod():
+
+    """Container for optimization information"""
+
+    def __init__(self, method, kwargs):
+        self.method = method
+        self.kwargs = kwargs

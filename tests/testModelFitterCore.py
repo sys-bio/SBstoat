@@ -7,7 +7,9 @@ Created on Tue Aug 19, 2020
 """
 
 import SBstoat._modelFitterCore as mf
+import SBstoat._constants as cn
 from SBstoat.modelFitter import ModelFitter
+from SBstoat import _helpers
 from SBstoat.logs import Logger, LEVEL_MAX
 from SBstoat._modelFitterCore import ModelFitterCore
 from SBstoat.namedTimeseries import NamedTimeseries, TIME
@@ -66,9 +68,9 @@ class TestModelFitterCore(unittest.TestCase):
         #
         test([METHOD])
         test([METHOD, METHOD])
-        test([mf.ModelFitterCore.OptimizerMethod(method=METHOD, kwargs={})])
+        test([_helpers.OptimizerMethod(method=METHOD, kwargs={})])
         #
-        methods = mf.ModelFitterCore.OptimizerMethod(method=METHOD,
+        methods = _helpers.OptimizerMethod(method=METHOD,
               kwargs={"a": 1})
         result = self.fitter._makeMethods([methods, methods], None)
 
@@ -107,7 +109,7 @@ class TestModelFitterCore(unittest.TestCase):
         self._init()
         self.fitter.initializeRoadRunnerModel()
         params = self.fitter.mkParams()
-        arr = self.fitter._residuals(params)
+        arr = self.fitter.calcResiduals(params)
         length = len(self.fitter.observedTS.flatten())
         self.assertEqual(len(arr), length)
 
@@ -185,8 +187,8 @@ class TestModelFitterCore(unittest.TestCase):
         self.fitter.fitModel()
         dct = self.checkParameterValues()
         #
-        for method in [mf.METHOD_LEASTSQ, mf.METHOD_BOTH,
-              mf.METHOD_DIFFERENTIAL_EVOLUTION]:
+        for method in [cn.METHOD_LEASTSQ, cn.METHOD_BOTH,
+              cn.METHOD_DIFFERENTIAL_EVOLUTION]:
             test(method)
 
     def testFit2(self):
@@ -211,8 +213,8 @@ class TestModelFitterCore(unittest.TestCase):
         self.fitter.fitModel()
         dct = self.checkParameterValues()
         #
-        for method in [mf.METHOD_LEASTSQ, mf.METHOD_BOTH,
-              mf.METHOD_DIFFERENTIAL_EVOLUTION]:
+        for method in [cn.METHOD_LEASTSQ, cn.METHOD_BOTH,
+              cn.METHOD_DIFFERENTIAL_EVOLUTION]:
             test(method)
 
     def testFitNanValues(self):
@@ -233,8 +235,8 @@ class TestModelFitterCore(unittest.TestCase):
                   - fitter.params.valuesdict()[PARAMETER])
             return diff
         #
-        diff1 = calc(mf.METHOD_BOTH, probNan=0.05)
-        diff2 = calc(mf.METHOD_BOTH, probNan=0.99)
+        diff1 = calc(cn.METHOD_BOTH, probNan=0.05)
+        diff2 = calc(cn.METHOD_BOTH, probNan=0.99)
         condition = (diff1 < diff2) or (np.abs(diff2 - diff1) < 1)
         self.assertTrue(condition)
 
@@ -442,7 +444,7 @@ class TestModelFitterCore(unittest.TestCase):
         if IGNORE_TEST:
             return
         METHOD_NAME = 'differential_evolution'
-        optimizerMethod = ModelFitter.OptimizerMethod(
+        optimizerMethod = _helpers.OptimizerMethod(
             method=METHOD_NAME,
             kwargs={ "popsize": 100, "atol": 0.001})
         fitter1 = self._makeMikeModel(fitterMethods=[METHOD_NAME])

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
  Created on August 18, 2020
 
@@ -7,10 +6,12 @@
 Core logic of model fitter. Does not include plots.
 """
 
+import SBstoat._constants as cn
 from SBstoat.namedTimeseries import NamedTimeseries, TIME, mkNamedTimeseries
 from SBstoat.logs import Logger
 import SBstoat.timeseriesPlotter as tp
 from SBstoat import rpickle
+from SBstoat import _helpers
 
 import collections
 import copy
@@ -22,20 +23,10 @@ import typing
 # Constants
 PARAMETER_LOWER_BOUND = 0
 PARAMETER_UPPER_BOUND = 10
-#  Minimizer methods
-METHOD_DIFFERENTIAL_EVOLUTION = "differential_evolution"
-METHOD_BOTH = "both"
-METHOD_LEASTSQ = "leastsq"
-METHOD_FITTER_DEFAULTS = [METHOD_DIFFERENTIAL_EVOLUTION, METHOD_LEASTSQ]
-METHOD_BOOTSTRAP_DEFAULTS = [METHOD_LEASTSQ,
-      METHOD_DIFFERENTIAL_EVOLUTION, METHOD_LEASTSQ]
 MAX_CHISQ_MULT = 5
 PERCENTILES = [2.5, 97.55]  # Percentile for confidence limits
-INDENTATION = "  "
-NULL_STR = ""
-IS_REPORT = False
 LOWER_PARAMETER_MULT = 0.95
-UPPER_PARAMETER_MULT = 0.95
+UPPER_PARAMETER_MULT = 1.05
 LARGE_RESIDUAL = 1000000
 
 
@@ -54,14 +45,6 @@ class ParameterSpecification():
 
 
 class ModelFitterCore(rpickle.RPickler):
-
-    # Subclasses used in interface
-    class OptimizerMethod():
-
-        def __init__(self, method, kwargs):
-            self.method = method
-            self.kwargs = kwargs
-
 
     def __init__(self, modelSpecification, observedData,
           parametersToFit=None,
@@ -163,9 +146,9 @@ class ModelFitterCore(rpickle.RPickler):
                 self._observedArr = None
             # Other internal state
             self._fitterMethods = self._makeMethods(fitterMethods,
-                  METHOD_FITTER_DEFAULTS)
+                  cn.METHOD_FITTER_DEFAULTS)
             self._bootstrapMethods = self._makeMethods(bootstrapMethods,
-                  METHOD_BOOTSTRAP_DEFAULTS)
+                  cn.METHOD_BOOTSTRAP_DEFAULTS)
             if isinstance(self._bootstrapMethods, str):
                 self._bootstrapMethods = [self._bootstrapMethods]
             self._isPlot = isPlot
@@ -205,19 +188,19 @@ class ModelFitterCore(rpickle.RPickler):
         if methods is None:
             methods = default
         if isinstance(methods, str):
-            if methods == METHOD_BOTH:
-                methods = METHOD_FITTER_DEFAULTS
+            if methods == cn.METHOD_BOTH:
+                methods = cn.METHOD_FITTER_DEFAULTS
             else:
                 methods = [methods]
         if isinstance(methods, list):
             if isinstance(methods[0], str):
-                results = [ModelFitterCore.OptimizerMethod(method=m, kwargs={})
+                results = [_helpers.OptimizerMethod(method=m, kwargs={})
                       for m in methods]
             else:
                 results = methods
         else:
             raise RuntimeError("Must be a list")
-        trues = [isinstance(m, ModelFitterCore.OptimizerMethod) for m in results]
+        trues = [isinstance(m, _helpers.OptimizerMethod) for m in results]
         if not all(trues):
             raise ValueError("Invalid methods: %s" % str(methods))
         return results
@@ -244,7 +227,7 @@ class ModelFitterCore(rpickle.RPickler):
         -------
         lmfit.Parameters
         """
-        def get(value, base_value, multiplier):
+        def getValue(value, base_value, multiplier):
             if value is not None:
                 return value
             return base_value*multiplier
@@ -261,16 +244,16 @@ class ModelFitterCore(rpickle.RPickler):
         for parameterName in parametersToFit:
             if parameterName in parameterDct.keys():
                 specification = parameterDct[parameterName]
-                value = get(specification.value, specification.value, 1.0)
+                value = getValue(specification.value, specification.value, 1.0)
                 if value > 0:
                     lower_factor = LOWER_PARAMETER_MULT
                     upper_factor = UPPER_PARAMETER_MULT
                 else:
                     upper_factor = UPPER_PARAMETER_MULT
                     lower_factor = LOWER_PARAMETER_MULT
-                lower = get(specification.lower, specification.value,
+                lower = getValue(specification.lower, specification.value,
                       lower_factor)
-                upper = get(specification.upper, specification.value,
+                upper = getValue(specification.upper, specification.value,
                       upper_factor)
                 if np.isclose(lower - upper, 0):
                     upper = 0.0001
@@ -647,7 +630,7 @@ class ModelFitterCore(rpickle.RPickler):
         1-d ndarray of residuals
         """
         self.fittedTS = self.simulate(**kwargs)  # Updates self.fittedTS
-        residualsArr = self._residuals(self.params)
+        residualsArr = self.calcResiduals(self.params)
         numRow = len(self.fittedTS)
         numCol = len(residualsArr)//numRow
         residualsArr = np.reshape(residualsArr, (numRow, numCol))
@@ -656,7 +639,7 @@ class ModelFitterCore(rpickle.RPickler):
             self.residualsTS = self.observedTS.subsetColumns(cols)
         self.residualsTS[cols] = residualsArr
 
-    def _residuals(self, params)->np.ndarray:
+    def calcResiduals(self, params)->np.ndarray:
         """
         Compute the residuals between objective and experimental data
         Handle nan values in observedTS. This internal-only method
@@ -692,7 +675,7 @@ class ModelFitterCore(rpickle.RPickler):
                   params=params.copy(), rssq=rssq)
         return residualsArr
 
-    def fitModel(self, params:lmfit.Parameters=None, max_nfev=100):
+    def fitModel(self, params:lmfit.Parameters=None, max_nfev:int=100):
         """
         Fits the model by adjusting values of parameters based on
         differences between simulated and provided values of
@@ -700,7 +683,10 @@ class ModelFitterCore(rpickle.RPickler):
 
         Parameters
         ----------
-        params: starting values of parameters
+        params: lmfit.parameters
+            starting values of parameters
+        max_nfev: int
+            Maximum number of iterations for an evaluation
 
         Example
         -------
@@ -710,7 +696,6 @@ class ModelFitterCore(rpickle.RPickler):
               "params method rssq kwargs minimizer minimizerResult")
         MAX_NFEV = "max_nfev"
         block = Logger.join(self._loggerPrefix, "fitModel")
-        guid = self.logger.startBlock(block)
         self.initializeRoadRunnerModel()
         self.params = None
         if self.parametersToFit is not None:
@@ -727,7 +712,7 @@ class ModelFitterCore(rpickle.RPickler):
                     kwargs[MAX_NFEV] = max_nfev
                 for _ in range(self._numFitRepeat):
                     self._bestParameters = _BestParameters(params=None, rssq=None)
-                    minimizer = lmfit.Minimizer(self._residuals, params)
+                    minimizer = lmfit.Minimizer(self.calcResiduals, params)
                     try:
                         minimizerResult = minimizer.minimize(
                               method=method, **kwargs)
@@ -737,7 +722,7 @@ class ModelFitterCore(rpickle.RPickler):
                         self.logger.error(msg, excp)
                         continue
                     params = self._bestParameters.params.copy()
-                    rssq = np.sum(self._residuals(params)**2)
+                    rssq = np.sum(self.calcResiduals(params)**2)
                     if len(paramResults) > idx:
                         if rssq >= paramResults[idx].rssq:
                             continue
@@ -762,7 +747,6 @@ class ModelFitterCore(rpickle.RPickler):
                 self.minimizerResult = bestMethod.minimizerResult
         # Ensure that residualsTS and fittedTS match the parameters
         self.updateFittedAndResiduals(params=self.params)
-        self.logger.endBlock(guid)
 
     def getFittedModel(self):
         """
