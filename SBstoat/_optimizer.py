@@ -3,6 +3,7 @@ from SBstoat import _helpers
 from SBstoat import _constants as cn
 
 import collections
+import inspect
 import lmfit
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -15,38 +16,67 @@ _BestParameters = collections.namedtuple("_BestParameters",
 _ParameterDescriptor = collections.namedtuple("_ParameterDescriptor",
       "params method rssq kwargs minimizer minimizerResult")
 
+IS_RAW_DATA = "isRawData"
+
 
 class _FunctionWrapper(object):
     """Wraps a function used for optimization."""
 
-    def __init__(self, function, isPerf=False):
+    def __init__(self, function, isCollect=False):
         """
         Parameters
         ----------
         function: function
             function callable by lmfit.Minimizer
-               argument: lmfit.Parameter
+               argument
+                   lmfit.Parameter
+                   isRawData - boolean to indicate return total SSQ
                returns: np.array
-        isPerf: bool
+        isCollect: bool
             collect performance statistics on function execution
         """
         self._function = function
-        self._isPerf = isPerf
+        self._isCollect = isCollect
         # Results
-        self.statistics = []  # durations of function executions
+        self.baselineSsq = self._getBaselineSSQ()
+        self.perfStatistics = []  # durations of function executions
+        self.ssqStatistics = []  # relative values of sum of squares
         self.rssq = 10e10
         self.bestParams = None
 
+    @staticmethod
+    def _calcSSQ(arr):
+        return sum(arr**2)
+
+    def _getBaselineSSQ(self):
+        """
+        Calculates a baseline sum of squares.
+        
+        Returns
+        -------
+        float
+        """
+        inspectResult = inspect.getfullargspec(self._function)
+        if IS_RAW_DATA in inspectResult.args:
+            rawData = self._function(None, isRawData=True)
+            ssq = _FunctionWrapper._calcSSQ(rawData)
+            return ssq
+        else:
+            return np.nan
+
     def execute(self, params, **kwargs):
-        if self._isPerf:
+        if self._isCollect:
             startTime = time.time()
         result = self._function(params, **kwargs)
-        if self._isPerf:
-            self.statisticss.append(time.time() - startTime)
-        rssq = sum(result**2)
+        if self._isCollect:
+            self.perfStatistics.append(time.time() - startTime)
+        rssq = _FunctionWrapper._calcSSQ(result)
         if rssq < self.rssq:
             self.rssq = rssq
             self.bestParams = params.copy()
+        if np.isnan(self.baselineSsq):
+            self.baselineSsq = rssq
+        self.ssqStatistics.append(rssq/self.baselineSsq)
         return result
         
 
@@ -64,7 +94,7 @@ class Optimizer(object):
     """
 
     def __init__(self, function, initialParams, methods, logger=None,
-          isPerf=False):
+          isCollect=False):
         """
         Parameters
         ----------
@@ -76,7 +106,7 @@ class Optimizer(object):
            returns residuals (if bool arguments are false)
         initialParams: lmfit.parameters
         methods: list-_helpers.OptimizerMethod
-        isPerf: bool
+        isCollect: bool
            Collects performance statistcs
         
         Returns
@@ -85,14 +115,15 @@ class Optimizer(object):
         self._function = function
         self._methods = methods
         self._initialParams = initialParams
-        self._isPerf = isPerf
+        self._isCollect = isCollect
         if logger is None:
             self.logger = Logger()
         # Purely internal state
         self._bestParameters = None
         self._currentMethodIndex = None
         # Outputs
-        self.statisticss = []  # list of performance results
+        self.performanceStats = []  # list of performance results
+        self.qualityStats = []  # relative rssq
         self.params = None
         self.minimizer = None
         self.minimizerResult = None
@@ -109,7 +140,7 @@ class Optimizer(object):
             method = optimizerMethod.method
             kwargs = optimizerMethod.kwargs
             params = self._initialParams.copy()
-            wrapperFunction = _FunctionWrapper(self._function, isPerf=self._isPerf)
+            wrapperFunction = _FunctionWrapper(self._function, isCollect=self._isCollect)
             minimizer = lmfit.Minimizer(wrapperFunction.execute, params)
             try:
                 minimizerResult = minimizer.minimize(
@@ -127,7 +158,8 @@ class Optimizer(object):
                   minimizer=minimizer,
                   minimizerResult=minimizerResult,
                   )
-            self.statisticss.append(wrapperFunction.statistics)
+            self.performanceStats.append(wrapperFunction.perfStatistics)
+            self.qualityStats.append(wrapperFunction.ssqStatistics)
             descriptors.append(parameterDescriptor)
         if len(descriptors) == 0:
             msg = "*** Optimization failed."
@@ -173,12 +205,12 @@ class Optimizer(object):
         newReportSplit.extend(trimmedReportSplit)
         return "\n".join(newReportSplit)
 
-    def plotPerformance(self):
+    def plotPerformance(self, isPlot=True):
         """
         Plots the statistics for running the objective function.
         """
-        if not self._isPerfReport:
-            msg = "Must construct with isPerfReport = True "
+        if not self._isCollect:
+            msg = "Must construct with isCollect = True "
             msg += "to get performance report."
             raise ValueError(msg)
         # Compute statistics
@@ -186,21 +218,47 @@ class Optimizer(object):
         CNT = "Cnt"
         AVG = "Avg"
         IDX = "Idx"
-        totalTimes = [sum(v) for v in self.statisticss]
-        counts = [len(v) for v in self.statisticss]
-        averages = [np.mean(v) for v in self.statisticss]
+        totalTimes = [sum(v) for v in self.performanceStats]
+        counts = [len(v) for v in self.performanceStats]
+        averages = [np.mean(v) for v in self.performanceStats]
         df = pd.DataFrame({
-            IDX: range(len(self.statisticss)),
+            IDX: range(len(self.performanceStats)),
             TOT: totalTimes,
             CNT: counts,
             AVG: averages,
             })
         #
         fig, axes = plt.subplots(1, 3)
-        df.plot.bar(x=IDX, y=TOT, ax=axes[0], title="Total time")
-        df.plot.bar(x=xvalues, y=AVG, ax=axes[1], title="Average time")
-        df.plot.bar(x=xvalues, y=CNT, ax=axes[2], title="Number calls")
-        plt.show()
+        df.plot.bar(x=IDX, y=TOT, ax=axes[0], title="Total time",
+              xlabel="method")
+        df.plot.bar(x=IDX, y=AVG, ax=axes[1], title="Average time",
+              xlabel="method")
+        df.plot.bar(x=IDX, y=CNT, ax=axes[2], title="Number calls",
+              xlabel="method")
+        if isPlot:
+            plt.show()
+
+    def plotQuality(self, isPlot=True):
+        """
+        Plots the quality results
+        """
+        ITERATION = "iteration"
+        fig, axes = plt.subplots(len(self._methods))
+        minLength = min([len(v) for v in self.qualityStats])
+        # Compute statistics
+        dct = {self._methods[i].method: self.qualityStats[i][:minLength]
+            for i in range(len(self._methods))}
+        df = pd.DataFrame(dct)
+        df[ITERATION] = range(minLength)
+        #
+        for idx, method in enumerate(self._methods):
+            ax = axes[idx]
+            df.plot.line(x=ITERATION, y=method.method, ax=ax, xlabel="")
+            ax.set_ylabel("Relative SSQ")
+            if idx == len(self._methods) - 1:
+                ax.set_xlabel(ITERATION)
+        if isPlot:
+            plt.show()
 
     @staticmethod
     def mkOptimizerMethod(methodNames=None, methodKwargs=None, maxFev=100):
