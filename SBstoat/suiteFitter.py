@@ -7,7 +7,7 @@ import numpy as np
 import lmfit
 
 
-class ModelSuite(object):
+class SuiteFitter(object):
 
     def __init__(self, models, datasets, parametersets,
           modelNames=None, modelWeights=None, fitterMethods=None,
