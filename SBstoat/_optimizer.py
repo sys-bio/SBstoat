@@ -19,6 +19,7 @@ _ParameterDescriptor = collections.namedtuple("_ParameterDescriptor",
 IS_RAW_DATA = "isRawData"
 
 
+#FIXME: Resolve if using absolute or relative SSQ
 class _FunctionWrapper(object):
     """Wraps a function used for optimization."""
 
@@ -76,7 +77,8 @@ class _FunctionWrapper(object):
             self.bestParams = params.copy()
         if np.isnan(self.baselineSsq):
             self.baselineSsq = rssq
-        self.ssqStatistics.append(rssq/self.baselineSsq)
+        #self.ssqStatistics.append(rssq/self.baselineSsq)
+        self.ssqStatistics.append(rssq)
         return result
         
 
@@ -150,8 +152,9 @@ class Optimizer(object):
                 msg = "Error minimizing for method: %s" % method
                 self.logger.error(msg, excp)
                 continue
+            params = wrapperFunction.bestParams.copy()
             parameterDescriptor = _ParameterDescriptor(
-                  params=wrapperFunction.bestParams.copy(),
+                  params=params,
                   method=method,
                   rssq=wrapperFunction.rssq,
                   kwargs=dict(kwargs),
@@ -254,7 +257,7 @@ class Optimizer(object):
         for idx, method in enumerate(self._methods):
             ax = axes[idx]
             df.plot.line(x=ITERATION, y=method.method, ax=ax, xlabel="")
-            ax.set_ylabel("Relative SSQ")
+            ax.set_ylabel("SSQ")
             if idx == len(self._methods) - 1:
                 ax.set_xlabel(ITERATION)
         if isPlot:

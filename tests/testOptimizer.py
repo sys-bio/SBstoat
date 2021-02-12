@@ -137,7 +137,8 @@ class TestOptimizer(unittest.TestCase):
         if IGNORE_TEST:
             return
         methods = Optimizer.mkOptimizerMethod(
-              methodNames=[cn.METHOD_LEASTSQ, cn.METHOD_DIFFERENTIAL_EVOLUTION])
+              methodNames=[cn.METHOD_DIFFERENTIAL_EVOLUTION, cn.METHOD_LEASTSQ])
+              #methodNames=[cn.METHOD_LEASTSQ, cn.METHOD_DIFFERENTIAL_EVOLUTION])
         optimizer = Optimizer(self.function, self.params, methods,
               isCollect=True)
         optimizer.optimize()
