@@ -135,11 +135,11 @@ class Optimizer(object):
         """
         descriptors = []
         lastExcp = None
+        params = self._initialParams.copy()
         for idx, optimizerMethod in enumerate(self._methods):
             self._currentMethodIndex = idx
             method = optimizerMethod.method
             kwargs = optimizerMethod.kwargs
-            params = self._initialParams.copy()
             wrapperFunction = _FunctionWrapper(self._function, isCollect=self._isCollect)
             minimizer = lmfit.Minimizer(wrapperFunction.execute, params)
             try:

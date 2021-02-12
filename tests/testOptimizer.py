@@ -18,7 +18,7 @@ import unittest
 
 try:
     matplotlib.use('TkAgg')
-exception ImportError:
+except ImportError:
     pass
 
 
@@ -80,7 +80,7 @@ class TestOptimizer(unittest.TestCase):
     def testConstructor(self):
         if IGNORE_TEST:
             return
-        self.assertEqual( len(self.optimizer.statistics), 0)
+        self.assertEqual( len(self.optimizer.performanceStats), 0)
 
     def testMkOptimizerMethod(self):
         if IGNORE_TEST:
@@ -120,8 +120,8 @@ class TestOptimizer(unittest.TestCase):
                   isCollect=True)
             optimizer.optimize()
             self.checkResult()
-            for idx in range(len(optimizer.statistics)):
-                self.assertGreater(len(optimizer.statistics[idx]), 100)
+            for idx in range(len(optimizer.performanceStats)):
+                self.assertGreater(len(optimizer.performanceStats[idx]), 100)
 
     def testPlotPerformance(self):
         if IGNORE_TEST:
