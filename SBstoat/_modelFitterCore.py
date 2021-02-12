@@ -639,7 +639,7 @@ class ModelFitterCore(rpickle.RPickler):
             self.residualsTS = self.observedTS.subsetColumns(cols)
         self.residualsTS[cols] = residualsArr
 
-    def calcResiduals(self, params, isRawData=False)->np.ndarray:
+    def calcResiduals(self, params)->np.ndarray:
         """
         Compute the residuals between objective and experimental data
         Handle nan values in observedTS. This internal-only method
@@ -649,8 +649,6 @@ class ModelFitterCore(rpickle.RPickler):
         ----------
         params: lmfit.Parameters
             arguments for simulation
-        isRawData: bool
-            return observed data
 
         Returns
         -------

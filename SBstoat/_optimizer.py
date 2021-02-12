@@ -11,8 +11,6 @@ import numpy as np
 import time
 
 
-IS_RAW_DATA = "isRawData"
-
 
 class _FunctionWrapper():
     """Wraps a function used for optimization."""
@@ -34,7 +32,7 @@ class _FunctionWrapper():
         self._isCollect = isCollect
         # Results
         self.perfStatistics = []  # durations of function executions
-        self.ssqStatistics = []  # relative values of sum of squares
+        self.rssqStatistics = []  # residual sum of squares, a quality measure
         self.rssq = 10e10
         self.bestParams = None
 
@@ -52,7 +50,7 @@ class _FunctionWrapper():
         if rssq < self.rssq:
             self.rssq = rssq
             self.bestParams = params.copy()
-        self.ssqStatistics.append(rssq)
+        self.rssqStatistics.append(rssq)
         return result
 
 
@@ -122,8 +120,8 @@ class Optimizer():
                 self.logger.error(msg, excp)
                 continue
             self.params = wrapperFunction.bestParams.copy()
-            self.performanceStats.append(wrapperFunction.perfStatistics)
-            self.qualityStats.append(wrapperFunction.ssqStatistics)
+            self.performanceStats.append(list(wrapperFunction.perfStatistics))
+            self.qualityStats.append(list(wrapperFunction.ssqStatistics))
         if self.minimizer is None:
             msg = "*** Optimization failed."
             self.logger.error(msg, lastExcp)
