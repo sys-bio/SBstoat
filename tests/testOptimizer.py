@@ -16,7 +16,10 @@ import numpy as np
 import lmfit
 import unittest
 
-matplotlib.use('TkAgg')
+try:
+    matplotlib.use('TkAgg')
+exception ImportError:
+    pass
 
 
 IGNORE_TEST = False

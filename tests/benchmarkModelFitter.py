@@ -17,6 +17,7 @@ date         Version         numIteration    numProcess  Time (sec)
 """
 
 from SBstoat import modelFitter as mf
+from SBstoat import _helpers
 import SBstoat
 from SBstoat import logs
 
@@ -52,7 +53,7 @@ def main(numIteration):
     float: time in seconds
     """
     logger = logs.Logger(logLevel=logs.LEVEL_STATUS, logPerformance=IS_TEST)
-    optimizerMethod = mf.ModelFitter.OptimizerMethod(SBstoat.METHOD_LEASTSQ,
+    optimizerMethod = _helpers.OptimizerMethod(SBstoat.METHOD_LEASTSQ,
           {"max_nfev": 100})
     fitter = mf.ModelFitter(MODEL, BENCHMARK_PATH,
           ["k1", "k2"], selectedColumns=['S1', 'S3'], isPlot=IS_PLOT,

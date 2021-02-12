@@ -7,6 +7,7 @@ Created on Tue Jul  7 14:24:09 2020
 """
 
 import SBstoat
+from SBstoat import _helpers
 from SBstoat.modelFitter import ModelFitter
 from tests import _testHelpers as th
 
@@ -18,7 +19,7 @@ import unittest
 IGNORE_TEST = False
 IS_PLOT = False
 TIMESERIES = th.getTimeseries()
-optimizerMethod = ModelFitter.OptimizerMethod(SBstoat.METHOD_LEASTSQ,
+optimizerMethod = _helpers.OptimizerMethod(SBstoat.METHOD_LEASTSQ,
       kwargs={"max_nfev": 100})
 FITTER = th.getFitter(cls=ModelFitter, isPlot=IS_PLOT,
       fitterMethods=[optimizerMethod],
