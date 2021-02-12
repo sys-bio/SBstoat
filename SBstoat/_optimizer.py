@@ -45,12 +45,14 @@ class _FunctionWrapper():
             startTime = time.time()
         result = self._function(params, **kwargs)
         if self._isCollect:
-            self.perfStatistics.append(time.time() - startTime)
+            duration = time.time() - startTime
         rssq = _FunctionWrapper._calcSSQ(result)
         if rssq < self.rssq:
             self.rssq = rssq
             self.bestParams = params.copy()
-        self.rssqStatistics.append(rssq)
+        if self._isCollect:
+            self.perfStatistics.append(duration - startTime)
+            self.rssqStatistics.append(rssq)
         return result
 
 
@@ -121,7 +123,7 @@ class Optimizer():
                 continue
             self.params = wrapperFunction.bestParams.copy()
             self.performanceStats.append(list(wrapperFunction.perfStatistics))
-            self.qualityStats.append(list(wrapperFunction.ssqStatistics))
+            self.qualityStats.append(list(wrapperFunction.rssqStatistics))
         if self.minimizer is None:
             msg = "*** Optimization failed."
             self.logger.error(msg, lastExcp)
@@ -164,7 +166,7 @@ class Optimizer():
         """
         if not self._isCollect:
             msg = "Must construct with isCollect = True "
-            msg += "to get performance report."
+            msg += "to get performance plot."
             raise ValueError(msg)
         # Compute statistics
         TOT = "Tot"
@@ -195,6 +197,10 @@ class Optimizer():
         """
         Plots the quality results
         """
+        if not self._isCollect:
+            msg = "Must construct with isCollect = True "
+            msg += "to get quality plots."
+            raise ValueError(msg)
         ITERATION = "iteration"
         _, axes = plt.subplots(len(self._methods))
         minLength = min([len(v) for v in self.qualityStats])
