@@ -1,9 +1,9 @@
+"""Abstraction for optimization."""
+
 from SBstoat.logs import Logger
 from SBstoat import _helpers
 from SBstoat import _constants as cn
 
-import collections
-import inspect
 import lmfit
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -11,16 +11,10 @@ import numpy as np
 import time
 
 
-_BestParameters = collections.namedtuple("_BestParameters",
-      "params rssq")  #  parameters, residuals sum of squares
-_ParameterDescriptor = collections.namedtuple("_ParameterDescriptor",
-      "params method rssq kwargs minimizer minimizerResult")
-
 IS_RAW_DATA = "isRawData"
 
 
-#FIXME: Resolve if using absolute or relative SSQ
-class _FunctionWrapper(object):
+class _FunctionWrapper():
     """Wraps a function used for optimization."""
 
     def __init__(self, function, isCollect=False):
@@ -39,7 +33,6 @@ class _FunctionWrapper(object):
         self._function = function
         self._isCollect = isCollect
         # Results
-        self.baselineSsq = self._getBaselineSSQ()
         self.perfStatistics = []  # durations of function executions
         self.ssqStatistics = []  # relative values of sum of squares
         self.rssq = 10e10
@@ -48,22 +41,6 @@ class _FunctionWrapper(object):
     @staticmethod
     def _calcSSQ(arr):
         return sum(arr**2)
-
-    def _getBaselineSSQ(self):
-        """
-        Calculates a baseline sum of squares.
-        
-        Returns
-        -------
-        float
-        """
-        inspectResult = inspect.getfullargspec(self._function)
-        if IS_RAW_DATA in inspectResult.args:
-            rawData = self._function(None, isRawData=True)
-            ssq = _FunctionWrapper._calcSSQ(rawData)
-            return ssq
-        else:
-            return np.nan
 
     def execute(self, params, **kwargs):
         if self._isCollect:
@@ -75,20 +52,17 @@ class _FunctionWrapper(object):
         if rssq < self.rssq:
             self.rssq = rssq
             self.bestParams = params.copy()
-        if np.isnan(self.baselineSsq):
-            self.baselineSsq = rssq
-        #self.ssqStatistics.append(rssq/self.baselineSsq)
         self.ssqStatistics.append(rssq)
         return result
-        
 
-class Optimizer(object):
+
+class Optimizer():
     """
     Implements an interface to optimizers with abstractions
     for multiple methods and performance reporting.
     The class also handles an oddity with lmfit that the final parameters
     returned may not be the best.
- 
+
     Usage
     -----
     optimizer = Optimizer(calcResiduals, params, [cn.METHOD_LEASTSQ])
@@ -110,7 +84,7 @@ class Optimizer(object):
         methods: list-_helpers.OptimizerMethod
         isCollect: bool
            Collects performance statistcs
-        
+
         Returns
         -------
         """
@@ -120,9 +94,6 @@ class Optimizer(object):
         self._isCollect = isCollect
         if logger is None:
             self.logger = Logger()
-        # Purely internal state
-        self._bestParameters = None
-        self._currentMethodIndex = None
         # Outputs
         self.performanceStats = []  # list of performance results
         self.qualityStats = []  # relative rssq
@@ -130,55 +101,37 @@ class Optimizer(object):
         self.minimizer = None
         self.minimizerResult = None
 
-    def optimize(self): 
+    def optimize(self):
         """
         Performs the optimization on the function.
         Result is self.params
         """
-        descriptors = []
         lastExcp = None
-        params = self._initialParams.copy()
-        for idx, optimizerMethod in enumerate(self._methods):
-            self._currentMethodIndex = idx
+        self.params = self._initialParams.copy()
+        self.minimizer = None
+        for optimizerMethod in self._methods:
             method = optimizerMethod.method
             kwargs = optimizerMethod.kwargs
             wrapperFunction = _FunctionWrapper(self._function, isCollect=self._isCollect)
-            minimizer = lmfit.Minimizer(wrapperFunction.execute, params)
+            self.minimizer = lmfit.Minimizer(wrapperFunction.execute, self.params)
             try:
-                minimizerResult = minimizer.minimize(
-                      method=method, **kwargs)
+                self.minimizerResult = self.minimizer.minimize(method=method, **kwargs)
             except Exception as excp:
                 lastExcp = excp
                 msg = "Error minimizing for method: %s" % method
                 self.logger.error(msg, excp)
                 continue
-            params = wrapperFunction.bestParams.copy()
-            parameterDescriptor = _ParameterDescriptor(
-                  params=params,
-                  method=method,
-                  rssq=wrapperFunction.rssq,
-                  kwargs=dict(kwargs),
-                  minimizer=minimizer,
-                  minimizerResult=minimizerResult,
-                  )
+            self.params = wrapperFunction.bestParams.copy()
             self.performanceStats.append(wrapperFunction.perfStatistics)
             self.qualityStats.append(wrapperFunction.ssqStatistics)
-            descriptors.append(parameterDescriptor)
-        if len(descriptors) == 0:
+        if self.minimizer is None:
             msg = "*** Optimization failed."
             self.logger.error(msg, lastExcp)
-        else:
-            # Select the result that has the smallest residuals
-            sortedMethods = sorted(descriptors, key=lambda r: r.rssq)
-            bestMethod = sortedMethods[0]
-            self.params = bestMethod.params
-            self.minimizer= bestMethod.minimizer
-            self.minimizerResult = bestMethod.minimizerResult
 
     def report(self):
         """
         Reports the result of an optimization.
-        
+
         Returns
         -------
         str
@@ -200,8 +153,7 @@ class Optimizer(object):
                 inVariableSection = False
             if inVariableSection:
                 continue
-            else:
-                trimmedReportSplit.append(line)
+            trimmedReportSplit.append(line)
         # Construct the report
         newReportSplit = [VARIABLE_STG]
         newReportSplit.extend(valuesStg.split("\n"))
@@ -231,7 +183,7 @@ class Optimizer(object):
             AVG: averages,
             })
         #
-        fig, axes = plt.subplots(1, 3)
+        _, axes = plt.subplots(1, 3)
         df.plot.bar(x=IDX, y=TOT, ax=axes[0], title="Total time",
               xlabel="method")
         df.plot.bar(x=IDX, y=AVG, ax=axes[1], title="Average time",
@@ -246,7 +198,7 @@ class Optimizer(object):
         Plots the quality results
         """
         ITERATION = "iteration"
-        fig, axes = plt.subplots(len(self._methods))
+        _, axes = plt.subplots(len(self._methods))
         minLength = min([len(v) for v in self.qualityStats])
         # Compute statistics
         dct = {self._methods[i].method: self.qualityStats[i][:minLength]
