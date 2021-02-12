@@ -86,7 +86,7 @@ class ModelFitterCore(rpickle.RPickler):
             upper bound for the fitting parameters
         parameterDct: dict
             key: parameter name
-            value: triple - (lowerVange, startingValue, upperRange)
+            value: triple - (smallestValue, largestValue, startingValue)
         fittedDataTransformDct: dict
             key: column in selectedColumns
             value: function of the data in selectedColumns;
