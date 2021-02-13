@@ -6,6 +6,7 @@
 Core logic of model fitter. Does not include plots.
 """
 
+import SBstoat
 import SBstoat._constants as cn
 from SBstoat.namedTimeseries import NamedTimeseries, TIME, mkNamedTimeseries
 from SBstoat.logs import Logger
@@ -34,14 +35,23 @@ _BestParameters = collections.namedtuple("_BestParameters",
       "params rssq")  #  parameters, residuals sum of squares
 
 
-
 ##############################
-class ParameterSpecification():
+class Parameter():
 
-    def __init__(self, lower=None, value=None, upper=None):
+    def __init__(self, name, lower=PARAMETER_LOWER_BOUND,
+              value=None, upper=PARAMETER_UPPER_BOUND):
+        self.name = name
         self.lower = lower
-        self.value = value
         self.upper = upper
+        self.value = value
+        if value is None:
+            self.value = (lower + upper)/2.0
+
+    def copy(self, name=None):
+        if name is None:
+            name = self.name
+        return Parameter(name, lower=self.lower, upper=self.upper,
+              value=self.value)
 
 
 class ModelFitterCore(rpickle.RPickler):
@@ -54,7 +64,6 @@ class ModelFitterCore(rpickle.RPickler):
           bootstrapMethods=None,
           parameterLowerBound=PARAMETER_LOWER_BOUND,
           parameterUpperBound=PARAMETER_UPPER_BOUND,
-          parameterDct=None,
           fittedDataTransformDct=None,
           logger=Logger(),
           isPlot=True,
@@ -74,7 +83,7 @@ class ModelFitterCore(rpickle.RPickler):
             roadrunner model or antimony model
         observedData: NamedTimeseries/str
             str: path to CSV file
-        parametersToFit: list-str/None
+        parametersToFit: list-str/SBstoat.Parameter/None
             parameters in the model that you want to fit
             if None, no parameters are fit
         selectedColumns: list-str
@@ -84,9 +93,6 @@ class ModelFitterCore(rpickle.RPickler):
             lower bound for the fitting parameters
         parameterUpperBound: float
             upper bound for the fitting parameters
-        parameterDct: dict
-            key: parameter name
-            value: triple - (smallestValue, largestValue, startingValue)
         fittedDataTransformDct: dict
             key: column in selectedColumns
             value: function of the data in selectedColumns;
@@ -106,11 +112,11 @@ class ModelFitterCore(rpickle.RPickler):
 
         Usage
         -----
-        parameterDct = {
-            "k1": (1, 5, 10),  # name of parameter: low value, initial, high
-            "k2": (2, 3, 6)}
+        parametersToFit = [SBstoat.Parameter("k1", lower=1, upper=10, value=5),
+                           SBstoat.Parameter("k2", lower=2, upper=6, value=3),
+                          ]
         ftter = ModelFitter(roadrunnerModel, "observed.csv",
-            parameterDct=parameterDct)
+            parametersToFit=parametersToFit)
         fitter.fitModel()  # Do the fit
         fitter.bootstrap()  # Estimate parameter variance with bootstrap
         """
@@ -127,10 +133,7 @@ class ModelFitterCore(rpickle.RPickler):
                   maxProcess=maxProcess,
                   serializePath=serializePath,
                   )
-            self.parameterDct = ModelFitterCore._updateParameterDct(parameterDct)
             self._numFitRepeat = numFitRepeat
-            if self.parametersToFit is None:
-                self.parametersToFit = list(self.parameterDct.keys())
             self.observedTS = observedData
             if self.observedTS is not None:
                 self.observedTS = mkNamedTimeseries(observedData)
@@ -206,9 +209,9 @@ class ModelFitterCore(rpickle.RPickler):
         return results
 
 
+    # TESTME: handle SBsotat.Parameter
     @classmethod
-    def mkParameters(cls, parameterDct:dict=None,
-          parametersToFit:list=None,
+    def mkParameters(cls, parametersToFit:list,
           logger:Logger=Logger(),
           lowerBound:float=PARAMETER_LOWER_BOUND,
           upperBound:float=PARAMETER_UPPER_BOUND)->lmfit.Parameters:
@@ -217,8 +220,7 @@ class ModelFitterCore(rpickle.RPickler):
 
         Parameters
         ----------
-        parameterDct: key=name, value=ParameterSpecification
-        parametersToFit: list of parameters to fit
+        parametersToFit: list-Parameter/list-str
         logger: error logger
         lowerBound: lower value of range for parameters
         upperBound: upper value of range for parameters
@@ -227,47 +229,43 @@ class ModelFitterCore(rpickle.RPickler):
         -------
         lmfit.Parameters
         """
-        def getValue(value, base_value, multiplier):
-            if value is not None:
-                return value
-            return base_value*multiplier
+        def getValue(boundaryValue, value, multiplier):
+            # Adjusts the boundary value if needed
+            if np.isclose(value, boundaryValue):
+                return boundaryValue*multiplier
+            return boundaryValue
         #
-        if (parametersToFit is None) and (parameterDct is None):
-            raise RuntimeError("Must specify one of these parameters.")
-        if parameterDct is None:
-            parameterDct = {}
-        if parametersToFit is None:
-            parametersToFit = parameterDct.keys()
+        if len(parametersToFit) == 0:
+            raise RuntimeError("Must specify at least one parameter.")
         if logger is None:
             logger = logger()
-        params = lmfit.Parameters()
-        for parameterName in parametersToFit:
-            if parameterName in parameterDct.keys():
-                specification = parameterDct[parameterName]
-                value = getValue(specification.value, specification.value, 1.0)
-                if value > 0:
-                    lower_factor = LOWER_PARAMETER_MULT
-                    upper_factor = UPPER_PARAMETER_MULT
-                else:
-                    upper_factor = UPPER_PARAMETER_MULT
-                    lower_factor = LOWER_PARAMETER_MULT
-                lower = getValue(specification.lower, specification.value,
-                      lower_factor)
-                upper = getValue(specification.upper, specification.value,
-                      upper_factor)
-                if np.isclose(lower - upper, 0):
-                    upper = 0.0001
-                try:
-                    params.add(parameterName, value=value, min=lower, max=upper)
-                except Exception as err:
-                    msg = "modelFitterCore/mkParameters parameterName %s" \
-                          % parameterName
-                    logger.error(msg, err)
+        lmfitParameters = lmfit.Parameters()
+        # Process each parameter
+        for element in parametersToFit:
+            # Get the lower bound, upper bound, and initial value for the parameter
+            if isinstance(element, SBstoat.Parameter):
+                parameterName = element.name
+                lower = element.lower
+                upper = element.upper
+                value = element.value
             else:
-                value = np.mean([lowerBound, upperBound])
-                params.add(parameterName, value=value,
-                      min=lowerBound, max=upperBound)
-        return params
+                parameterName = element
+                lower = PARAMETER_LOWER_BOUND
+                upper = PARAMETER_UPPER_BOUND
+                value = (lower + upper) /2
+            # Ensure that bounds are wide enough
+            if value > 0:
+                lower_factor = LOWER_PARAMETER_MULT
+                upper_factor = UPPER_PARAMETER_MULT
+            else:
+                upper_factor = UPPER_PARAMETER_MULT
+                lower_factor = LOWER_PARAMETER_MULT
+            newLower = getValue(lower, value, lower_factor)
+            newUpper = getValue(upper, value, upper_factor)
+            #
+            lmfitParameters.add(parameterName, value=value,
+                  min=newLower, max=newUpper)
+        return lmfitParameters 
 
     @classmethod
     def initializeRoadrunnerModel(cls, modelSpecification):
@@ -435,41 +433,6 @@ class ModelFitterCore(rpickle.RPickler):
                     fittedTS[column] = func(fittedTS)
         return fittedTS
 
-    @staticmethod
-    def _updateParameterDct(parameterDct):
-        """
-        Handles values that are tuples instead of ParameterSpecification.
-        """
-        if parameterDct is None:
-            parameterDct = {}
-        dct = dict(parameterDct)
-        for name, value in parameterDct.items():
-            if isinstance(value, tuple):
-                dct[name] = ParameterSpecification(lower=value[0],
-                      upper=value[1], value=value[2])
-        return dct
-
-    @staticmethod
-    def addParameter(parameterDct: dict,
-          name: str, lower: float, upper: float, value: float):
-        """
-        Adds a parameter to a list of parameters.
-
-        Parameters
-        ----------
-        parameterDct: parameter dictionary to agument
-        name: parameter name
-        lower: lower range of parameter value
-        upper: upper range of parameter value
-        value: initial value
-
-        Returns
-        -------
-        dict
-        """
-        parameterDct[name] = ParameterSpecification(
-              lower=lower, upper=upper, value=value)
-
     def _adjustNames(self, antimonyModel:str, observedTS:NamedTimeseries)  \
           ->typing.Tuple[NamedTimeseries, list]:
         """
@@ -536,7 +499,6 @@ class ModelFitterCore(rpickle.RPickler):
               bootstrapMethods=self._bootstrapMethods,
               parameterLowerBound=self.lowerBound,
               parameterUpperBound=self.upperBound,
-              parameterDct=copy.deepcopy(self.parameterDct),
               fittedDataTransformDct=copy.deepcopy(self.fittedDataTransformDct),
               logger=logger,
               isPlot=self._isPlot)
@@ -561,9 +523,7 @@ class ModelFitterCore(rpickle.RPickler):
 
         Returns
         -------
-        dict:
-            key: parameter name
-            value: value of parameter
+        list-SBstoat.Parameter
         """
         dct = {}
         self.initializeRoadRunnerModel()
@@ -773,22 +733,21 @@ class ModelFitterCore(rpickle.RPickler):
         ModelFitterCore.setupModel(self.roadrunnerModel, parameters,
               logger=self.logger)
 
-    def mkParams(self, parameterDct:dict=None)->lmfit.Parameters:
+    def mkParams(self, parametersToFit:list=None)->lmfit.Parameters:
         """
         Constructs lmfit parameters based on specifications.
 
         Parameters
         ----------
-        parameterDct: key=name, value=ParameterSpecification
+        parametersToFit: list-Parameter
 
         Returns
         -------
         lmfit.Parameters
         """
-        if parameterDct is None:
-            parameterDct = self.parameterDct
-        return ModelFitterCore.mkParameters(parameterDct,
-              parametersToFit=self.parametersToFit,
+        if parametersToFit is None:
+            parametersToFit = self.parametersToFit
+        return ModelFitterCore.mkParameters(parametersToFit,
               logger=self.logger,
               lowerBound=self.lowerBound,
               upperBound=self.upperBound)

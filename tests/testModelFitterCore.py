@@ -6,6 +6,7 @@ Created on Tue Aug 19, 2020
 @author: joseph-hellerstein
 """
 
+import SBstoat
 import SBstoat._modelFitterCore as mf
 import SBstoat._constants as cn
 from SBstoat.modelFitter import ModelFitter
@@ -18,6 +19,7 @@ from tests import _testHelpers as th
 from tests import _testConstants as tcn
 
 import copy
+import lmfit
 import numpy as np
 import os
 import tellurium
@@ -32,7 +34,7 @@ FILE_SERIALIZE = os.path.join(DIR, "modelFitterCore.pcl")
 FILES = [FILE_SERIALIZE]
 WOLF_MODEL = os.path.join(DIR, "Jana_WolfGlycolysis.antimony")
 WOLF_DATA = os.path.join(DIR, "wolf_data.csv")
-        
+
 
 class TestModelFitterCore(unittest.TestCase):
 
@@ -45,7 +47,7 @@ class TestModelFitterCore(unittest.TestCase):
         self._remove()
         self.timeseries = copy.deepcopy(TIMESERIES)
         self.fitter = th.getFitter(cls=ModelFitterCore)
-    
+
     def tearDown(self):
         self._remove()
 
@@ -114,6 +116,8 @@ class TestModelFitterCore(unittest.TestCase):
         self.assertEqual(len(arr), length)
 
     def checkParameterValues(self):
+        if IGNORE_TEST:
+            return
         dct = self.fitter.params.valuesdict()
         self.assertEqual(len(dct), len(self.fitter.parametersToFit))
         #
@@ -125,50 +129,8 @@ class TestModelFitterCore(unittest.TestCase):
         if IGNORE_TEST:
             return
         self._init()
-        LOWER = -10
-        UPPER = -1
-        VALUE = -5
-        NEW_SPECIFICATION = mf.ParameterSpecification(
-              lower=LOWER,
-              upper=UPPER,
-              value=VALUE)
-        DEFAULT_SPECIFICATION = mf.ParameterSpecification(
-              lower=mf.PARAMETER_LOWER_BOUND,
-              upper=mf.PARAMETER_UPPER_BOUND,
-              value=(mf.PARAMETER_LOWER_BOUND+mf.PARAMETER_UPPER_BOUND)/2,
-              )
-        def test(params, exceptions=[]):
-            def check(parameter, specification):
-                self.assertEqual(parameter.min, specification.lower)
-                self.assertEqual(parameter.max, specification.upper)
-                self.assertEqual(parameter.value, specification.value)
-            #
-            names = params.valuesdict().keys()
-            for name in names:
-                parameter = params.get(name)
-                if name in exceptions:
-                    check(parameter, NEW_SPECIFICATION)
-                else:
-                    check(parameter, DEFAULT_SPECIFICATION)
-        #
-        fitter = ModelFitterCore(
-              self.fitter.modelSpecification,
-              self.fitter.observedTS,
-              parameterDct={"k1": NEW_SPECIFICATION},
-              )
-        params = fitter.mkParams()
-        test(params, exceptions=["k1"])
-        #
-        params = self.fitter.mkParams()
-        test(params, [])
-        #
-        fitter = ModelFitterCore(
-              self.fitter.modelSpecification,
-              self.fitter.observedTS,
-              parameterDct={"k1": (LOWER, UPPER, VALUE)},
-              )
-        params = fitter.mkParams()
-        test(params, exceptions=["k1"])
+        params = self.fitter.mkParams(["k1"])
+        self.assertTrue(isinstance(params, lmfit.Parameters))
 
     def testFit1(self):
         if IGNORE_TEST:
@@ -316,31 +278,29 @@ class TestModelFitterCore(unittest.TestCase):
         if IGNORE_TEST:
             return
         fitter = self.getFitter()
-        parameterDct = self.fitter.getDefaultParameterValues()
-        for name in parameterDct.keys():
-            self.assertEqual(parameterDct[name], th.PARAMETER_DCT[name])
+        parameterValueDct = self.fitter.getDefaultParameterValues()
+        for name in parameterValueDct.keys():
+            self.assertEqual(parameterValueDct[name], th.PARAMETER_DCT[name])
 
     def testWolfBug(self):
         if IGNORE_TEST:
             return
-        fullDct = {
-           #"J1_n": (1, 1, 8),  # 4
-           #"J4_kp": (3600, 36000, 150000),  #76411
-           #"J5_k": (10, 10, 160),  # 80
-           #"J6_k": (1, 1, 10),  # 9.7
-           "J9_k": (1, 50, 50),   # 28
-           }
-        for parameter in fullDct.keys():
-            logger = Logger(logLevel=LEVEL_MAX)
-            logger = Logger()
-            ts = NamedTimeseries(csvPath=WOLF_DATA)
-            parameterDct = {parameter: fullDct[parameter]}
-            fitter = ModelFitter(WOLF_MODEL, ts[0:100],
-                  parameterDct=parameterDct,
-                  logger=logger, fitterMethods=[
-                         "differential_evolution", "leastsq"]) 
-            fitter.fitModel()
-            self.assertTrue("J9_k" in fitter.reportFit())
+        parametersToFit= [
+           SBstoat.Parameter("J1_n", lower=1, value=1, upper=8),  # 4
+           SBstoat.Parameter("J4_kp", lower=3600, value=36000, upper=150000),  #76411
+           SBstoat.Parameter("J5_k", lower=10, value=10, upper=160),  # 80
+           SBstoat.Parameter("J6_k", lower=1, value=1, upper=10),  # 9.7
+           SBstoat.Parameter("J9_k", lower=1, value=50, upper=50),   # 28
+           ]
+        ts = NamedTimeseries(csvPath=WOLF_DATA)
+        fitter = ModelFitter(WOLF_MODEL, ts,
+              parametersToFit=parametersToFit,
+              fitterMethods=[
+                     "differential_evolution", "leastsq"])
+        fitter.fitModel()
+        # FIXME: Add checks for parameter ranges
+        for name in [p.name for p in parametersToFit]:
+            self.assertTrue(name in fitter.reportFit())
 
     def testMikeBug(self):
         if IGNORE_TEST:
@@ -363,16 +323,16 @@ class TestModelFitterCore(unittest.TestCase):
         function Fiii(v, ri1, ri2, ri3, kf, kr, i1, i2, i3, s, p, Kmi1, Kmi2, Kmi3, Kms, Kmp, wi1, wi2, wi3, ms, mp)
             ((ri1+(1-ri1)*(1/(1+i1/Kmi1)))^wi1) * ((ri2+(1-ri2)*(1/(1+i2/Kmi2)))^wi2) * ((ri3+(1-ri3)*(1/(1+i3/Kmi3)))^wi3) * (kf*(s/Kms)^ms-kr*(p/Kmp)^mp)/((1+(s/Kms))^ms+(1+(p/Kmp))^mp-1)
         end
-        
+
         model modular_EGFR_current_128()
-        
-        
+
+
         // Reactions
         FreeLigand: -> L; Fa(v_0, ra_0, kf_0, kr_0, Lp, E, L, Kma_0, Kms_0, Kmp_0, wa_0, ms_0, mp_0);
         Phosphotyrosine: -> P; Fi(v_1, ri_1, kf_1, kr_1, Mig6, L, P, Kmi_1, Kms_1, Kmp_1, wi_1, ms_1, mp_1);
         Ras: -> R; Fiii(v_2, ri1_2, ri2_2, ri3_2, kf_2, kr_2, Spry2, P, E, P, R, Kmi1_2, Kmi2_2, Kmi3_2, Kms_2, Kmp_2, wi1_2, wi2_2, wi3_2, ms_2, mp_2);
         Erk: -> E; F0(v_3, kf_3, kr_3, R, E, Kms_3, Kmp_3, ms_3, mp_3);
-        
+
         // Species IVs
         Lp = 100;
         E = 0;
@@ -381,7 +341,7 @@ class TestModelFitterCore(unittest.TestCase):
         P = 0;
         Spry2 = 10000;
         R = 0;
-        
+
         // Parameter values
         v_0 = 1;
         ra_0 = 1;
@@ -426,7 +386,7 @@ class TestModelFitterCore(unittest.TestCase):
         Kmp_3 = 1;
         ms_3 = 1;
         mp_3 = 1;
-    
+
         end
         ''')
         observedPath = os.path.join(DIR, "mike_bug.csv")
@@ -450,7 +410,20 @@ class TestModelFitterCore(unittest.TestCase):
         fitter1 = self._makeMikeModel(fitterMethods=[METHOD_NAME])
         fitter2 = self._makeMikeModel(fitterMethods=[optimizerMethod])
         self.assertTrue(True) # Smoke test
-        
+
+    def testMkParameters(self):
+        if IGNORE_TEST:
+            return
+        NAMES = ["a", "b"]
+        def test(parametersToFit):
+            result = ModelFitterCore.mkParameters(parametersToFit=parametersToFit)
+            self.assertTrue(isinstance(result, lmfit.Parameters))
+            self.assertEqual(len(result.valuesdict()), len(parametersToFit))
+        #
+        test(NAMES)
+        parametersToFit = [SBstoat.Parameter(n, value=1) for n in NAMES]
+        test(parametersToFit)
+
 
 if __name__ == '__main__':
     unittest.main()

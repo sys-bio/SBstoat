@@ -184,7 +184,7 @@ class BootstrapResult(rpickle.RPickler):
             parameterDct = {}
             for name in dct.keys():
                 value = dct[name]
-                parameterDct[name] = mfc.ParameterSpecification(
+                parameterDct[name] = mfc.Parameter(
                       lower=value*0.9, value=value, upper=value*1.1)
             params = self.fitter.mkParams(parameterDct=parameterDct)
             results.append(params)
