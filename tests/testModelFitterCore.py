@@ -285,6 +285,13 @@ class TestModelFitterCore(unittest.TestCase):
     def testWolfBug(self):
         if IGNORE_TEST:
             return
+        trueParameterDct = {
+              "J1_n": 4,
+              "J4_kp": 76411,
+              "J5_k": 80,
+              "J6_k": 9.7,
+              "J9_k": 28,
+              }
         parametersToFit= [
            SBstoat.Parameter("J1_n", lower=1, value=1, upper=8),  # 4
            SBstoat.Parameter("J4_kp", lower=3600, value=36000, upper=150000),  #76411
@@ -298,8 +305,10 @@ class TestModelFitterCore(unittest.TestCase):
               fitterMethods=[
                      "differential_evolution", "leastsq"])
         fitter.fitModel()
-        # FIXME: Add checks for parameter ranges
         for name in [p.name for p in parametersToFit]:
+            expected = trueParameterDct[name]
+            actual = fitter.params.valuesdict()[name]
+            self.assertLess(np.abs(np.log10(expected) - np.log10(actual)), 1.0)
             self.assertTrue(name in fitter.reportFit())
 
     def testMikeBug(self):
@@ -397,7 +406,7 @@ class TestModelFitterCore(unittest.TestCase):
          "Kmi1_2", "Kmi2_2", "Kmi3_2", "Kms_2", "Kmp_2", "wi1_2", "wi2_2", "wi3_2",
          "ms_2", "mp_2", "v_3", "kf_3", "kr_3", "Kms_3", "Kmp_3", "ms_3", "mp_3"],
          **kwargs)
-        fitter.fitModel()
+        fitter.fitModel(max_nfev=10)
         return fitter
 
     def testOptimizerMethod(self):
