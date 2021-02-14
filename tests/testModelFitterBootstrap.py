@@ -10,20 +10,15 @@ import SBstoat
 from SBstoat import _modelFitterBootstrap as mfb
 from SBstoat.modelStudy import ModelStudy
 from SBstoat import logs
-from SBstoat.namedTimeseries import NamedTimeseries, TIME
+from SBstoat.namedTimeseries import NamedTimeseries
 from tests import _testHelpers as th
 from SBstoat.observationSynthesizer import  \
-      ObservationSynthesizerRandomizedResiduals,  \
       ObservationSynthesizerRandomErrors
 from tests import _testConstants as tcn
 
-import copy
-import lmfit
 import matplotlib
 import numpy as np
 import os
-import pandas as pd
-import pickle
 import time
 import unittest
 
@@ -69,7 +64,7 @@ class TestModelFitterBootstrap(unittest.TestCase):
         self.timeseries = TIMESERIES
         self.fitter = FITTER
         self.fitter.bootstrapResult = None
-    
+
     def tearDown(self):
         self._remove()
 
@@ -83,13 +78,13 @@ class TestModelFitterBootstrap(unittest.TestCase):
         self._init()
         NUM_ITERATION = 10
         MAX_DIFF = 4
-        arguments = mfb._Arguments(self.fitter, 1, 0, 
+        arguments = mfb._Arguments(self.fitter, 1, 0,
               synthesizerClass=ObservationSynthesizerRandomErrors,
               std=0.01)
         arguments.numIteration = NUM_ITERATION
         bootstrapResult = mfb._runBootstrap(arguments)
         self.assertEqual(bootstrapResult.numIteration, NUM_ITERATION)
-        trues = [len(v)==NUM_ITERATION for _, v in 
+        trues = [len(v)==NUM_ITERATION for _, v in
               bootstrapResult.parameterDct.items()]
         self.assertTrue(all(trues))
         # Test not too far from true values
@@ -104,15 +99,13 @@ class TestModelFitterBootstrap(unittest.TestCase):
         for value in dct.values():
             self.assertTrue(isinstance(value, float))
         return dct
-        
+
     def testGetMeanParameters(self):
         if IGNORE_TEST:
             return
-        values = self.fitter.getParameterMeans()
         _ = self.checkParameterValues()
         #
         self.fitter.bootstrap(numIteration=5)
-        values = self.fitter.getParameterMeans()
         _ = self.checkParameterValues()
 
     def testBoostrapTimeMultiprocessing(self):
@@ -181,6 +174,8 @@ class TestModelFitterBootstrap(unittest.TestCase):
     def testGetParameter(self):
         if IGNORE_TEST:
             return
+        self._init()
+        self.fitter.bootstrap()
         NUM_STD = 10
         result = self.fitter.bootstrapResult
         for p in self.fitter.parametersToFit:
@@ -193,12 +188,8 @@ class TestModelFitterBootstrap(unittest.TestCase):
             self.assertTrue(isLowerOk)
             self.assertTrue(isUpperOk)
         self.assertIsNotNone(self.fitter.bootstrapResult)
-        #
-        fitter = mfb.ModelFitterBootstrap.deserialize(FILE_SERIALIZE,
-              logger=LOGGER)
-        self.assertIsNotNone(fitter.bootstrapResult)
 
-    def testGetParameter(self):
+    def testGetParameter1(self):
         if IGNORE_TEST:
             return
         # Smoke test
@@ -238,41 +229,41 @@ class TestModelFitterBootstrap(unittest.TestCase):
             E2: E -> I ; kappa*E ;  // Exposed cells to infected
             E3: -> V ; p*I ;        // Virus production by infected cells
             E4: V -> ; c*V ;        // Virus clearance
-            E5: I -> ; delta*I      // Death of infected cells    
-        
+            E5: I -> ; delta*I      // Death of infected cells
+
             // Parameters - from the Influenza article,
-                
+
             beta = 3.2e-5;  // rate of transition of target(T) to exposed(E) cells, in units of 1/[V] * 1/day
             kappa = 4.0;    // rate of transition from exposed(E) to infected(I) cells, in units of 1/day
             delta = 5.2;    // rate of death of infected cells(I), in units of 1/day
             p = 4.6e-2;     // rate virus(V) producion by infected cells(I), in units of [V]/day
             c = 5.2;        // rate of virus clearance, in units of 1/day
-        
+
             // Initial conditions
             T = 4E+8 // estimate of the total number of susceptible epithelial cells
                      // in upper respiratory tract)
             E = 0
             I = 0
             V = 0.75 // the dose of virus in TCID50 in Influenza experiment; could be V=0 and I = 20 instead for a natural infection
-            
+
             // Computed values
             log10V := log10(V)
-        
+
         '''
         dataSource = self.mkTimeSeries(values, "log10V")
-        parameterDct = dict(
-              beta=(0, 10e-5, 3.2e-5),
-              kappa=(0, 10, 4.0),
-              delta=(0, 10, 5.2),
-              p=(0, 1, 4.6e-2),
-              c=(0, 10, 5.2),
-              )
+        parametersToFit = [
+              SBstoat.Parameter("beta", lower=0, upper=10e-5, value=3.2e-5),
+              SBstoat.Parameter("kappa", lower=0,  upper=10, value=4.0),
+              SBstoat.Parameter("delta", lower=0,  upper=10, value=5.2),
+              SBstoat.Parameter("p", lower=0,  upper=1, value=4.6e-2),
+              SBstoat.Parameter("c", lower=0,  upper=10, value=5.2),
+              ]
         if IGNORE_TEST:
             logger = logs.Logger(logLevel=logs.LEVEL_MAX)
         else:
             logger = LOGGER
         study = ModelStudy(ANTIMONY_MODEL, [dataSource],
-                    parameterDct=parameterDct,
+                    parametersToFit=parametersToFit,
                     selectedColumns=["log10V"],
                     doSerialize=False, useSerialized=False,
                     logger=logger)
@@ -281,7 +272,7 @@ class TestModelFitterBootstrap(unittest.TestCase):
         if IS_PLOT and (fitter.bootstrapResult is not None):
             study.plotFitAll()
         fitter = study.fitterDct["src_1"]
-        for name in parameterDct.keys():
+        for name in [p.name for p in parametersToFit]:
             if fitter.bootstrapResult is not None:
                 value = fitter.bootstrapResult.params.valuesdict()[name]
                 self.assertIsNotNone(value)
@@ -295,11 +286,11 @@ class TestModelFitterBootstrap(unittest.TestCase):
     def testNanBug(self):
         if IGNORE_TEST:
             return
-        values =  [np.nan, np.nan, np.nan, 7.880300e+00, 3.990000e+00, 
+        values =  [np.nan, np.nan, np.nan, 7.880300e+00, 3.990000e+00,
                    2.496500e-15, 1.246900e+00, 3.142100e+00,
                    1.845400e+00, 2.693300e+00, 1.122200e+00, 2.020000e+00,
                    2.496500e-15, 3.167100e+00,
-                   -2.493800e-02, -2.493800e-02, 2.496500e-15, 
+                   -2.493800e-02, -2.493800e-02, 2.496500e-15,
                    2.493800e-02, -2.493800e-02, 2.496500e-15,
                    2.496500e-15, 2.496500e-15, np.nan, np.nan, np.nan,
                    np.nan, np.nan, np.nan]
@@ -307,4 +298,6 @@ class TestModelFitterBootstrap(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    if IS_PLOT:
+        matplotlib.use('TkAgg')
     unittest.main()

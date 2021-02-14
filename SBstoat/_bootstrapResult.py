@@ -8,6 +8,7 @@ Container for the results of bootstrapping. Provides
 metrics that are calculated from the results.
 """
 
+import SBstoat
 from SBstoat.timeseriesStatistic import TimeseriesStatistic
 from SBstoat.logs import Logger
 from SBstoat import rpickle
@@ -181,12 +182,12 @@ class BootstrapResult(rpickle.RPickler):
         dcts = df_sample.to_dict('records')
         results = []
         for dct in dcts:
-            parameterDct = {}
+            parametersToFit = []
             for name in dct.keys():
                 value = dct[name]
-                parameterDct[name] = mfc.Parameter(
-                      lower=value*0.9, value=value, upper=value*1.1)
-            params = self.fitter.mkParams(parameterDct=parameterDct)
+                parametersToFit.append(SBstoat.Parameter(name,
+                      lower=value*0.9, value=value, upper=value*1.1))
+            params = self.fitter.mkParams(parametersToFit)
             results.append(params)
         return results
 

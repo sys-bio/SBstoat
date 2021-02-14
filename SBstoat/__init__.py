@@ -10,3 +10,5 @@ METHOD_DIFFERENTIAL_EVOLUTION = SBstoat._constants.METHOD_DIFFERENTIAL_EVOLUTION
 METHOD_LEASTSQ = SBstoat._constants.METHOD_LEASTSQ
 class Parameter(SBstoat._modelFitterCore.Parameter):
     pass
+class OptimizerMethod(SBstoat._helpers.OptimizerMethod):
+    pass

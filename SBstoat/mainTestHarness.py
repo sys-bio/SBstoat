@@ -149,11 +149,9 @@ class Runner(object):
             if isinstance(value, list):
                 isEqual = self._isListSame(value, other.__getattribute__(key))
                 if not isEqual:
-                    import pdb; pdb.set_trace()
                     return False
             elif any([isinstance(value, t) for t in [int, str, float, bool]]):
                 if self.__getattribute__(key) != other.__getattribute__(key):
-                    import pdb; pdb.set_trace()
                     return False
             else:
                 pass

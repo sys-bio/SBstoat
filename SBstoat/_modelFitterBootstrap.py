@@ -110,7 +110,7 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
               fittedTS=fitter.fittedTS.subsetColumns(cols),
               **arguments.kwargs)
         # Initialize
-        parameterDct = {p: [] for p in fitter.parametersToFit}
+        parameterDct = {str(p): [] for p in fitter.parametersToFit}
         numSuccessIteration = 0
         lastReport = 0
         if fitter.minimizerResult is None:
@@ -128,7 +128,7 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
             fittingSetupGuid = logger.startBlock(fittingSetupBlock)
             newFitter = ModelFitterBootstrap(fitter.roadrunnerModel,
                   newObservedTS,
-                  fitter.parametersToFit,
+                  parametersToFit=fitter.parametersToFit,
                   selectedColumns=fitter.selectedColumns,
                   # Use bootstrap methods for fitting
                   fitterMethods=fitter._bootstrapMethods,
@@ -180,7 +180,8 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
                     continue
                 numSuccessIteration += 1
                 dct = newFitter.params.valuesdict()
-                [parameterDct[p].append(dct[p]) for p in fitter.parametersToFit]
+                [parameterDct[str(p)].append(dct[str(p)]) for 
+                      p in fitter.parametersToFit]
                 cols = newFitter.fittedTS.colnames
                 fittedStatistic.accumulate(newFitter.fittedTS)
                 newFitter.observedTS = synthesizer.calculate()
@@ -338,7 +339,7 @@ class ModelFitterBootstrap(mfc.ModelFitterCore):
         """
         if self._checkBootstrap(isError=False):
             return self.bootstrapResult.parameterMeanDct.values()
-        return [self.params[p].value for p in self.parametersToFit]
+        return [self.params[str(p)].value for p in self.parametersToFit]
 
     def getParameterStds(self)->typing.List[float]:
         """

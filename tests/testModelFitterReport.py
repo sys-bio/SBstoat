@@ -15,8 +15,8 @@ import os
 import unittest
 
 
-IGNORE_TEST = True
-IS_PLOT = True
+IGNORE_TEST = False
+IS_PLOT = False
 TIMESERIES = th.getTimeseries()
 FITTER = th.getFitter(cls=ModelFitterReport, isPlot=IS_PLOT)
 FITTER.fitModel()
@@ -29,7 +29,8 @@ class TestModelFitter(unittest.TestCase):
         self.fitter = FITTER
 
     def testReportFit(self):
-        # TESTING
+        if IGNORE_TEST:
+            return
         result = self.fitter.reportFit()
 
     def testBoostrapReport(self):

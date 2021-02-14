@@ -46,6 +46,17 @@ class Parameter():
         self.value = value
         if value is None:
             self.value = (lower + upper)/2.0
+        if self.value <= self.lower:
+            self.lower = LOWER_PARAMETER_MULT*self.value
+        if self.value >= self.upper:
+            self.upper = UPPER_PARAMETER_MULT*self.value
+        if np.isclose(self.lower, 0.0):
+            self.lower = -0.001
+        if np.isclose(self.upper, 0.0):
+            self.upper = 0.001
+
+    def __str__(self):
+        return self.name
 
     def copy(self, name=None):
         if name is None:
@@ -229,12 +240,6 @@ class ModelFitterCore(rpickle.RPickler):
         -------
         lmfit.Parameters
         """
-        def getValue(boundaryValue, value, multiplier):
-            # Adjusts the boundary value if needed
-            if np.isclose(value, boundaryValue):
-                return boundaryValue*multiplier
-            return boundaryValue
-        #
         if len(parametersToFit) == 0:
             raise RuntimeError("Must specify at least one parameter.")
         if logger is None:
@@ -243,29 +248,12 @@ class ModelFitterCore(rpickle.RPickler):
         # Process each parameter
         for element in parametersToFit:
             # Get the lower bound, upper bound, and initial value for the parameter
-            if isinstance(element, SBstoat.Parameter):
-                parameterName = element.name
-                lower = element.lower
-                upper = element.upper
-                value = element.value
-            else:
-                parameterName = element
-                lower = PARAMETER_LOWER_BOUND
-                upper = PARAMETER_UPPER_BOUND
-                value = (lower + upper) /2
-            # Ensure that bounds are wide enough
-            if value > 0:
-                lower_factor = LOWER_PARAMETER_MULT
-                upper_factor = UPPER_PARAMETER_MULT
-            else:
-                upper_factor = UPPER_PARAMETER_MULT
-                lower_factor = LOWER_PARAMETER_MULT
-            newLower = getValue(lower, value, lower_factor)
-            newUpper = getValue(upper, value, upper_factor)
-            #
-            lmfitParameters.add(parameterName, value=value,
-                  min=newLower, max=newUpper)
-        return lmfitParameters 
+            if not isinstance(element, SBstoat.Parameter):
+                element = SBstoat.Parameter(element,
+                      lower=lowerBound, upper=upperBound)
+            lmfitParameters.add(element.name,
+                  min=element.lower, max=element.upper, value=element.value)
+        return lmfitParameters
 
     @classmethod
     def initializeRoadrunnerModel(cls, modelSpecification):
@@ -655,7 +643,6 @@ class ModelFitterCore(rpickle.RPickler):
         ParameterDescriptor = collections.namedtuple("ParameterDescriptor",
               "params method rssq kwargs minimizer minimizerResult")
         MAX_NFEV = "max_nfev"
-        block = Logger.join(self._loggerPrefix, "fitModel")
         self.initializeRoadRunnerModel()
         self.params = None
         if self.parametersToFit is not None:
