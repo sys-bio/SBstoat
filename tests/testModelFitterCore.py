@@ -34,6 +34,7 @@ FILE_SERIALIZE = os.path.join(DIR, "modelFitterCore.pcl")
 FILES = [FILE_SERIALIZE]
 WOLF_MODEL = os.path.join(DIR, "Jana_WolfGlycolysis.antimony")
 WOLF_DATA = os.path.join(DIR, "wolf_data.csv")
+MAX_NFEV = 10
 
 
 class TestModelFitterCore(unittest.TestCase):
@@ -116,8 +117,6 @@ class TestModelFitterCore(unittest.TestCase):
         self.assertEqual(len(arr), length)
 
     def checkParameterValues(self):
-        if IGNORE_TEST:
-            return
         dct = self.fitter.params.valuesdict()
         self.assertEqual(len(dct), len(self.fitter.parametersToFit))
         #
@@ -136,18 +135,18 @@ class TestModelFitterCore(unittest.TestCase):
         if IGNORE_TEST:
             return
         self._init()
+        self.fitter.fitModel(max_nfev=MAX_NFEV)
+        dct = self.checkParameterValues()
         def test(method):
             fitter = ModelFitterCore(th.ANTIMONY_MODEL, self.timeseries,
                   list(th.PARAMETER_DCT.keys()), fitterMethods=method)
-            fitter.fitModel()
+            fitter.fitModel(max_nfev=MAX_NFEV)
             for parameter in ["k1", "k2", "k3", "k4", "k5"]:
                 diff = np.abs(th.PARAMETER_DCT[parameter]
                       - dct[parameter])
                 frac = diff/dct[parameter]
                 self.assertLess(diff/dct[parameter], 5.0)
         #
-        self.fitter.fitModel()
-        dct = self.checkParameterValues()
         #
         for method in [cn.METHOD_LEASTSQ, cn.METHOD_BOTH,
               cn.METHOD_DIFFERENTIAL_EVOLUTION]:
@@ -164,7 +163,7 @@ class TestModelFitterCore(unittest.TestCase):
                 fitter = ModelFitterCore(th.ANTIMONY_MODEL, self.timeseries,
                       list(th.PARAMETER_DCT.keys()), fitterMethods=method,
                       numFitRepeat=numFitRepeat)
-                fitter.fitModel()
+                fitter.fitModel(max_nfev=MAX_NFEV)
                 compareDct[numFitRepeat] = self.checkParameterValues()
             for parameter in ["k1", "k2", "k3", "k4", "k5"]:
                 first = NUM_FIT_REPEATS[0]
@@ -172,7 +171,7 @@ class TestModelFitterCore(unittest.TestCase):
                 self.assertLessEqual(compareDct[first][parameter],
                       compareDct[last][parameter])
         #
-        self.fitter.fitModel()
+        self.fitter.fitModel(max_nfev=MAX_NFEV)
         dct = self.checkParameterValues()
         #
         for method in [cn.METHOD_LEASTSQ, cn.METHOD_BOTH,
@@ -192,7 +191,7 @@ class TestModelFitterCore(unittest.TestCase):
                         nanTimeseries[col][idx] = np.nan
             fitter = ModelFitterCore(th.ANTIMONY_MODEL, nanTimeseries,
                   list(th.PARAMETER_DCT.keys()), fitterMethods=method)
-            fitter.fitModel()
+            fitter.fitModel(max_nfev=MAX_NFEV)
             diff = np.abs(th.PARAMETER_DCT[PARAMETER]
                   - fitter.params.valuesdict()[PARAMETER])
             return diff
@@ -214,14 +213,14 @@ class TestModelFitterCore(unittest.TestCase):
             fitter = ModelFitterCore(th.ANTIMONY_MODEL, timeseries,
                   list(th.PARAMETER_DCT.keys()),
                   fittedDataTransformDct=fittedDataTransformDct)
-            fitter.fitModel()
+            fitter.fitModel(max_nfev=MAX_NFEV)
             for name in self.fitter.params.valuesdict().keys():
                 value1 = self.fitter.params.valuesdict()[name]
                 value2 = fitter.params.valuesdict()[name]
                 diff = np.abs(value1-value2)
                 self.assertLessEqual(diff, maxDifference)
         #
-        self.fitter.fitModel()
+        self.fitter.fitModel(max_nfev=MAX_NFEV)
         col = "S1"
         #
         func2 = lambda t: 2*t[col]
@@ -236,11 +235,11 @@ class TestModelFitterCore(unittest.TestCase):
         self._init()
         fitter1 = ModelFitterCore(th.ANTIMONY_MODEL, self.timeseries,
               list(th.PARAMETER_DCT.keys()))
-        fitter1.fitModel()
+        fitter1.fitModel(max_nfev=MAX_NFEV)
         fittedModel = fitter1.getFittedModel()
         fitter2 = ModelFitterCore(fittedModel, self.timeseries,
               list(th.PARAMETER_DCT.keys()))
-        fitter2.fitModel()
+        fitter2.fitModel(max_nfev=MAX_NFEV)
         # Should get same fit without changing the parameters
         std1 = np.var(fitter1.residualsTS.flatten())
         std2 = np.var(fitter2.residualsTS.flatten())
@@ -250,7 +249,7 @@ class TestModelFitterCore(unittest.TestCase):
 
     def getFitter(self):
         fitter = th.getFitter(cls=ModelFitter)
-        fitter.fitModel()
+        fitter.fitModel(max_nfev=MAX_NFEV)
         fitter.bootstrap(numIteration=10)
         return fitter
 
@@ -304,7 +303,7 @@ class TestModelFitterCore(unittest.TestCase):
               parametersToFit=parametersToFit,
               fitterMethods=[
                      "differential_evolution", "leastsq"])
-        fitter.fitModel()
+        fitter.fitModel(max_nfev=MAX_NFEV)
         for name in [p.name for p in parametersToFit]:
             expected = trueParameterDct[name]
             actual = fitter.params.valuesdict()[name]

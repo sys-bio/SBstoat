@@ -8,6 +8,7 @@ Core logic of model fitter. Does not include plots.
 
 import SBstoat
 import SBstoat._constants as cn
+from SBstoat._optimizer import Optimizer
 from SBstoat.namedTimeseries import NamedTimeseries, TIME, mkNamedTimeseries
 from SBstoat.logs import Logger
 import SBstoat.timeseriesPlotter as tp
@@ -640,58 +641,16 @@ class ModelFitterCore(rpickle.RPickler):
         -------
         f.fitModel()
         """
-        ParameterDescriptor = collections.namedtuple("ParameterDescriptor",
-              "params method rssq kwargs minimizer minimizerResult")
-        MAX_NFEV = "max_nfev"
         self.initializeRoadRunnerModel()
-        self.params = None
         if self.parametersToFit is not None:
             if params is None:
                 params = self.mkParams()
-            # Fit the model to the data using one or more methods.
-            # Choose the result with the lowest residual standard deviation
-            paramResults = []
-            lastExcp = None
-            for idx, optimizerMethod in enumerate(self._fitterMethods):
-                method = optimizerMethod.method
-                kwargs = optimizerMethod.kwargs
-                if MAX_NFEV not in kwargs:
-                    kwargs[MAX_NFEV] = max_nfev
-                for _ in range(self._numFitRepeat):
-                    self._bestParameters = _BestParameters(params=None, rssq=None)
-                    minimizer = lmfit.Minimizer(self.calcResiduals, params)
-                    try:
-                        minimizerResult = minimizer.minimize(
-                              method=method, **kwargs)
-                    except Exception as excp:
-                        lastExcp = excp
-                        msg = "Error minimizing for method: %s" % method
-                        self.logger.error(msg, excp)
-                        continue
-                    params = self._bestParameters.params.copy()
-                    rssq = np.sum(self.calcResiduals(params)**2)
-                    if len(paramResults) > idx:
-                        if rssq >= paramResults[idx].rssq:
-                            continue
-                    parameterDescriptor = ParameterDescriptor(
-                          params=params,
-                          method=method,
-                          rssq=rssq,
-                          kwargs=dict(kwargs),
-                          minimizer=minimizer,
-                          minimizerResult=minimizerResult,
-                          )
-                    paramResults.append(parameterDescriptor)
-            if len(paramResults) == 0:
-                msg = "*** Minimizer failed for this model and data."
-                self.logger.error(msg, lastExcp)
-            else:
-                # Select the result that has the smallest residuals
-                sortedMethods = sorted(paramResults, key=lambda r: r.rssq)
-                bestMethod = sortedMethods[0]
-                self.params = bestMethod.params
-                self.minimizer= bestMethod.minimizer
-                self.minimizerResult = bestMethod.minimizerResult
+            optimizer = Optimizer(self.calcResiduals, params,
+                  self._fitterMethods, self.logger)
+            optimizer.optimize()
+            self.params = optimizer.params.copy()
+            self.minimizer = optimizer.minimizer
+            self.minimizerResult = optimizer.minimizerResult
         # Ensure that residualsTS and fittedTS match the parameters
         self.updateFittedAndResiduals(params=self.params)
 
