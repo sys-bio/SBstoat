@@ -12,6 +12,7 @@ date         Version         numIteration    numProcess  Time (sec)
 11/30/2020   1.1             10,000          5           110.0
 12/06/2020   1.1             10,000          5            18.1
 02/03/2021*  1.3             10,000          5            33.6
+02/15/2021*  1.4             10,000          5            30.9
 
 *Using only leastsq, 100 function evaluations
 """
@@ -53,7 +54,7 @@ def main(numIteration):
     float: time in seconds
     """
     logger = logs.Logger(logLevel=logs.LEVEL_STATUS, logPerformance=IS_TEST)
-    optimizerMethod = _helpers.OptimizerMethod(SBstoat.METHOD_LEASTSQ,
+    optimizerMethod = SBstoat.OptimizerMethod(SBstoat.METHOD_LEASTSQ,
           {"max_nfev": 100})
     fitter = mf.ModelFitter(MODEL, BENCHMARK_PATH,
           ["k1", "k2"], selectedColumns=['S1', 'S3'], isPlot=IS_PLOT,

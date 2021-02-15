@@ -201,34 +201,6 @@ class TestModelFitterCore(unittest.TestCase):
         condition = (diff1 < diff2) or (np.abs(diff2 - diff1) < 1)
         self.assertTrue(condition)
 
-    # FIXME
-    def testFitDataTransformDct(self):
-        return
-        if IGNORE_TEST:
-            return
-        def test(col, func, maxDifference=0.0):
-            timeseries = self.timeseries.copy()
-            timeseries[col] = func(timeseries)
-            fittedDataTransformDct = {col: func}
-            fitter = ModelFitterCore(th.ANTIMONY_MODEL, timeseries,
-                  list(th.PARAMETER_DCT.keys()),
-                  fittedDataTransformDct=fittedDataTransformDct)
-            fitter.fitModel(max_nfev=MAX_NFEV)
-            for name in self.fitter.params.valuesdict().keys():
-                value1 = self.fitter.params.valuesdict()[name]
-                value2 = fitter.params.valuesdict()[name]
-                diff = np.abs(value1-value2)
-                self.assertLessEqual(diff, maxDifference)
-        #
-        self.fitter.fitModel(max_nfev=MAX_NFEV)
-        col = "S1"
-        #
-        func2 = lambda t: 2*t[col]
-        test(col, func2, maxDifference=0.3)
-        #
-        func1 = lambda t: t[col]
-        test(col, func1)
-
     def testGetFittedModel(self):
         if IGNORE_TEST:
             return

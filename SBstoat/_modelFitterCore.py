@@ -76,7 +76,6 @@ class ModelFitterCore(rpickle.RPickler):
           bootstrapMethods=None,
           parameterLowerBound=PARAMETER_LOWER_BOUND,
           parameterUpperBound=PARAMETER_UPPER_BOUND,
-          fittedDataTransformDct=None,
           logger=Logger(),
           isPlot=True,
           _loggerPrefix="",
@@ -105,11 +104,6 @@ class ModelFitterCore(rpickle.RPickler):
             lower bound for the fitting parameters
         parameterUpperBound: float
             upper bound for the fitting parameters
-        fittedDataTransformDct: dict
-            key: column in selectedColumns
-            value: function of the data in selectedColumns;
-                   input: NamedTimeseries
-                   output: array for the values of the column
         logger: Logger
         fitterMethods: str/list-str/list-OptimizerMethod
             method used for minimization in fitModel
@@ -150,8 +144,6 @@ class ModelFitterCore(rpickle.RPickler):
             if self.observedTS is not None:
                 self.observedTS = mkNamedTimeseries(observedData)
             #
-            self.fittedDataTransformDct = fittedDataTransformDct
-            #
             if (selectedColumns is None) and (self.observedTS is not None):
                 selectedColumns = self.observedTS.colnames
             self.selectedColumns = selectedColumns
@@ -178,9 +170,6 @@ class ModelFitterCore(rpickle.RPickler):
             self.fittedTS = self.observedTS.copy(isInitialize=True)  # Initialize
             self.residualsTS = None  # Residuals for selectedColumns
             self.bootstrapResult = None  # Result from bootstrapping
-            # Validation checks
-            self._validateFittedDataTransformDct()
-            self._bestParameters = _BestParameters(rssq=None, params=None)
         else:
             pass
 
@@ -391,37 +380,6 @@ class ModelFitterCore(rpickle.RPickler):
         if "logger" not in self.__dict__.keys():
             self.logger = Logger()
 
-    def _validateFittedDataTransformDct(self):
-        if self.fittedDataTransformDct is not None:
-            keySet = set(self.fittedDataTransformDct.keys())
-            selectedColumnsSet = self.selectedColumns
-            if (keySet is not None) and (selectedColumnsSet is not None):
-                excess = set(keySet).difference(selectedColumnsSet)
-                if len(excess) > 0:
-                    msg = "Columns not in selectedColumns: %s"  % str(excess)
-                    raise ValueError(msg)
-
-    def _transformFittedTS(self, data):
-        """
-        Updates the fittedTS taking into account required transformations.
-
-        Parameters
-        ----------
-        data: np.ndarray
-
-        Results
-        ----------
-        NamedTimeseries
-        """
-        colnames = list(self.selectedColumns)
-        colnames.insert(0, TIME)
-        fittedTS = NamedTimeseries(array=data[:, :], colnames=colnames)
-        if self.fittedDataTransformDct is not None:
-            for column, func in self.fittedDataTransformDct.items():
-                if func is not None:
-                    fittedTS[column] = func(fittedTS)
-        return fittedTS
-
     def _adjustNames(self, antimonyModel:str, observedTS:NamedTimeseries)  \
           ->typing.Tuple[NamedTimeseries, list]:
         """
@@ -488,7 +446,6 @@ class ModelFitterCore(rpickle.RPickler):
               bootstrapMethods=self._bootstrapMethods,
               parameterLowerBound=self.lowerBound,
               parameterUpperBound=self.upperBound,
-              fittedDataTransformDct=copy.deepcopy(self.fittedDataTransformDct),
               logger=logger,
               isPlot=self._isPlot)
         if self.bootstrapResult is not None:
@@ -617,11 +574,6 @@ class ModelFitterCore(rpickle.RPickler):
         else:
             residualsArr = self._observedArr - data.flatten()
             residualsArr = np.nan_to_num(residualsArr)
-        rssq = sum(residualsArr**2)
-        if (self._bestParameters.rssq is None)  \
-              or (rssq < self._bestParameters.rssq):
-            self._bestParameters = _BestParameters(
-                  params=params.copy(), rssq=rssq)
         return residualsArr
 
     def fitModel(self, params:lmfit.Parameters=None, max_nfev:int=100):

@@ -121,7 +121,7 @@ class Optimizer():
                 msg = "Error minimizing for method: %s" % method
                 self.logger.error(msg, excp)
                 continue
-            self.params = wrapperFunction.bestParams.copy()
+            self.params = wrapperFunction.bestParams
             self.performanceStats.append(list(wrapperFunction.perfStatistics))
             self.qualityStats.append(list(wrapperFunction.rssqStatistics))
         if self.minimizer is None:

@@ -134,7 +134,6 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
                   fitterMethods=fitter._bootstrapMethods,
                   parameterLowerBound=fitter.lowerBound,
                   parameterUpperBound=fitter.upperBound,
-                  fittedDataTransformDct=fitter.fittedDataTransformDct,
                   logger=logger,
                   _loggerPrefix=iterationBlock,
                   isPlot=fitter._isPlot)
