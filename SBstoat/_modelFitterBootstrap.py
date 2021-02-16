@@ -179,7 +179,7 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
                     continue
                 numSuccessIteration += 1
                 dct = newFitter.params.valuesdict()
-                [parameterDct[str(p)].append(dct[str(p)]) for 
+                _ = [parameterDct[str(p)].append(dct[str(p)]) for
                       p in fitter.parametersToFit]
                 cols = newFitter.fittedTS.colnames
                 fittedStatistic.accumulate(newFitter.fittedTS)

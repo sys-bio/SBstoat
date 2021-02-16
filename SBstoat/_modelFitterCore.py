@@ -576,7 +576,7 @@ class ModelFitterCore(rpickle.RPickler):
             residualsArr = np.nan_to_num(residualsArr)
         return residualsArr
 
-    def fitModel(self, params:lmfit.Parameters=None, max_nfev:int=100):
+    def fitModel(self, params:lmfit.Parameters=None):
         """
         Fits the model by adjusting values of parameters based on
         differences between simulated and provided values of
@@ -586,8 +586,6 @@ class ModelFitterCore(rpickle.RPickler):
         ----------
         params: lmfit.parameters
             starting values of parameters
-        max_nfev: int
-            Maximum number of iterations for an evaluation
 
         Example
         -------
@@ -598,7 +596,7 @@ class ModelFitterCore(rpickle.RPickler):
             if params is None:
                 params = self.mkParams()
             optimizer = Optimizer(self.calcResiduals, params,
-                  self._fitterMethods, self.logger)
+                  self._fitterMethods, logger=self.logger)
             optimizer.optimize()
             self.params = optimizer.params.copy()
             self.minimizer = optimizer.minimizer

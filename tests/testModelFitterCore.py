@@ -34,7 +34,6 @@ FILE_SERIALIZE = os.path.join(DIR, "modelFitterCore.pcl")
 FILES = [FILE_SERIALIZE]
 WOLF_MODEL = os.path.join(DIR, "Jana_WolfGlycolysis.antimony")
 WOLF_DATA = os.path.join(DIR, "wolf_data.csv")
-MAX_NFEV = 10
 
 
 class TestModelFitterCore(unittest.TestCase):
@@ -135,12 +134,12 @@ class TestModelFitterCore(unittest.TestCase):
         if IGNORE_TEST:
             return
         self._init()
-        self.fitter.fitModel(max_nfev=MAX_NFEV)
+        self.fitter.fitModel()
         dct = self.checkParameterValues()
         def test(method):
             fitter = ModelFitterCore(th.ANTIMONY_MODEL, self.timeseries,
                   list(th.PARAMETER_DCT.keys()), fitterMethods=method)
-            fitter.fitModel(max_nfev=MAX_NFEV)
+            fitter.fitModel()
             for parameter in ["k1", "k2", "k3", "k4", "k5"]:
                 diff = np.abs(th.PARAMETER_DCT[parameter]
                       - dct[parameter])
@@ -163,7 +162,7 @@ class TestModelFitterCore(unittest.TestCase):
                 fitter = ModelFitterCore(th.ANTIMONY_MODEL, self.timeseries,
                       list(th.PARAMETER_DCT.keys()), fitterMethods=method,
                       numFitRepeat=numFitRepeat)
-                fitter.fitModel(max_nfev=MAX_NFEV)
+                fitter.fitModel()
                 compareDct[numFitRepeat] = self.checkParameterValues()
             for parameter in ["k1", "k2", "k3", "k4", "k5"]:
                 first = NUM_FIT_REPEATS[0]
@@ -171,7 +170,7 @@ class TestModelFitterCore(unittest.TestCase):
                 self.assertLessEqual(compareDct[first][parameter],
                       compareDct[last][parameter])
         #
-        self.fitter.fitModel(max_nfev=MAX_NFEV)
+        self.fitter.fitModel()
         dct = self.checkParameterValues()
         #
         for method in [cn.METHOD_LEASTSQ, cn.METHOD_BOTH,
@@ -191,7 +190,7 @@ class TestModelFitterCore(unittest.TestCase):
                         nanTimeseries[col][idx] = np.nan
             fitter = ModelFitterCore(th.ANTIMONY_MODEL, nanTimeseries,
                   list(th.PARAMETER_DCT.keys()), fitterMethods=method)
-            fitter.fitModel(max_nfev=MAX_NFEV)
+            fitter.fitModel()
             diff = np.abs(th.PARAMETER_DCT[PARAMETER]
                   - fitter.params.valuesdict()[PARAMETER])
             return diff
@@ -207,11 +206,11 @@ class TestModelFitterCore(unittest.TestCase):
         self._init()
         fitter1 = ModelFitterCore(th.ANTIMONY_MODEL, self.timeseries,
               list(th.PARAMETER_DCT.keys()))
-        fitter1.fitModel(max_nfev=MAX_NFEV)
+        fitter1.fitModel()
         fittedModel = fitter1.getFittedModel()
         fitter2 = ModelFitterCore(fittedModel, self.timeseries,
               list(th.PARAMETER_DCT.keys()))
-        fitter2.fitModel(max_nfev=MAX_NFEV)
+        fitter2.fitModel()
         # Should get same fit without changing the parameters
         std1 = np.var(fitter1.residualsTS.flatten())
         std2 = np.var(fitter2.residualsTS.flatten())
@@ -221,7 +220,7 @@ class TestModelFitterCore(unittest.TestCase):
 
     def getFitter(self):
         fitter = th.getFitter(cls=ModelFitter)
-        fitter.fitModel(max_nfev=MAX_NFEV)
+        fitter.fitModel()
         fitter.bootstrap(numIteration=10)
         return fitter
 
@@ -275,7 +274,7 @@ class TestModelFitterCore(unittest.TestCase):
               parametersToFit=parametersToFit,
               fitterMethods=[
                      "differential_evolution", "leastsq"])
-        fitter.fitModel(max_nfev=MAX_NFEV)
+        fitter.fitModel()
         for name in [p.name for p in parametersToFit]:
             expected = trueParameterDct[name]
             actual = fitter.params.valuesdict()[name]
@@ -377,7 +376,7 @@ class TestModelFitterCore(unittest.TestCase):
          "Kmi1_2", "Kmi2_2", "Kmi3_2", "Kms_2", "Kmp_2", "wi1_2", "wi2_2", "wi3_2",
          "ms_2", "mp_2", "v_3", "kf_3", "kr_3", "Kms_3", "Kmp_3", "ms_3", "mp_3"],
          **kwargs)
-        fitter.fitModel(max_nfev=10)
+        fitter.fitModel()
         return fitter
 
     def testOptimizerMethod(self):
