@@ -32,10 +32,6 @@ UPPER_PARAMETER_MULT = 1.05
 LARGE_RESIDUAL = 1000000
 
 
-_BestParameters = collections.namedtuple("_BestParameters",
-      "params rssq")  #  parameters, residuals sum of squares
-
-
 ##############################
 class Parameter():
 
@@ -209,8 +205,6 @@ class ModelFitterCore(rpickle.RPickler):
             raise ValueError("Invalid methods: %s" % str(methods))
         return results
 
-
-    # TESTME: handle SBsotat.Parameter
     @classmethod
     def mkParameters(cls, parametersToFit:list,
           logger:Logger=Logger(),

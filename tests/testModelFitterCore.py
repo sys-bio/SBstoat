@@ -34,6 +34,7 @@ FILE_SERIALIZE = os.path.join(DIR, "modelFitterCore.pcl")
 FILES = [FILE_SERIALIZE]
 WOLF_MODEL = os.path.join(DIR, "Jana_WolfGlycolysis.antimony")
 WOLF_DATA = os.path.join(DIR, "wolf_data.csv")
+METHODS = [SBstoat.OptimizerMethod("leastsq", {cn.MAX_NFEV: None})]
 
 
 class TestModelFitterCore(unittest.TestCase):
@@ -46,7 +47,7 @@ class TestModelFitterCore(unittest.TestCase):
     def _init(self):
         self._remove()
         self.timeseries = copy.deepcopy(TIMESERIES)
-        self.fitter = th.getFitter(cls=ModelFitterCore)
+        self.fitter = th.getFitter(cls=ModelFitterCore, fitterMethods=METHODS)
 
     def tearDown(self):
         self._remove()
@@ -270,15 +271,18 @@ class TestModelFitterCore(unittest.TestCase):
            SBstoat.Parameter("J9_k", lower=1, value=50, upper=50),   # 28
            ]
         ts = NamedTimeseries(csvPath=WOLF_DATA)
+        methods = []
+        for optName in ["differential_evolution", "leastsq"]:
+            methods.append(SBstoat.OptimizerMethod(optName,
+                  {cn.MAX_NFEV: 10}))
         fitter = ModelFitter(WOLF_MODEL, ts,
               parametersToFit=parametersToFit,
-              fitterMethods=[
-                     "differential_evolution", "leastsq"])
+              fitterMethods=methods)
         fitter.fitModel()
         for name in [p.name for p in parametersToFit]:
             expected = trueParameterDct[name]
             actual = fitter.params.valuesdict()[name]
-            self.assertLess(np.abs(np.log10(expected) - np.log10(actual)), 1.0)
+            self.assertLess(np.abs(np.log10(expected) - np.log10(actual)), 1.5)
             self.assertTrue(name in fitter.reportFit())
 
     def testMikeBug(self):
@@ -368,6 +372,12 @@ class TestModelFitterCore(unittest.TestCase):
 
         end
         ''')
+        if "fitterMethods" not in kwargs:
+            methods = []
+            for optName in ["differential_evolution", "leastsq"]:
+                methods.append(SBstoat.OptimizerMethod(optName,
+                      {cn.MAX_NFEV: 10}))
+            kwargs["fitterMethods"] = methods
         observedPath = os.path.join(DIR, "mike_bug.csv")
         fitter = ModelFitter(model, observedPath, [
          #"v_0", "ra_0", "kf_0", "kr_0", "Kma_0", "Kms_0", "Kmp_0", "wa_0", "ms_0",

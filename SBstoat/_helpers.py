@@ -2,6 +2,7 @@
 
 
 from SBstoat import _plotOptions as po
+from SBstoat import _constants as cn
 
 import copy
 import inspect
@@ -249,4 +250,4 @@ class OptimizerMethod():
 
     def __init__(self, method, kwargs):
         self.method = method
-        self.kwargs = kwargs
+        self.kwargs = dict(kwargs)

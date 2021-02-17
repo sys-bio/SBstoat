@@ -92,7 +92,8 @@ class Optimizer():
         self._methods = methods
         self._initialParams = initialParams
         self._isCollect = isCollect
-        if logger is None:
+        self.logger = logger
+        if self.logger is None:
             self.logger = Logger()
         # Outputs
         self.performanceStats = []  # list of performance results
@@ -220,7 +221,8 @@ class Optimizer():
             plt.show()
 
     @staticmethod
-    def mkOptimizerMethod(methodNames=None, methodKwargs=None, maxFev=100):
+    def mkOptimizerMethod(methodNames=None, methodKwargs=None,
+          maxFev=cn.MAX_NFEV_DFT):
         """
         Constructs an OptimizerMethod
         Parameters
@@ -242,6 +244,8 @@ class Optimizer():
         newMethodKwargs = dict(methodKwargs)
         if cn.MAX_NFEV not in newMethodKwargs.keys():
             newMethodKwargs[cn.MAX_NFEV] = maxFev
+        elif maxDev is None:
+            del newMethodKwargs[cn.MAX_NFEV]
         methodKwargs = np.repeat(newMethodKwargs, len(methodNames))
         #
         result = [_helpers.OptimizerMethod(n, k) for n, k  \
