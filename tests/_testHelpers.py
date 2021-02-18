@@ -40,6 +40,7 @@ ANTIMONY_MODEL = """
 """ % parametersStr
 DIR = os.path.dirname(os.path.abspath(__file__))
 TEST_DATA_PATH = os.path.join(DIR, "tst_data.txt")
+NUM_POINT = 30 # Number of timepoints in a simulation
 
 
 def getTimeseries():

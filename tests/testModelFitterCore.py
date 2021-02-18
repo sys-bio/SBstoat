@@ -63,7 +63,7 @@ class TestModelFitterCore(unittest.TestCase):
         self._init()
         METHOD = "dummy"
         def test(methods):
-            result = self.fitter._makeMethods(methods, None)
+            result = ModelFitter.makeMethods(methods, None)
             self.assertTrue(isinstance(result, list))
             optimizerMethod = result[0]
             self.assertEqual(optimizerMethod.method, METHOD)
@@ -75,7 +75,7 @@ class TestModelFitterCore(unittest.TestCase):
         #
         methods = _helpers.OptimizerMethod(method=METHOD,
               kwargs={"a": 1})
-        result = self.fitter._makeMethods([methods, methods], None)
+        result = ModelFitter.makeMethods([methods, methods], None)
 
     def testConstructor(self):
         if IGNORE_TEST:

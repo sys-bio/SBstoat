@@ -148,9 +148,9 @@ class ModelFitterCore(rpickle.RPickler):
             else:
                 self._observedArr = None
             # Other internal state
-            self._fitterMethods = self._makeMethods(fitterMethods,
+            self._fitterMethods = ModelFitterCore.makeMethods(fitterMethods,
                   cn.METHOD_FITTER_DEFAULTS)
-            self._bootstrapMethods = self._makeMethods(bootstrapMethods,
+            self._bootstrapMethods = ModelFitterCore.makeMethods(bootstrapMethods,
                   cn.METHOD_BOOTSTRAP_DEFAULTS)
             if isinstance(self._bootstrapMethods, str):
                 self._bootstrapMethods = [self._bootstrapMethods]
@@ -169,7 +169,8 @@ class ModelFitterCore(rpickle.RPickler):
         else:
             pass
 
-    def _makeMethods(self, methods, default):
+    @staticmethod
+    def makeMethods(methods, default):
         """
         Creates a method dictionary.
 
