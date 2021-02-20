@@ -308,6 +308,8 @@ class NamedTimeseries(rpickle.RPickler):
         isListInt = False
         isSlice = False
         isListStr = False
+        if isinstance(reference, np.ndarray):
+            reference = reference.tolist()
         if isinstance(reference, list):
             if isinstance(reference[0], str):
                 isListStr = True
