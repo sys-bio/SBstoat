@@ -313,8 +313,13 @@ class NamedTimeseries(rpickle.RPickler):
         if isinstance(reference, list):
             if isinstance(reference[0], str):
                 isListStr = True
-            elif isinstance(reference[0], int):
-                isListInt = True
+            else:
+                try:
+                    newReference = [int(r) for r in reference]
+                    isListInt = True
+                    reference = newReference
+                except ValueError:
+                    pass
         elif isinstance(reference, int):
             isInt = True
         elif isinstance(reference, slice):
