@@ -244,7 +244,7 @@ class Optimizer():
         newMethodKwargs = dict(methodKwargs)
         if cn.MAX_NFEV not in newMethodKwargs.keys():
             newMethodKwargs[cn.MAX_NFEV] = maxFev
-        elif maxDev is None:
+        elif maxFev is None:
             del newMethodKwargs[cn.MAX_NFEV]
         methodKwargs = np.repeat(newMethodKwargs, len(methodNames))
         #

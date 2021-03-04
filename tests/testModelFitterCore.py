@@ -80,6 +80,7 @@ class TestModelFitterCore(unittest.TestCase):
     def testConstructor(self):
         if IGNORE_TEST:
             return
+        self._init()
         self.assertIsNone(self.fitter.roadrunnerModel)
         self.assertGreater(len(self.fitter.observedTS), 0)
         #
@@ -89,6 +90,7 @@ class TestModelFitterCore(unittest.TestCase):
     def testrpConstruct(self):
         if IGNORE_TEST:
             return
+        self._init()
         fitter = ModelFitterCore.rpConstruct()
         def updateAttr(attr):
             if not attr in fitter.__dict__.keys():
@@ -248,6 +250,7 @@ class TestModelFitterCore(unittest.TestCase):
     def testGetDefaultParameterValues(self):
         if IGNORE_TEST:
             return
+        self._init()
         fitter = self.getFitter()
         parameterValueDct = self.fitter.getDefaultParameterValues()
         for name in parameterValueDct.keys():
@@ -392,10 +395,10 @@ class TestModelFitterCore(unittest.TestCase):
     def testOptimizerMethod(self):
         if IGNORE_TEST:
             return
-        METHOD_NAME = 'differential_evolution'
+        METHOD_NAME = 'leastsq'
         optimizerMethod = _helpers.OptimizerMethod(
             method=METHOD_NAME,
-            kwargs={ "popsize": 100, "atol": 0.001})
+            kwargs={ "atol": 0.001, "max_fev": 10})
         fitter1 = self._makeMikeModel(fitterMethods=[METHOD_NAME])
         fitter2 = self._makeMikeModel(fitterMethods=[optimizerMethod])
         self.assertTrue(True) # Smoke test
