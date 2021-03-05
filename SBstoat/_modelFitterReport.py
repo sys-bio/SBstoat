@@ -34,7 +34,7 @@ class ModelFitterReport(ModelFitterBootstrap):
         self._checkFit()
         if self.minimizerResult is None:
             raise ValueError("Must do fitModel before reportFit.")
-        ModelFitterReport.reportTheFit(self.minimizerResult, self.params)
+        return ModelFitterReport.reportTheFit(self.minimizerResult, self.params)
 
     @staticmethod
     def reportTheFit(minimizerResult, params)->str:
