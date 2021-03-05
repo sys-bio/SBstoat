@@ -22,13 +22,13 @@ except ImportError:
     pass
 
 
-IGNORE_TEST = True
-IS_PLOT = True
+IGNORE_TEST = False
+IS_PLOT = False
 NAME = "parameter"
 LOWER = 1
 UPPER = 11
 VALUE = 5
-MODEL_NAMES = ["X", "Y", "Z"]
+MODEL_NAMES = ["W", "X", "Y", "Z"]
 PARAMETER_NAMES = ["A", "B", "C"]
 LOWERS = [10, 20, 30]
 UPPERS = [100, 200, 300]
@@ -40,6 +40,12 @@ PARAMETERS_COLLECTION = [[PARAMETERS[0]], [PARAMETERS[0], PARAMETERS[2]],
 PARAMETERS_COLLECTION = [ModelFitter.mkParameters(c)
       for c in PARAMETERS_COLLECTION]
 METHODS = [SBstoat.OptimizerMethod("differential_evolution", {cn.MAX_NFEV: 100})]
+METHODS = [SBstoat.OptimizerMethod("leastsq", {cn.MAX_NFEV: 100})]
+
+
+
+def mkRepeatedList(list, repeat):
+    return [list for _ in range(repeat)]
 
 
 ################ TEST CLASSES #############
@@ -83,8 +89,9 @@ class TestParameter(unittest.TestCase):
 class TestParameterManager(unittest.TestCase):
 
     def setUp(self):
-        self.manager = sf._ParameterManager(MODEL_NAMES,
-        PARAMETERS_COLLECTION)
+        self.numModel = 3
+        self.manager = sf._ParameterManager(MODEL_NAMES[:self.numModel],
+        PARAMETERS_COLLECTION[:self.numModel])
 
     def testConstructor(self):
         if IGNORE_TEST:
@@ -95,7 +102,7 @@ class TestParameterManager(unittest.TestCase):
             diff = set(keys).symmetric_difference(dct.keys())
             self.assertEqual(len(diff), 0)
         #
-        modelNames = list(MODEL_NAMES)
+        modelNames = list(MODEL_NAMES[:self.numModel])
         modelNames.append(sf._ParameterManager.ALL)
         test(self.manager.modelDct, list, modelNames)
         test(self.manager.parameterDct, sf._Parameter, PARAMETER_NAMES)
@@ -134,22 +141,25 @@ class TestParameterManager(unittest.TestCase):
 class TestSuiteFitter(unittest.TestCase):
 
     def setUp(self):
-        self.modelSpecifications = [th.ANTIMONY_MODEL, th.ANTIMONY_MODEL,
-              th.ANTIMONY_MODEL]
-        self.datasets = [th.TEST_DATA_PATH, th.TEST_DATA_PATH,
-              th.TEST_DATA_PATH]
+        self._init()
+
+    def _init(self, numModel=3):
+        self.numModel = numModel
+        self.modelNames = MODEL_NAMES[0:numModel]
+        self.modelSpecifications = mkRepeatedList(th.ANTIMONY_MODEL, numModel)
+        self.datasets = mkRepeatedList(th.TEST_DATA_PATH, numModel)
         self.parameterNames = list(th.PARAMETER_DCT.keys())
-        self.parametersCollection = [self.parameterNames[:-1],
-              self.parameterNames[1:], [self.parameterNames[-2]]]
+        self.parameterNamesCollection = mkRepeatedList(self.parameterNames,
+              numModel)
         self.fitter = sf.SuiteFitter(self.modelSpecifications, self.datasets,
-              self.parametersCollection, modelNames=MODEL_NAMES,
+              self.parameterNamesCollection, modelNames=self.modelNames,
               fitterMethods=METHODS)
 
     def testConstructor1(self):
         if IGNORE_TEST:
             return
         parameterNames = []
-        for modelName in MODEL_NAMES:
+        for modelName in self.modelNames:
             parameterNames.extend(self.fitter.parameterManager.modelDct[modelName])
         diff = set(parameterNames).symmetric_difference(
             self.fitter.parameterManager.modelDct[sf._ParameterManager.ALL])
@@ -161,20 +171,39 @@ class TestSuiteFitter(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.fitter = sf.SuiteFitter(self.modelSpecifications,
                   self.datasets[0],
-                  self.parametersCollection, modelNames=MODEL_NAMES)
+                  self.parameterNamesCollection, modelNames=MODEL_NAMES)
 
     def testCalcResiduals(self):
         if IGNORE_TEST:
             return
         parameters = self.fitter.parameterManager.mkParameters()
         residuals = self.fitter.calcResiduals(parameters)
-        expectedSize = th.NUM_POINT*len(MODEL_NAMES)*len(th.VARIABLE_NAMES)
+        expectedSize = th.NUM_POINT*self.numModel*len(th.VARIABLE_NAMES)
         self.assertTrue(np.isclose(expectedSize, np.size(residuals)))
 
     def testFitSuite(self):
-        # TESTING
+        if IGNORE_TEST:
+            return
+        self._init(numModel=1)
+        fitter = ModelFitter(self.modelSpecifications[0],
+              self.datasets[0],
+              parametersToFit=self.parameterNamesCollection[0])
+        fitter.fitModel()
         self.fitter.fitSuite()
+        valuesDct1 = fitter.params.valuesdict()
+        valuesDct2 = self.fitter.params.valuesdict()
+        for name, value in valuesDct1.items():
+            self.assertLess(np.abs(valuesDct2[name] - value), 0.5)
 
+    def testReportFit(self):
+        if IGNORE_TEST:
+            return
+        self._init(numModel=3)
+        self.fitter.fitSuite()
+        result = self.fitter.reportFit()
+        for name in self.fitter.params.valuesdict().keys():
+            self.assertTrue(name in result)
+        
 
 if __name__ == '__main__':
     unittest.main()

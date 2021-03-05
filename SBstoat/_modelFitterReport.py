@@ -31,14 +31,34 @@ class ModelFitterReport(ModelFitterBootstrap):
         -------
         f.reportFit()
         """
-        VARIABLE_STG = "[[Variables]]"
-        CORRELATION_STG = "[[Correlations]]"
         self._checkFit()
         if self.minimizerResult is None:
             raise ValueError("Must do fitModel before reportFit.")
-        valuesDct = self.params.valuesdict()
+        ModelFitterReport.reportTheFit(self.minimizerResult, self.params)
+
+    @staticmethod
+    def reportTheFit(minimizerResult, params)->str:
+        """
+        Provides details of the parameter fit.
+
+        Parameters
+        ----------
+        minimizerResult: lmfit.MinimizerResult
+        params: lmfit.parameters
+
+        Notes:
+            1. Deletes lines about the optimization performance since the
+
+
+        Example
+        -------
+        f.reportFit()
+        """
+        VARIABLE_STG = "[[Variables]]"
+        CORRELATION_STG = "[[Correlations]]"
+        valuesDct = params.valuesdict()
         valuesStg = _helpers.ppDict(dict(valuesDct), indent=4)
-        reportSplit = str(lmfit.fit_report(self.minimizerResult)).split("\n")
+        reportSplit = str(lmfit.fit_report(minimizerResult)).split("\n")
         # Eliminate Variables section
         inVariableSection = False
         trimmedReportSplit = []
