@@ -212,7 +212,10 @@ class Optimizer():
         df[ITERATION] = range(minLength)
         #
         for idx, method in enumerate(self._methods):
-            ax = axes[idx]
+            if "AxesSubplot" in str(type(axes)):
+                ax = axes
+            else:
+                ax = axes[idx]
             df.plot.line(x=ITERATION, y=method.method, ax=ax, xlabel="")
             ax.set_ylabel("SSQ")
             if idx == len(self._methods) - 1:

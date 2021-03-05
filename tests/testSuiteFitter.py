@@ -203,6 +203,14 @@ class TestSuiteFitter(unittest.TestCase):
         result = self.fitter.reportFit()
         for name in self.fitter.params.valuesdict().keys():
             self.assertTrue(name in result)
+
+    def testPlotResidualsSSQ(self, **kwargs):
+        if IGNORE_TEST:
+            return
+        # Smoke test
+        self._init(numModel=3)
+        self.fitter.fitSuite()
+        self.fitter.plotResidualsSSQ(isPlot=IS_PLOT)
         
 
 if __name__ == '__main__':

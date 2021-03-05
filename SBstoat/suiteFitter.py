@@ -11,6 +11,7 @@ from SBstoat.modelFitter import ModelFitter
 from SBstoat._optimizer import Optimizer
 from SBstoat.logs import Logger
 
+import matplotlib.pyplot as plt
 import numpy as np
 import lmfit
 
@@ -145,15 +146,17 @@ class SuiteFitter():
         self.modelNames = modelNames
         if self.modelNames is None:
             self.modelNames = [str(v) for v in range(len(modelSpecifications))]
+        # Derived values
+        self.numModel = len(self.modelSpecifications)
         # Validation checks
-        if len(self.modelSpecifications) != len(self.datasets):
+        if self.numModel != len(self.datasets):
             raise ValueError("Number of datasets must equal number of models")
-        if len(self.modelSpecifications) != len(self.parameterNamesCollection):
+        if self.numModel != len(self.parameterNamesCollection):
             msg = "Number of parametersNameCollection must equal number of models"
             raise ValueError(msg)
-        if len(self.modelSpecifications) != len(self.modelWeights):
+        if self.numModel != len(self.modelWeights):
             raise ValueError("Number of modelWeights must equal number of models")
-        if len(self.modelSpecifications) != len(self.modelNames):
+        if self.numModel != len(self.modelNames):
             raise ValueError("Number of modelNames must equal number of models")
         #
         self.fitterDct = {}  # key: model name, value: ModelFitter
@@ -174,9 +177,40 @@ class SuiteFitter():
         self._fitterMethods = ModelFitter.makeMethods(
               fitterMethods, cn.METHOD_FITTER_DEFAULTS)
         # Results
-        self.params = None
-        self.minimizerResult = None
-        self.minimizer = None
+        self.optimizer = None
+
+    @property
+    def params(self):
+        if self.optimizer is not None:
+            return self.optimizer.params
+        return None
+
+    def _calcResiduals(self, parameters):
+        """
+        Calculates the residuals for models in the suite. The residuals are the
+        a concatenation of the residuals for each model. Residuals are normalized by
+        the number of elements in the model residuals.
+
+        Parameters
+        ----------
+        parameters: lmfit.Parameters
+
+        Returns
+        -------
+        list-np.ndarray
+            residuals for each model
+        """
+        self.parameterManager.updateValues(parameters)
+        residualsCollection = []
+        for modelName, fitter in self.fitterDct.items():
+            fitter.initializeRoadRunnerModel()
+            parameters = self.parameterManager.mkParameters(modelName=modelName)
+            residuals = fitter.calcResiduals(parameters)
+            residuals = residuals/np.size(residuals)
+            residualsCollection.append(residuals)
+        normalizedCollection = [w*a for w, a in zip(self.modelWeights,
+              residualsCollection)]
+        return normalizedCollection
 
     def calcResiduals(self, parameters):
         """
@@ -192,17 +226,7 @@ class SuiteFitter():
         -------
         np.ndarray
         """
-        self.parameterManager.updateValues(parameters)
-        residualsCollection = []
-        for modelName, fitter in self.fitterDct.items():
-            fitter.initializeRoadRunnerModel()
-            parameters = self.parameterManager.mkParameters(modelName=modelName)
-            residuals = fitter.calcResiduals(parameters)
-            residuals = residuals/np.size(residuals)
-            residualsCollection.append(residuals)
-        normalizedCollection = [w*a for w, a in zip(self.modelWeights,
-              residualsCollection)]
-        return np.concatenate(normalizedCollection)
+        return np.concatenate(self._calcResiduals(parameters))
 
     def fitSuite(self, params:lmfit.Parameters=None):
         """
@@ -225,13 +249,9 @@ class SuiteFitter():
             initialParameters = self.parameterManager.mkParameters()
         else:
             initialParameters = params.copy()
-        optimizer = Optimizer(self.calcResiduals, initialParameters,
-              self._fitterMethods, logger=self.logger)
-        optimizer.optimize()
-        # Save the parameter fits
-        self.params = optimizer.params.copy()
-        self.minimizer = optimizer.minimizer
-        self.minimizerResult = optimizer.minimizerResult
+        self.optimizer = Optimizer(self.calcResiduals, initialParameters,
+              self._fitterMethods, logger=self.logger, isCollect=True)
+        self.optimizer.optimize()
         # Assign fitter results to each model
         self.parameterManager.updateValues(self.params)
         for modelName, fitter in self.fitterDct.items():
@@ -247,10 +267,22 @@ class SuiteFitter():
         Returns
         -------
         """
-        return ModelFitter.reportTheFit(self.minimizerResult, self.params)
+        return ModelFitter.reportTheFit(self.optimizer.minimizerResult,
+              self.params)
 
-    def plotResidualsSSQ(self):
+    def plotResidualsSSQ(self, isPlot=True):
         """
         Plots residuals SSQ for ihe models.
+
+        Parameters
+        ----------
+        isPlot: bool
         """
-        pass
+        fig, ax = plt.subplots(1)
+        rssqs = [np.sum(v**2) for v in self._calcResiduals(self.params)]
+        ax.bar(self.modelNames, rssqs)
+        ax.set_xlabel("model")
+        ax.set_ylabel("residuals sum of squares")
+        #
+        if isPlot:
+            plt.show()
