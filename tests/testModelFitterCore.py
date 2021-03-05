@@ -398,7 +398,7 @@ class TestModelFitterCore(unittest.TestCase):
         METHOD_NAME = 'leastsq'
         optimizerMethod = _helpers.OptimizerMethod(
             method=METHOD_NAME,
-            kwargs={ "atol": 0.001, "max_fev": 10})
+            kwargs={ "max_nfev": 10})
         fitter1 = self._makeMikeModel(fitterMethods=[METHOD_NAME])
         fitter2 = self._makeMikeModel(fitterMethods=[optimizerMethod])
         self.assertTrue(True) # Smoke test
