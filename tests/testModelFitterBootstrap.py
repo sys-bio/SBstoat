@@ -129,8 +129,8 @@ class TestModelFitterBootstrap(unittest.TestCase):
         if IGNORE_TEST:
             return
         self._init()
-        self.fitter.bootstrap(numIteration=500,
-              reportInterval=100, maxProcess=2,
+        self.fitter.bootstrap(numIteration=50,
+              reportInterval=10, maxProcess=2,
               serializePath=FILE_SERIALIZE)
         NUM_STD = 10
         result = self.fitter.bootstrapResult
@@ -152,7 +152,7 @@ class TestModelFitterBootstrap(unittest.TestCase):
         if IGNORE_TEST:
             return
         self._init()
-        numIteration = 100
+        numIteration = 10
         self.fitter.bootstrap(numIteration=numIteration)
         fitterLow = th.getFitter(cls=mfb.ModelFitterBootstrap,
             logger=LOGGER)
@@ -209,9 +209,9 @@ class TestModelFitterBootstrap(unittest.TestCase):
     def testBootstrap3(self):
         if IGNORE_TEST:
             return
-        self.fitter.bootstrap(numIteration=500,
+        self.fitter.bootstrap(numIteration=50,
               synthesizerClass=ObservationSynthesizerRandomErrors,
-              reportInterval=100, maxProcess=2, std=0.02)
+              reportInterval=10, maxProcess=2, std=0.02)
         result = self.fitter.bootstrapResult
         self.assertTrue(result is not None)
 
@@ -267,10 +267,8 @@ class TestModelFitterBootstrap(unittest.TestCase):
                     selectedColumns=["log10V"],
                     doSerialize=False, useSerialized=False,
                     logger=logger)
-        study.bootstrap(numIteration=100)
+        study.bootstrap(numIteration=10)
         fitter = list(study.fitterDct.values())[0]
-        if IS_PLOT and (fitter.bootstrapResult is not None):
-            study.plotFitAll()
         fitter = study.fitterDct["src_1"]
         for name in [p.name for p in parametersToFit]:
             if fitter.bootstrapResult is not None:
