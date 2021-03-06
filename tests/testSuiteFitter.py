@@ -22,8 +22,8 @@ except ImportError:
     pass
 
 
-IGNORE_TEST = False
-IS_PLOT = False
+IGNORE_TEST = True
+IS_PLOT = True
 NAME = "parameter"
 LOWER = 1
 UPPER = 11
@@ -205,8 +205,7 @@ class TestSuiteFitter(unittest.TestCase):
             self.assertTrue(name in result)
 
     def testPlotResidualsSSQ(self, **kwargs):
-        if IGNORE_TEST:
-            return
+        # TESTING
         # Smoke test
         self._init(numModel=3)
         self.fitter.fitSuite()

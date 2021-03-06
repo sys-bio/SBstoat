@@ -280,9 +280,28 @@ class SuiteFitter():
         """
         fig, ax = plt.subplots(1)
         rssqs = [np.sum(v**2) for v in self._calcResiduals(self.params)]
-        ax.bar(self.modelNames, rssqs)
+        totalRssq = np.sum(rssqs)
+        fracs = rssqs/totalRssq
+        ax.bar(self.modelNames, fracs)
         ax.set_xlabel("model")
-        ax.set_ylabel("residuals sum of squares")
+        ax.set_ylabel("fraction of total sum of squares")
+        ax.set_title("Total Sum of Squares: %f" % totalRssq)
         #
         if isPlot:
             plt.show()
+
+    def plotFitAll(self, isPlot=True, **kwargs):
+        """
+        Plots fits for all models
+        
+        Parameters
+        ----------
+        isPlot: bool
+        kwargs: dict
+            keyword arguments pased to plotFitAll for fitters
+        """
+        if not isPlot:
+            return
+        for model, fitter in self.fitterDct.items():
+            print("\n\n%s\n" % model)
+            fitter.plotFitAll(**kwargs)
