@@ -20,6 +20,7 @@ from tests import _testConstants as tcn
 
 import copy
 import lmfit
+import matplotlib
 import numpy as np
 import os
 import tellurium
@@ -403,6 +404,18 @@ class TestModelFitterCore(unittest.TestCase):
         fitter2 = self._makeMikeModel(fitterMethods=[optimizerMethod])
         self.assertTrue(True) # Smoke test
 
+    def testOptimizerRestart(self):
+        if IGNORE_TEST:
+            return
+        METHOD_NAME = 'leastsq'
+        optimizerMethod = _helpers.OptimizerMethod(
+            method=METHOD_NAME,
+            kwargs={ "max_nfev": 10})
+        fitter1 = self._makeMikeModel(fitterMethods=[optimizerMethod])
+        fitter2 = self._makeMikeModel(fitterMethods=[optimizerMethod],
+              numRestart=100)
+        self.assertLess(fitter2.optimizer.rssq, fitter1.optimizer.rssq)
+
     def testMkParameters(self):
         if IGNORE_TEST:
             return
@@ -418,4 +431,8 @@ class TestModelFitterCore(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    try:
+        matplotlib.use('TkAgg')
+    except ImportError:
+        pass
     unittest.main()

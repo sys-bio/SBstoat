@@ -29,7 +29,8 @@ YKEY = "y"
 INITIAL_VALUE = 1
 MIN_VALUE = -4
 MAX_VALUE = 10
-BEST_VALUES = (4, 8)
+BEST_DCT = {XKEY: 4, YKEY:8}
+BEST_VALUES = list(BEST_DCT.values())
 
 ########## FUNCTIONS #################
 def parabola(params:lmfit.Parameters, minArgs:float=BEST_VALUES,
@@ -100,7 +101,7 @@ class TestOptimizer(unittest.TestCase):
     def checkResult(self, optimizer=None):
         if optimizer is None:
             optimizer = self.optimizer
-        optimizer.optimize()
+        optimizer.execute()
         values = optimizer.params.valuesdict().values()
         for expected, actual in zip(BEST_VALUES, values):
             self.assertLess(np.abs(expected-actual), 0.01)
@@ -118,7 +119,7 @@ class TestOptimizer(unittest.TestCase):
         for function in [parabola, parabolaWithoutRaw]:
             optimizer = Optimizer(self.function, self.params, methods,
                   isCollect=True)
-            optimizer.optimize()
+            optimizer.execute()
             self.checkResult()
             for idx in range(len(optimizer.performanceStats)):
                 self.assertGreater(len(optimizer.performanceStats[idx]), 100)
@@ -130,7 +131,7 @@ class TestOptimizer(unittest.TestCase):
               methodNames=[cn.METHOD_LEASTSQ, cn.METHOD_DIFFERENTIAL_EVOLUTION])
         optimizer = Optimizer(self.function, self.params, methods,
               isCollect=True)
-        optimizer.optimize()
+        optimizer.execute()
         optimizer.plotPerformance(isPlot=IS_PLOT)
 
     def testPlotQuality(self):
@@ -141,8 +142,45 @@ class TestOptimizer(unittest.TestCase):
               #methodNames=[cn.METHOD_LEASTSQ, cn.METHOD_DIFFERENTIAL_EVOLUTION])
         optimizer = Optimizer(self.function, self.params, methods,
               isCollect=True)
-        optimizer.optimize()
+        optimizer.execute()
         optimizer.plotQuality(isPlot=IS_PLOT)
+
+    def testSetRandomValue(self):
+        if IGNORE_TEST:
+            return
+        def test1(params):
+            for _, parameter in params.items():
+                self.assertLessEqual(parameter.min, parameter.value)
+                self.assertLessEqual(parameter.value, parameter.max)
+        #
+        def test2(param1s, param2s):
+            valueDct1 = param1s.valuesdict()
+            valueDct2 = param2s.valuesdict()
+            for name, value in valueDct1.items():
+                self.assertFalse(np.isclose(value, valueDct2[name]))
+        #
+        newParams = Optimizer._setRandomValue(self.params)
+        test1(newParams)
+        #
+        newerParams = Optimizer._setRandomValue(self.params)
+        test1(newerParams)
+        test2(newerParams, newParams)
+
+    def testOptimize(self):
+        if IGNORE_TEST:
+            return
+        methods = Optimizer.mkOptimizerMethod(maxFev=10)
+        optimizer0 = Optimizer.optimize(self.function, self.params, methods,
+              isCollect=False, numRestart=0)
+        optimizer100 = Optimizer.optimize(self.function, self.params, methods,
+              isCollect=False, numRestart=100)
+        #
+        valuesDct0 = optimizer0.params.valuesdict()
+        valuesDct100 = optimizer100.params.valuesdict()
+        for name, value in valuesDct100.items():
+            diff0 = (BEST_DCT[name] - valuesDct0[name])**2
+            diff100 = (BEST_DCT[name] - value)**2
+            self.assertLess(diff100, diff0)
         
 
 if __name__ == '__main__':

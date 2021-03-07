@@ -1,4 +1,12 @@
-"""Abstraction for optimization."""
+"""Abstraction for optimization.
+
+The abstraction extends lmfit optimizations by:
+1. Ensuring that the parameters chosen have the lowest residuals sum of squares
+2. Providing for a sequence of optimization methods
+3. Providing an option to repeat a method sequence with different randomly
+   chosen initial parameter values (numRandomRestart).
+
+"""
 
 from SBstoat.logs import Logger
 from SBstoat import _helpers
@@ -66,7 +74,7 @@ class Optimizer():
     Usage
     -----
     optimizer = Optimizer(calcResiduals, params, [cn.METHOD_LEASTSQ])
-    optimizer.optimize()
+    optimizer.execute()
     """
 
     def __init__(self, function, initialParams, methods, logger=None,
@@ -84,9 +92,6 @@ class Optimizer():
         methods: list-_helpers.OptimizerMethod
         isCollect: bool
            Collects performance statistcs
-
-        Returns
-        -------
         """
         self._function = function
         self._methods = methods
@@ -101,8 +106,29 @@ class Optimizer():
         self.params = None
         self.minimizer = None
         self.minimizerResult = None
+        self.rssq = None
 
-    def optimize(self):
+    @staticmethod
+    def _setRandomValue(params):
+        """
+        Sets value to a uniformly distributed random number between min and max.
+
+        Parameters
+        ----------
+        params: lmfit.Parameters
+        
+        Returns
+        -------
+        lmfit.Parameters
+        """
+        newParameters = lmfit.Parameters()
+        for name, parameter in params.items():
+            newValue = np.random.uniform(parameter.min, parameter.max)
+            newParameters.add(name, min=parameter.min, max=parameter.max,
+                  value=newValue)
+        return newParameters
+       
+    def execute(self):
         """
         Performs the optimization on the function.
         Result is self.params
@@ -123,6 +149,7 @@ class Optimizer():
                 self.logger.error(msg, excp)
                 continue
             self.params = wrapperFunction.bestParams
+            self.rssq = wrapperFunction.rssq
             self.performanceStats.append(list(wrapperFunction.perfStatistics))
             self.qualityStats.append(list(wrapperFunction.rssqStatistics))
         if self.minimizer is None:
@@ -254,3 +281,34 @@ class Optimizer():
         result = [_helpers.OptimizerMethod(n, k) for n, k  \
               in zip(methodNames, methodKwargs)]
         return result
+
+    @classmethod
+    def optimize(cls, function, initialParams, methods, numRestart=0, **kwargs):
+        """
+        Parameters
+        ----------
+        function: Funtion
+           Arguments
+            lmfit.parameters
+            isInitialze (bool). True on first call the
+            isGetBest (bool). True to retrieve best parameters
+           returns residuals (if bool arguments are false)
+        initialParams: lmfit.parameters
+        methods: list-_helpers.OptimizerMethod
+        numRestart: int
+            Number of restarts with randomly chosen initial values
+
+        Returns
+        -------
+        Optimizer
+        """
+        bestOptimizer = cls(function, initialParams, methods, **kwargs)
+        bestOptimizer.execute()
+        #
+        for _ in range(numRestart):
+            newInitialParams = Optimizer._setRandomValue(initialParams)
+            newOptimizer = cls(function, newInitialParams, methods, **kwargs)
+            newOptimizer.execute()
+            if newOptimizer.rssq < bestOptimizer.rssq:
+                bestOptimizer = newOptimizer
+        return bestOptimizer

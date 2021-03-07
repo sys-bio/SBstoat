@@ -80,6 +80,7 @@ class ModelFitterCore(rpickle.RPickler):
           reportInterval:int=1000,
           maxProcess:int=None,
           serializePath:str=None,
+          numRestart=0,
           ):
         """
         Constructs estimates of parameter values.
@@ -111,6 +112,9 @@ class ModelFitterCore(rpickle.RPickler):
         reportInterval: number of iterations between progress reports
         maxProcess: Maximum number of processes to use. Default: numCPU
         serializePath: Where to serialize the fitter after bootstrap
+        numRestart: int
+            number of times the minimization is restarted with random
+            initial values for parameters to fit.
 
         Usage
         -----
@@ -158,6 +162,7 @@ class ModelFitterCore(rpickle.RPickler):
             self._plotter = tp.TimeseriesPlotter(isPlot=self._isPlot)
             self._plotFittedTS = None  # Timeseries that is plotted
             self.logger = logger
+            self._numRestart = numRestart
             # The following are calculated during fitting
             self.roadrunnerModel = None
             self.minimizer = None  # lmfit.minimizer
@@ -166,6 +171,7 @@ class ModelFitterCore(rpickle.RPickler):
             self.fittedTS = self.observedTS.copy(isInitialize=True)  # Initialize
             self.residualsTS = None  # Residuals for selectedColumns
             self.bootstrapResult = None  # Result from bootstrapping
+            self._optimizer = None
         else:
             pass
 
@@ -590,12 +596,12 @@ class ModelFitterCore(rpickle.RPickler):
         if self.parametersToFit is not None:
             if params is None:
                 params = self.mkParams()
-            optimizer = Optimizer(self.calcResiduals, params,
-                  self._fitterMethods, logger=self.logger)
-            optimizer.optimize()
-            self.params = optimizer.params.copy()
-            self.minimizer = optimizer.minimizer
-            self.minimizerResult = optimizer.minimizerResult
+            self.optimizer = Optimizer.optimize(self.calcResiduals, params,
+                  self._fitterMethods, logger=self.logger,
+                  numRestart=self._numRestart)
+            self.params = self.optimizer.params.copy()
+            self.minimizer = self.optimizer.minimizer
+            self.minimizerResult = self.optimizer.minimizerResult
         # Ensure that residualsTS and fittedTS match the parameters
         self.updateFittedAndResiduals(params=self.params)
 

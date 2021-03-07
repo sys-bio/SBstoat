@@ -117,6 +117,7 @@ class SuiteFitter():
 
     def __init__(self, modelSpecifications, datasets, parameterNamesCollection,
           modelNames=None, modelWeights=None, fitterMethods=None,
+          numRestart=0,
           **kwargs):
         """
         Parameters
@@ -127,6 +128,9 @@ class SuiteFitter():
         modelWeights: list-float
             how models are weighted in least squares
         modelNames: list-str
+        numRestart: int
+            number of times the minimization is restarted with random
+            initial values for parameters to fit.
         kwargs: dict
             constructor arguments passed to fitter for a model
 
@@ -146,6 +150,7 @@ class SuiteFitter():
         self.modelNames = modelNames
         if self.modelNames is None:
             self.modelNames = [str(v) for v in range(len(modelSpecifications))]
+        self._numRestart = numRestart
         # Derived values
         self.numModel = len(self.modelSpecifications)
         # Validation checks
@@ -249,9 +254,9 @@ class SuiteFitter():
             initialParameters = self.parameterManager.mkParameters()
         else:
             initialParameters = params.copy()
-        self.optimizer = Optimizer(self.calcResiduals, initialParameters,
-              self._fitterMethods, logger=self.logger, isCollect=True)
-        self.optimizer.optimize()
+        self.optimizer = Optimizer.optimize(self.calcResiduals, initialParameters,
+              self._fitterMethods, logger=self.logger, isCollect=True,
+              numRestart=self._numRestart)
         # Assign fitter results to each model
         self.parameterManager.updateValues(self.params)
         for modelName, fitter in self.fitterDct.items():
