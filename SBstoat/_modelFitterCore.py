@@ -15,7 +15,6 @@ import SBstoat.timeseriesPlotter as tp
 from SBstoat import rpickle
 from SBstoat import _helpers
 
-import collections
 import copy
 import lmfit
 import numpy as np
@@ -65,28 +64,32 @@ class Parameter():
 class ModelFitterCore(rpickle.RPickler):
 
     def __init__(self, modelSpecification, observedData,
-          parametersToFit=None,
-          selectedColumns=None,
-          fitterMethods=None,
-          numFitRepeat=1,
+          # The following must be kept in sync with ModelFitterBootstrap.bootstrap
+          parametersToFit=None, # Must be first kw for backwards compatibility
           bootstrapMethods=None,
+          endTime=None,
+          fitterMethods=None,
+          logger=Logger(),
+          _loggerPrefix="",
+          isPlot=True,
+          maxProcess:int=None,
+          numFitRepeat=1,
+          numIteration:int=10,
+          numPoint=None,
+          numRestart=0,
           parameterLowerBound=PARAMETER_LOWER_BOUND,
           parameterUpperBound=PARAMETER_UPPER_BOUND,
-          logger=Logger(),
-          isPlot=True,
-          _loggerPrefix="",
-          # The following must be kept in sync with ModelFitterBootstrap.bootstrap
-          numIteration:int=10,
           reportInterval:int=1000,
-          maxProcess:int=None,
+          selectedColumns=None,
           serializePath:str=None,
-          numRestart=0,
           ):
         """
         Constructs estimates of parameter values.
 
         Parameters
         ----------
+        endTime: float
+            end time for the simulation
         modelSpecification: ExtendedRoadRunner/str
             roadrunner model or antimony model
         observedData: NamedTimeseries/str
@@ -109,6 +112,8 @@ class ModelFitterCore(rpickle.RPickler):
         bootstrapMethods: str/list-str/list-OptimizerMethod
             method used for minimization in bootstrap
         numIteration: number of bootstrap iterations
+        numPoint: int
+            number of time points in the simulation
         reportInterval: number of iterations between progress reports
         maxProcess: Maximum number of processes to use. Default: numCPU
         serializePath: Where to serialize the fitter after bootstrap
@@ -151,6 +156,10 @@ class ModelFitterCore(rpickle.RPickler):
                 self._observedArr = self.observedTS[self.selectedColumns].flatten()
             else:
                 self._observedArr = None
+            if numPoint is None:
+                self.numPoint = len(self.observedTS)
+            if endTime is None:
+                self.endTime = self.observedTS.end
             # Other internal state
             self._fitterMethods = ModelFitterCore.makeMethods(fitterMethods,
                   cn.METHOD_FITTER_DEFAULTS)
@@ -165,15 +174,38 @@ class ModelFitterCore(rpickle.RPickler):
             self._numRestart = numRestart
             # The following are calculated during fitting
             self.roadrunnerModel = None
-            self.minimizer = None  # lmfit.minimizer
             self.minimizerResult = None  # Results of minimization
-            self.params = None  # params property in lmfit.minimizer
             self.fittedTS = self.observedTS.copy(isInitialize=True)  # Initialize
             self.residualsTS = None  # Residuals for selectedColumns
             self.bootstrapResult = None  # Result from bootstrapping
-            self._optimizer = None
+            self.optimizer = None
+            self.suiteFitterParams = None  # Result from a suite fitter
+            #
+            resultTS = self.simulate()
+            if resultTS is not None:
+                self._simulationIndicesForResiduals =  \
+                      ModelFitterCore.selectCompatibleIndices(resultTS[TIME],
+                      self.observedTS[TIME])
+            else:
+                self._simulationIndicesForResiduals = list(range(self.numPoint))   
+            self.roadrunnerModel = None  # Ensure can pickle
         else:
             pass
+
+    @property
+    def params(self):
+        params = None
+        #
+        if params is None:
+            if self.suiteFitterParams is not None:
+                params = self.suiteFitterParams
+        if self.bootstrapResult is not None:
+            if self.bootstrapResult.params is not None:
+                params = self.bootstrapResult.params
+        if params is None:
+            if self.optimizer is not None:
+                params = self.optimizer.params
+        return params
 
     @staticmethod
     def makeMethods(methods, default):
@@ -449,12 +481,12 @@ class ModelFitterCore(rpickle.RPickler):
               parameterUpperBound=self.upperBound,
               logger=logger,
               isPlot=self._isPlot)
+        if self.optimizer is not None:
+            newModelFitter.optimizer = self.optimizer.copyResults()
         if self.bootstrapResult is not None:
             newModelFitter.bootstrapResult = self.bootstrapResult.copy()
-            newModelFitter.params = newModelFitter.bootstrapResult.params
         else:
             newModelFitter.bootstrapResult = None
-            newModelFitter.params = self.params
         return newModelFitter
 
     def initializeRoadRunnerModel(self):
@@ -501,8 +533,8 @@ class ModelFitterCore(rpickle.RPickler):
             return parameter
         #
         startTime = setValue(self.observedTS.start, startTime)
-        endTime = setValue(self.observedTS.end, endTime)
-        numPoint = setValue(len(self.observedTS), numPoint)
+        endTime = setValue(self.endTime, endTime)
+        numPoint = setValue(self.numPoint, numPoint)
         #
         if self.roadrunnerModel is None:
             self.initializeRoadRunnerModel()
@@ -546,6 +578,28 @@ class ModelFitterCore(rpickle.RPickler):
             self.residualsTS = self.observedTS.subsetColumns(cols)
         self.residualsTS[cols] = residualsArr
 
+    @staticmethod
+    def selectCompatibleIndices(bigTimes, smallTimes):
+        """
+        Finds the indices such that smallTimes[n] is close to bigTimes[indices[n]]
+
+        Parameters
+        ----------
+        bigTimes: np.ndarray
+        smalltimes: np.ndarray
+
+        Returns
+        np.ndarray
+        """
+        indices = []
+        for idx, _ in enumerate(smallTimes):
+            distances = (bigTimes - smallTimes[idx])**2
+            def getValue(k):
+                return distances[k]
+            thisIndices = sorted(range(len(distances)), key=getValue)
+            indices.append(thisIndices[0])
+        return np.array(indices)
+
     def calcResiduals(self, params)->np.ndarray:
         """
         Compute the residuals between objective and experimental data
@@ -561,19 +615,20 @@ class ModelFitterCore(rpickle.RPickler):
         -------
         1-d ndarray of residuals
         """
-        data = ModelFitterCore.runSimulation(parameters=params,
+        dataTS = ModelFitterCore.runSimulation(parameters=params,
               roadrunner=self.roadrunnerModel,
               startTime=self.observedTS.start,
-              endTime=self.observedTS.end,
-              numPoint=len(self.observedTS),
+              endTime=self.endTime,
+              numPoint=self.numPoint,
               selectedColumns=self.selectedColumns,
               _logger=self.logger,
               _loggerPrefix=self._loggerPrefix,
               returnDataFrame=False)
-        if data is None:
+        if dataTS is None:
             residualsArr = np.repeat(LARGE_RESIDUAL, len(self._observedArr))
         else:
-            residualsArr = self._observedArr - data.flatten()
+            truncatedTS = dataTS[self._simulationIndicesForResiduals]
+            residualsArr = self._observedArr - truncatedTS.flatten()
             residualsArr = np.nan_to_num(residualsArr)
         return residualsArr
 
@@ -599,8 +654,6 @@ class ModelFitterCore(rpickle.RPickler):
             self.optimizer = Optimizer.optimize(self.calcResiduals, params,
                   self._fitterMethods, logger=self.logger,
                   numRestart=self._numRestart)
-            self.params = self.optimizer.params.copy()
-            self.minimizer = self.optimizer.minimizer
             self.minimizerResult = self.optimizer.minimizerResult
         # Ensure that residualsTS and fittedTS match the parameters
         self.updateFittedAndResiduals(params=self.params)

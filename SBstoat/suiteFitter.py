@@ -260,7 +260,7 @@ class SuiteFitter():
         # Assign fitter results to each model
         self.parameterManager.updateValues(self.params)
         for modelName, fitter in self.fitterDct.items():
-            fitter.params = self.parameterManager.mkParameters(
+            fitter.suiteFitterParams = self.parameterManager.mkParameters(
                   modelName=modelName)
 
     def reportFit(self):
@@ -298,7 +298,7 @@ class SuiteFitter():
     def plotFitAll(self, isPlot=True, **kwargs):
         """
         Plots fits for all models
-        
+
         Parameters
         ----------
         isPlot: bool

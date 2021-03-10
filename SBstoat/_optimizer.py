@@ -12,6 +12,7 @@ from SBstoat.logs import Logger
 from SBstoat import _helpers
 from SBstoat import _constants as cn
 
+import copy
 import lmfit
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -104,9 +105,29 @@ class Optimizer():
         self.performanceStats = []  # list of performance results
         self.qualityStats = []  # relative rssq
         self.params = None
-        self.minimizer = None
         self.minimizerResult = None
         self.rssq = None
+
+    def copyResults(self):
+        """
+        Copies of the results of the optimization.
+
+        Returns
+        -------
+        Optimizer
+        """
+        newOptimizer = Optimizer(self._function, self._initialParams.copy(),
+              self._methods, logger=self.logger, isCollect=self._isCollect)
+        newOptimizer._function = None  # Not serializable
+        #
+        newOptimizer.performanceStats = copy.deepcopy(self.performanceStats)
+        newOptimizer.qualityStats = copy.deepcopy(self.qualityStats)
+        newOptimizer.minimizerResult = copy.deepcopy(self.minimizerResult)
+        newOptimizer.params = None
+        if self.params is not None:
+            newOptimizer.params = self.params.copy()
+        newOptimizer.rssq = self.rssq
+        return newOptimizer
 
     @staticmethod
     def _setRandomValue(params):
@@ -135,14 +156,14 @@ class Optimizer():
         """
         lastExcp = None
         self.params = self._initialParams.copy()
-        self.minimizer = None
+        minimizer = None
         for optimizerMethod in self._methods:
             method = optimizerMethod.method
             kwargs = optimizerMethod.kwargs
             wrapperFunction = _FunctionWrapper(self._function, isCollect=self._isCollect)
-            self.minimizer = lmfit.Minimizer(wrapperFunction.execute, self.params)
+            minimizer = lmfit.Minimizer(wrapperFunction.execute, self.params)
             try:
-                self.minimizerResult = self.minimizer.minimize(method=method, **kwargs)
+                self.minimizerResult = minimizer.minimize(method=method, **kwargs)
             except Exception as excp:
                 lastExcp = excp
                 msg = "Error minimizing for method: %s" % method
@@ -152,7 +173,7 @@ class Optimizer():
             self.rssq = wrapperFunction.rssq
             self.performanceStats.append(list(wrapperFunction.perfStatistics))
             self.qualityStats.append(list(wrapperFunction.rssqStatistics))
-        if self.minimizer is None:
+        if minimizer is None:
             msg = "*** Optimization failed."
             self.logger.error(msg, lastExcp)
 
@@ -166,7 +187,7 @@ class Optimizer():
         """
         VARIABLE_STG = "[[Variables]]"
         CORRELATION_STG = "[[Correlations]]"
-        if self.minimizer is None:
+        if self.minimizerResult is None:
             raise ValueError("Must do fitModel before reportFit.")
         valuesDct = self.params.valuesdict()
         valuesStg = _helpers.ppDict(dict(valuesDct), indent=4)

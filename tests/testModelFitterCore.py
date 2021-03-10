@@ -99,7 +99,6 @@ class TestModelFitterCore(unittest.TestCase):
         #
         updateAttr("roadrunnerModel")
         updateAttr("observedTS")
-        self.assertIsNone(self.fitter.roadrunnerModel)
         self.assertIsNone(fitter.observedTS)
 
     def testCopy(self):
@@ -383,7 +382,8 @@ class TestModelFitterCore(unittest.TestCase):
                       {cn.MAX_NFEV: 10}))
             kwargs["fitterMethods"] = methods
         observedPath = os.path.join(DIR, "mike_bug.csv")
-        fitter = ModelFitter(model, observedPath, [
+        fitter = ModelFitter(model, observedPath,
+         parametersToFit=[
          #"v_0", "ra_0", "kf_0", "kr_0", "Kma_0", "Kms_0", "Kmp_0", "wa_0", "ms_0",
          #"mp_0", "v_1", "ri_1", "kf_1", "kr_1", "Kmi_1", "Kms_1", "Kmp_1", "wi_1",
          #"ms_1", "mp_1", "v_2", "ri1_2", "ri2_2", "ri3_2", "kf_2", "kr_2",
@@ -428,6 +428,21 @@ class TestModelFitterCore(unittest.TestCase):
         test(NAMES)
         parametersToFit = [SBstoat.Parameter(n, value=1) for n in NAMES]
         test(parametersToFit)
+
+    def testSelectCompatibleIndices(self):
+        if IGNORE_TEST:
+            return
+        SIZE = 10
+        SUB_SIZE = 5
+        bigTimes = np.array(range(SIZE))
+        smallTimes = np.random.permutation(bigTimes)[:SUB_SIZE]
+        smallTimes = np.sort(smallTimes)
+        resultArr = ModelFitterCore.selectCompatibleIndices(bigTimes,
+              smallTimes)
+        np.testing.assert_array_equal(smallTimes, resultArr)
+
+
+       
 
 
 if __name__ == '__main__':

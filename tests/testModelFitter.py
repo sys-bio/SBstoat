@@ -54,6 +54,7 @@ class TestModelFitter(unittest.TestCase):
     def testPlotResiduals(self):
         if IGNORE_TEST:
             return
+        self._init()
         self.fitter.plotResiduals(numCol=3, numRow=2, ylim=[-1.5, 1.5])
 
     def testPlotFitAll(self):
@@ -94,7 +95,8 @@ class TestModelFitter(unittest.TestCase):
             k1 = 0; k2 = 0; 
         """
         columns = ["S1", "S3"]
-        fitter = ModelFitter(model, BENCHMARK_PATH, ["k1", "k2"],
+        fitter = ModelFitter(model, BENCHMARK_PATH,
+                             parametersToFit= ["k1", "k2"],
                              selectedColumns=columns, isPlot=IS_PLOT)
         fitter.fitModel()
         print(fitter.reportFit())

@@ -12,3 +12,9 @@ MAX_NFEV = "max_nfev"
 MAX_NFEV_DFT = 100
 # Kwargs
 LOGGER = "logger"
+# Dataframe columns
+PREDICTED = "predicted"
+TRUE = "true"
+FOLD = "fold"
+RSQ = "rsq"
+PARAMETER = "parameter"

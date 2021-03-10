@@ -83,6 +83,20 @@ class BootstrapResult(rpickle.RPickler):
         # Fitting parameters from result
         self._params = None
 
+    def copy(self):
+        """
+        Create a pickle-able copy.
+        
+        Returns
+        -------
+        BootstrapResult
+        """
+        newResult = BootstrapResult(None, self.numIteration, self.parameterDct,
+          self.fittedStatistic, bootstrapError=self.bootstrapError)
+        if self._params is not None:
+            newResult._params = self._params.copy()
+        return newResult
+
     @classmethod
     def rpConstruct(cls):
         """
@@ -94,9 +108,6 @@ class BootstrapResult(rpickle.RPickler):
         Instance of cls
         """
         return cls(None, None, None, None)
-
-    def copy(self):
-        return copy.deepcopy(self)
 
     def __str__(self) -> str:
         """

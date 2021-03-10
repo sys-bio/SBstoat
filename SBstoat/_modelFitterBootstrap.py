@@ -29,7 +29,7 @@ MAX_CHISQ_MULT = 5
 PERCENTILES = [2.5, 97.55]  # Percentile for confidence limits
 IS_REPORT = True
 ITERATION_MULTIPLIER = 10  # Multiplier to calculate max bootsrap iterations
-ITERATION_PER_PROCESS = 20  # Numer of iterations handled by a process
+ITERATION_PER_PROCESS = 5  # Numer of iterations handled by a process
 MAX_TRIES = 10  # Maximum number of tries to fit
 MAX_ITERATION_TIME = 10.0
 
