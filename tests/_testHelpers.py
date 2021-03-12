@@ -47,8 +47,8 @@ def getTimeseries():
     return NamedTimeseries(TEST_DATA_PATH)
 
 def getFitter(cls=ModelFitterCore, isPlot=False, **kwargs):
-    return cls(ANTIMONY_MODEL, getTimeseries(),
-      list(PARAMETER_DCT.keys()), isPlot=isPlot, **kwargs)
+    return cls(ANTIMONY_MODEL, getTimeseries(), list(PARAMETER_DCT.keys()),
+          isPlot=isPlot, **kwargs)
 
 def getObservedFitted():
     fitter = getFitter()

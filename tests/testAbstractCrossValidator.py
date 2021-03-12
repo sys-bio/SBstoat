@@ -73,21 +73,36 @@ class Fitter(AbstractFitter):
 
 class CrossValidator(AbstractCrossValidator):
 
-    def __init__(self, numFold=4, **kwargs):
+    def __init__(self, **kwargs):
         """
         Parameters
         ----------
-        numFold: integer
         kwargs: dict
             optional arguments for Fitter
         """
-        super().__init__()
-        self.numFold = numFold
         self.kwargs = kwargs
+        super().__init__()
 
-    def _nextFitter(self):
-        for _ in range(self.numFold):
+    def _getFitterGenerator(self, numFold):
+        for _ in range(numFold):
             yield Fitter(**self.kwargs)
+
+    def crossValidate(self, numFold):
+        fitterGenerator = self._getFitterGenerator(numFold)
+        self._crossValidate(fitterGenerator)
+
+
+class BadCrossValidator(AbstractCrossValidator):
+
+    def __init__(self, **kwargs):
+        """
+        Parameters
+        ----------
+        kwargs: dict
+            optional arguments for Fitter
+        """
+        self.kwargs = kwargs
+        super().__init__()
         
 
 ################ TEST CLASSES #############
@@ -131,30 +146,30 @@ class TestAbstractFitter(unittest.TestCase):
 class TestCrossValidator(unittest.TestCase):
 
     def setUp(self):
-        self.validator = CrossValidator(NUM_FOLD, noiseStd=0)
+        self.validator = CrossValidator(noiseStd=0)
 
     def testConstructor(self):
         if IGNORE_TEST:
             return
-        self.assertEqual(self.validator.numFold, NUM_FOLD)
+        self.assertEqual(self.validator.numFold, 0)
 
-    def testExecute(self):
+    def testCrossValidate(self):
         if IGNORE_TEST:
             return
-        self.validator.execute()
-        for items in [self.validator.fitters, self.validator.rsqs,
-              self.validator.parametersCollection]:
+        self.validator.crossValidate(NUM_FOLD)
+        for items in [self.validator.cvFitters, self.validator.cvRsqs,
+              self.validator.cvParametersCollection]:
             self.assertEqual(len(items), NUM_FOLD)
-        self.assertTrue(isinstance(self.validator.fitters[0], Fitter))
-        self.assertTrue(isinstance(self.validator.rsqs[0], float))
-        self.assertTrue(isinstance(self.validator.parametersCollection[0],
+        self.assertTrue(isinstance(self.validator.cvFitters[0], Fitter))
+        self.assertTrue(isinstance(self.validator.cvRsqs[0], float))
+        self.assertTrue(isinstance(self.validator.cvParametersCollection[0],
               lmfit.Parameters))
 
     def testFoldIdxGenerator(self):
         if IGNORE_TEST:
             return
-        generator = AbstractCrossValidator.foldIdxGenerator(NUM_POINT,
-              NUM_FOLD)
+        generator = AbstractCrossValidator.getFoldIdxGenerator(
+              NUM_POINT, NUM_FOLD)
         allTestIdxs = []
         foldSize = NUM_POINT // NUM_FOLD
         for trainIdxs, testIdxs in generator:
@@ -167,8 +182,8 @@ class TestCrossValidator(unittest.TestCase):
     def testReportParameters(self):
         if IGNORE_TEST:
             return
-        validator = CrossValidator(NUM_FOLD, noiseStd=0.5)
-        validator.execute()
+        validator = CrossValidator(noiseStd=0.5)
+        validator.crossValidate(NUM_FOLD)
         df = validator.reportParameters()
         self.assertEqual(len(df), len(PARAMETER_NAMES))
         diff = set([cn.MEAN, cn.STD]).symmetric_difference(df.columns)
@@ -177,10 +192,17 @@ class TestCrossValidator(unittest.TestCase):
     def testReportScores(self):
         if IGNORE_TEST:
             return
-        validator = CrossValidator(NUM_FOLD, noiseStd=0.5)
-        validator.execute()
+        validator = CrossValidator(noiseStd=0.5)
+        validator.crossValidate(NUM_FOLD)
         df = validator.reportScores()
         self.assertEqual(len(df), NUM_FOLD)
+
+    def testMissingOverride(self):
+        if IGNORE_TEST:
+            return
+        validator = BadCrossValidator(noiseStd=0)
+        with self.assertRaises(RuntimeError):
+            validator.crossValidate(NUM_FOLD)
 
 
 if __name__ == '__main__':

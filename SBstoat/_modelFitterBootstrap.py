@@ -16,7 +16,7 @@ from SBstoat.timeseriesStatistic import TimeseriesStatistic
 from SBstoat._bootstrapResult import BootstrapResult
 from SBstoat.observationSynthesizer import  \
       ObservationSynthesizerRandomizedResiduals
-from SBstoat import _modelFitterCore as mfc
+from SBstoat import _modelFitterCrossValidator as mfc
 from SBstoat import _helpers
 from SBstoat.logs import Logger
 
@@ -205,7 +205,7 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
 
 
 ##################### CLASSES #########################
-class ModelFitterBootstrap(mfc.ModelFitterCore):
+class ModelFitterBootstrap(mfc.ModelFitterCrossValidator):
 
     def bootstrap(self,
           # The following must be kept in sync with ModelFitterCore.__init__

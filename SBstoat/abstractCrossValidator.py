@@ -24,7 +24,7 @@ class AbstractFitter(object):
         -------
         lmfit.Parameters
         """
-        raise RuntimeError("Must implement method %s in class %s",
+        raise RuntimeError("Must implement method %s in class %s" %
               ("parameters", str(self.__class__)))
 
     def fit(self):
@@ -36,7 +36,7 @@ class AbstractFitter(object):
         Returns
         -------
         """
-        raise RuntimeError("Must implement method %s in class %s",
+        raise RuntimeError("Must implement method %s in class %s" %
               ("fit", str(self.__class__)))
 
     def score(self):
@@ -49,34 +49,42 @@ class AbstractFitter(object):
         -------
         float
         """
-        raise RuntimeError("Must implement method %s in class %s",
+        raise RuntimeError("Must implement method %s in class %s" %
               ("score", str(self.__class__)))
 
 
 class AbstractCrossValidator(object):
     """
     Base clase for performing cross validation using parameter fitting.
-    Must override:
-        __iter__
     """
-    
-    def __init__(self):
-        # Results
-        self.fitters = []
-        self.rsqs = []
-        self.parametersCollection = []
 
-    def _nextFitter(self):
+    def __init__(self):
+        self.cvFitters = []
+        self.cvRsqs = []
+        self.cvParametersCollection = []
+
+    @property
+    def numFold(self):
+        return len(self.cvFitters)
+
+    def _getFitterGenerator(self, numFold):
         """
+        Generator for Fitters.A
+
+        Parameters
+        ----------
+        numFold: int
+            number of folds to generate       
+  
         Returns
         -------
         crossFitter
         """
-        raise RuntimeError("Must implement method %s in class %s",
-              ("_nextFitter", str(self.__class__)))
+        raise RuntimeError("Must implement method %s in class %s" %
+              ("_getFitterGenerator", str(self.__class__)))
 
     @staticmethod
-    def foldIdxGenerator(numPoint, numFold):
+    def getFoldIdxGenerator(numPoint, numFold):
         """
         Generates pairs of trainining and test indices.
         
@@ -100,16 +108,30 @@ class AbstractCrossValidator(object):
             trainIndices = list(set(indices).difference(testIndices))
             yield trainIndices, testIndices
     
-    def execute(self):
+    def _crossValidate(self, fitterGenerator):
         """
         Calculates parameters for folds.
+
+        Parameters
+        ----------
+        fitterGenerator: generator
         """
-        generator = self._nextFitter()
-        for fitter in generator:
+        for fitter in fitterGenerator:
             fitter.fit()
-            self.fitters.append(fitter)
-            self.rsqs.append(fitter.score())
-            self.parametersCollection.append(fitter.parameters)
+            self.cvFitters.append(fitter)
+            self.cvRsqs.append(fitter.score())
+            self.cvParametersCollection.append(fitter.parameters)
+    
+    def crossValidate(self, numFold):
+        """
+        External interface to crossvalidation.
+
+        Parameters
+        ----------
+        numFold: int
+        """
+        raise RuntimeError("Must implement method %s in class %s" %
+              ("crossValidate", str(self.__class__)))
 
     def reportParameters(self):
         """
@@ -126,7 +148,7 @@ class AbstractCrossValidator(object):
         for key in keys:
             dct[key] = []
         for fold in range(self.numFold):
-            valuesDct = self.fitters[fold].parameters.valuesdict()
+            valuesDct = self.cvFitters[fold].parameters.valuesdict()
             for parameterName in valuesDct.keys():
                 dct[cn.FOLD].append(fold)
                 dct[cn.PARAMETER].append(parameterName)
@@ -141,5 +163,5 @@ class AbstractCrossValidator(object):
         return reportDF
     
     def reportScores(self):
-        scores = [f.score() for f in self.fitters]
+        scores = [f.score() for f in self.cvFitters]
         return pd.DataFrame({cn.SCORE: scores})
