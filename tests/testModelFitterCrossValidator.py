@@ -43,8 +43,7 @@ class TestFitter(unittest.TestCase):
               testIdxs=testIdxs)
 
     def testConstructor(self):
-        if IGNORE_TEST:
-            return
+        # TESTING
         self._init()
         self.assertTrue(self.fitter.trainTS.equals(self.fitter.testTS))
 

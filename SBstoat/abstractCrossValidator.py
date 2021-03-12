@@ -78,7 +78,7 @@ class AbstractCrossValidator(object):
   
         Returns
         -------
-        crossFitter
+        iter-AbstractFitter
         """
         raise RuntimeError("Must implement method %s in class %s" %
               ("_getFitterGenerator", str(self.__class__)))

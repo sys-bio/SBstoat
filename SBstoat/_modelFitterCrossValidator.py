@@ -101,26 +101,39 @@ class ModelFitterCrossValidator(ModelFitterCore, AbstractCrossValidator):
         super(ModelFitterCore, self).__init__(*args, **kwargs)
         super(AbstractCrossValidator, self).__init__()
 
-    def _nextFitter(self, numPoint, numFold): 
+    def _getFitterGenerator(self, numFold): 
         """
         Constructs fitters for each fold.
 
         Parameters
         ----------
-        numPoint: int
-            number of points in the data
         numFold: int
             number of folds in the cross validation
         
         Returns
         -------
         Generator
-            iter-ModelFitterCore
+            iter-Fitter
         """
-        generator = self.__class__.getFoldIdxGenerator(numPoint, numFold)
+        foldIdxGenerator = self.__class__.getFoldIdxGenerator(numPoint, numFold)
         for trainIdxs, testIdxs in generator:
-            # FIXME: Add keyword arguments
             import pdb; pdb.set_trace()
             yield Fitter(self.modelSpecification,
-                  self.observedTS, self.parametersToFit, trainIdxs,
-                  testIdxs)
+                  self.observedTS, self.parametersToFit, trainIdxs, testIdxs,
+                  bootstrapMethods=self.bootstrapMethods,
+                  endTime=self.endTime,
+                  fitterMethods=self.fitterMethods,
+                  logger=self.logger,
+                  _loggerPrefix=self._loggerPrefix,
+                  isPlot=self.isPlot,
+                  maxProcess=self.maxProcess,
+                  numFitRepeat=self.numFitRepeat,
+                  numIteration=self.numIteration,
+                  numPoint=self.numPoint,
+                  numRestart=self.numRestart,
+                  parameterLowerBound=self.parameterLowerBound,
+                  parameterUpperBound=self.parameterUpperBound,
+                  reportInterval=self.reportInterval,
+                  selectedColumns=self.selectedColumns,
+                  serializePath=self.serializePath,
+                  )
