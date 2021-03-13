@@ -252,7 +252,8 @@ class ModelFitterBootstrap(mfc.ModelFitterCrossValidator):
         numIteration = get("numIteration", numIteration)
         reportInterval = get("reportInterval", reportInterval)
         synthesizerClass = get("synthesizerClass", synthesizerClass)
-        maxProcess = get("maxProcess", maxProcess)
+        if maxProcess is None:
+            maxProcess = self._maxProcess
         serializePath = get("serializePath", serializePath)
         # Other initializations
         if maxProcess is None:

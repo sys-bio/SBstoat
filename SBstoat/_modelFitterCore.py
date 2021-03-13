@@ -138,10 +138,10 @@ class ModelFitterCore(rpickle.RPickler):
             self.parametersToFit = parametersToFit
             self.lowerBound = parameterLowerBound
             self.upperBound = parameterUpperBound
+            self._maxProcess = maxProcess
             self.bootstrapKwargs = dict(
                   numIteration=numIteration,
                   reportInterval=reportInterval,
-                  maxProcess=maxProcess,
                   serializePath=serializePath,
                   )
             self._numFitRepeat = numFitRepeat
@@ -156,9 +156,11 @@ class ModelFitterCore(rpickle.RPickler):
                 self._observedArr = self.observedTS[self.selectedColumns].flatten()
             else:
                 self._observedArr = None
-            if numPoint is None:
+            self.numPoint = numPoint
+            if self.numPoint is None:
                 self.numPoint = len(self.observedTS)
-            if endTime is None:
+            self.endTime = endTime
+            if self.endTime is None:
                 self.endTime = self.observedTS.end
             # Other internal state
             self._fitterMethods = ModelFitterCore.makeMethods(fitterMethods,
@@ -183,11 +185,11 @@ class ModelFitterCore(rpickle.RPickler):
             #
             resultTS = self.simulate()
             if resultTS is not None:
-                self._simulationIndicesForResiduals =  \
+                self._selectedIdxs =  \
                       ModelFitterCore.selectCompatibleIndices(resultTS[TIME],
                       self.observedTS[TIME])
             else:
-                self._simulationIndicesForResiduals = list(range(self.numPoint))   
+                self._selectedIdxs = list(range(self.numPoint))   
             self.roadrunnerModel = None  # Ensure can pickle
         else:
             pass
@@ -325,7 +327,7 @@ class ModelFitterCore(rpickle.RPickler):
 
     @classmethod
     def runSimulation(cls, parameters=None,
-          roadrunner=None,
+          modelSpecification=None,
           startTime=0,
           endTime=5,
           numPoint=30,
@@ -339,7 +341,7 @@ class ModelFitterCore(rpickle.RPickler):
 
         Parameters
        ----------
-        roadrunner: ExtendedRoadRunner/str
+        modelSpecification: ExtendedRoadRunner/str
             Roadrunner model
         parameters: lmfit.Parameters
             lmfit parameters
@@ -361,27 +363,28 @@ class ModelFitterCore(rpickle.RPickler):
         ------
         NamedTimeseries (or None if fail to converge)
         """
-        if isinstance(roadrunner, str):
-            roadrunner = cls.initializeRoadrunnerModel(roadrunner)
+        roadrunnerModel = modelSpecification
+        if isinstance(modelSpecification, str):
+            roadrunnerModel = cls.initializeRoadrunnerModel(roadrunnerModel)
         else:
-            roadrunner.reset()
+            roadrunnerModel.reset()
         if parameters is not None:
             # Parameters have been specified
-            cls.setupModel(roadrunner, parameters, logger=_logger)
+            cls.setupModel(roadrunnerModel, parameters, logger=_logger)
         # Do the simulation
         if selectedColumns is not None:
             newSelectedColumns = list(selectedColumns)
             if TIME not in newSelectedColumns:
                 newSelectedColumns.insert(0, TIME)
             try:
-                data = roadrunner.simulate(startTime, endTime, numPoint,
+                data = roadrunnerModel.simulate(startTime, endTime, numPoint,
                       newSelectedColumns)
             except Exception as err:
                 _logger.error("Roadrunner exception: ", err)
                 data = None
         else:
             try:
-                data = roadrunner.simulate(startTime, endTime, numPoint)
+                data = roadrunnerModel.simulate(startTime, endTime, numPoint)
             except Exception as err:
                 _logger.exception("Roadrunner exception: %s", err)
                 data = None
@@ -540,7 +543,7 @@ class ModelFitterCore(rpickle.RPickler):
             self.initializeRoadRunnerModel()
         #
         return ModelFitterCore.runSimulation(parameters=params,
-              roadrunner=self.roadrunnerModel,
+              modelSpecification=self.roadrunnerModel,
               startTime=startTime,
               endTime=endTime,
               numPoint=numPoint,
@@ -569,6 +572,7 @@ class ModelFitterCore(rpickle.RPickler):
         1-d ndarray of residuals
         """
         self.fittedTS = self.simulate(**kwargs)  # Updates self.fittedTS
+        self.fittedTS = self.fittedTS[self._selectedIdxs]
         residualsArr = self.calcResiduals(self.params)
         numRow = len(self.fittedTS)
         numCol = len(residualsArr)//numRow
@@ -616,7 +620,7 @@ class ModelFitterCore(rpickle.RPickler):
         1-d ndarray of residuals
         """
         dataTS = ModelFitterCore.runSimulation(parameters=params,
-              roadrunner=self.roadrunnerModel,
+              modelSpecification=self.roadrunnerModel,
               startTime=self.observedTS.start,
               endTime=self.endTime,
               numPoint=self.numPoint,
@@ -627,7 +631,7 @@ class ModelFitterCore(rpickle.RPickler):
         if dataTS is None:
             residualsArr = np.repeat(LARGE_RESIDUAL, len(self._observedArr))
         else:
-            truncatedTS = dataTS[self._simulationIndicesForResiduals]
+            truncatedTS = dataTS[self._selectedIdxs]
             residualsArr = self._observedArr - truncatedTS.flatten()
             residualsArr = np.nan_to_num(residualsArr)
         return residualsArr

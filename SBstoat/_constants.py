@@ -13,6 +13,7 @@ MAX_NFEV_DFT = 100
 # Kwargs
 LOGGER = "logger"
 # Dataframe columns
+COUNT = "count"
 FOLD = "fold"
 MEAN = "mean"
 PREDICTED = "predicted"

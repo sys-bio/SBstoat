@@ -11,7 +11,26 @@ import pandas as pd
 
 import SBstoat._constants as cn
 
+################ FUNCTIONS ################
+def _runCrossValidate(fitter):
+    """
+    Top level function that runs crossvalidation for a fitter.
+    Used in parallel processing.
 
+    Parameters
+    ----------
+    AbstractFitter
+    
+    Returns
+    -------
+    lmfit.Parameters, score
+    """
+    fitter.fit()
+    score = fitter.score()
+    return fitter.parameters, score
+
+
+################ CLASSES ################
 class AbstractFitter(object):
     """
     Fitting function for CrossValidation. Constructed with
@@ -108,7 +127,7 @@ class AbstractCrossValidator(object):
             trainIndices = list(set(indices).difference(testIndices))
             yield trainIndices, testIndices
     
-    def _crossValidate(self, fitterGenerator):
+    def _crossValidate(self, fitterGenerator, isParallel=False):
         """
         Calculates parameters for folds.
 
@@ -116,11 +135,16 @@ class AbstractCrossValidator(object):
         ----------
         fitterGenerator: generator
         """
-        for fitter in fitterGenerator:
-            fitter.fit()
-            self.cvFitters.append(fitter)
-            self.cvRsqs.append(fitter.score())
-            self.cvParametersCollection.append(fitter.parameters)
+        self.cvFitters = [f for f in fitterGenerator]
+        results = []
+        if isParallel:
+            raise RuntimeError("Not implemented.")
+        else:
+            for fitter in self.cvFitters:
+                results.append(_runCrossValidate(fitter))
+        # Extract the fields
+        [self.cvParametersCollection.append(r[0]) for r in results]
+        [self.cvRsqs.append(r[1]) for r in results]
     
     def crossValidate(self, numFold):
         """
@@ -133,14 +157,15 @@ class AbstractCrossValidator(object):
         raise RuntimeError("Must implement method %s in class %s" %
               ("crossValidate", str(self.__class__)))
 
-    def reportParameters(self):
+    @property
+    def parameterDF(self):
         """
-        Constructs a report for the parameter values by fold.
+        Constructs a DataFrame for the mean, std of parameter values.
         
         Returns
         -------
         pd.DataFrame
-            Columns: MEAN, STD
+            Columns: MEAN, STD, COUNT (# folds)
             index: parameter
         """
         keys = [cn.FOLD, cn.PARAMETER, cn.VALUE]
@@ -160,8 +185,10 @@ class AbstractCrossValidator(object):
         del reportDF[cn.FOLD]
         stdDF = pd.DataFrame(df.groupby(cn.PARAMETER).std())
         reportDF[cn.STD] = stdDF[cn.VALUE]
+        reportDF[cn.COUNT] = self.numFold
         return reportDF
-    
-    def reportScores(self):
+   
+    @property 
+    def scoreDF(self):
         scores = [f.score() for f in self.cvFitters]
         return pd.DataFrame({cn.SCORE: scores})

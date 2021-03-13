@@ -26,9 +26,10 @@ import tellurium
 import unittest
 
 
-IGNORE_TEST = True
-IS_PLOT = True
+IGNORE_TEST = False
+IS_PLOT = False
 TIMESERIES = th.getTimeseries()
+NUM_FOLD = 5
 
 
 class TestFitter(unittest.TestCase):
@@ -43,7 +44,8 @@ class TestFitter(unittest.TestCase):
               testIdxs=testIdxs)
 
     def testConstructor(self):
-        # TESTING
+        if IGNORE_TEST:
+            return
         self._init()
         self.assertTrue(self.fitter.trainTS.equals(self.fitter.testTS))
 
@@ -68,7 +70,7 @@ class TestFitter(unittest.TestCase):
 class TestModelFitterCrossValidator(unittest.TestCase):
 
     def setUp(self):
-       self.validator = th.getFitter(cls=ModelFitterCrossValidator)
+        self.validator = th.getFitter(cls=ModelFitterCrossValidator)
 
     def testConstructor(self):
         if IGNORE_TEST:
@@ -76,9 +78,23 @@ class TestModelFitterCrossValidator(unittest.TestCase):
         self.assertEqual(len(self.validator.observedTS), th.NUM_POINT)
 
     def testCrossValidate(self):
-        # TESTING
-        self.validator.crossValidate(5)
-        import pdb; pdb.set_trace()
+        if IGNORE_TEST:
+            return
+        self.validator.crossValidate(NUM_FOLD)
+        self.assertEqual(NUM_FOLD, len(self.validator.cvFitters))
+
+    def testScoreDF(self):
+        if IGNORE_TEST:
+            return
+        self.validator.crossValidate(th.NUM_POINT)
+        self.assertLess(min(self.validator.scoreDF[cn.SCORE]), 0.1)
+
+    def testParameterDF(self):
+        if IGNORE_TEST:
+            return
+        self.validator.crossValidate(th.NUM_POINT)
+        df = self.validator.parameterDF
+        self.assertLess(min(self.validator.scoreDF[cn.SCORE]), 0.1)
 
 
 if __name__ == '__main__':

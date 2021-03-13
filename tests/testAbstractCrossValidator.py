@@ -184,18 +184,17 @@ class TestCrossValidator(unittest.TestCase):
             return
         validator = CrossValidator(noiseStd=0.5)
         validator.crossValidate(NUM_FOLD)
-        df = validator.reportParameters()
+        df = validator.parameterDF
         self.assertEqual(len(df), len(PARAMETER_NAMES))
-        diff = set([cn.MEAN, cn.STD]).symmetric_difference(df.columns)
+        diff = set([cn.MEAN, cn.STD, cn.COUNT]).symmetric_difference(df.columns)
         self.assertEqual(len(diff), 0)
 
-    def testReportScores(self):
+    def testScoreDF(self):
         if IGNORE_TEST:
             return
         validator = CrossValidator(noiseStd=0.5)
         validator.crossValidate(NUM_FOLD)
-        df = validator.reportScores()
-        self.assertEqual(len(df), NUM_FOLD)
+        self.assertEqual(len(validator.scoreDF), NUM_FOLD)
 
     def testMissingOverride(self):
         if IGNORE_TEST:
