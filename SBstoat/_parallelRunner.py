@@ -10,11 +10,12 @@ with multiple instances of arguments.
 
 import multiprocessing
 import numpy as np
+from tqdm import tqdm
 
-TIMEOUT = 120  # 2 minute timeout for a task
+TASK_TIMEOUT = 120  # 2 minute timeout for a task
 
 
-def _runner(function, arguments, queue):
+def _runner(function, arguments, processIdx, numWork, numProcess, desc, queue):
     """
     Wrapper for running a function.
 
@@ -22,16 +23,42 @@ def _runner(function, arguments, queue):
     ----------
     function: 1 argument, 1 return value function
     arguements: list of arguments to function
+    processIdx: int
+        index of the running process
+    numWork: int
+        total number of work units to process
+    numProcess: int
+        total number of processes
+    desc: str
+        description of the work unit
     queue: multiprocessing queue
     
     Returns
     -------
     list
     """
-    results = []
-    for argument in arguments:
-        results.append(function(argument))   
+    def nullIterFun(x, **kwargs):
+        # Returns the argument
+        return x
     #
+    results = []
+    # Process 0 runs the progress bar
+    if processIdx == 0:
+        iterFun = tqdm
+    else:
+        iterFun = nullIterFun
+    # To provide the progress bar, iterate across all work units.
+    # Select the current work unit if it is a multiple of the processIdx
+    workIdxs = list(range(numWork))
+    curIdx = 0
+    for workIdx in iterFun(workIdxs, desc=desc, total=numWork):
+        if np.mod(workIdx, numProcess) == processIdx:
+            argument = arguments[curIdx]
+            curIdx += 1
+            results.append(function(argument))   
+    #
+    if queue is None:
+        return results
     queue.put(results)
 
 
@@ -47,16 +74,24 @@ class ParallelRunner():
     listOfResults = runner.runSync(arguments)
     """
 
-    def __init__(self, function, maxProcess=None, timeout=TIMEOUT):
+    def __init__(self, function, maxProcess=None,
+          taskTimeout=TASK_TIMEOUT, desc="task"):
         """
         Parameters
         ----------
         function: Calable
             single argument
             one return value
+        maxProcess: int
+            maximum number of concurrent tasks
+        taskTimeout: float
+            maximum runtime for a task
+        desc: str
+            description of the work unit
         """
         self.function = function
-        self.timeout = timeout
+        self.taskTimeout = taskTimeout
+        self.desc = desc
         numCPU = multiprocessing.cpu_count()
         if maxProcess is None:
             maxProcess = numCPU
@@ -110,15 +145,18 @@ class ParallelRunner():
             queue = multiprocessing.Queue()
             # Start the processes
             argumentsCollection = self._mkArgumentsCollections(arguments)
-            for arguments in argumentsCollection:
+            numWork = len(arguments)
+            for idx, arguments in enumerate(argumentsCollection):
                 process = multiprocessing.Process(target=_runner,
-                      args=(self.function, arguments, queue,))
+                      args=(self.function, arguments, idx, numWork,
+                      self.numProcess, self.desc, queue,))
                 process.start()
                 self.processes.append(process)
             # Wait for the results
             try:
-                for _ in range(len(self.processes)):
-                    result = queue.get(timeout=self.timeout)
+                for idx in range(len(self.processes)):
+                    timeout = len(argumentsCollection[idx])*self.taskTimeout
+                    result = queue.get(timeout=timeout)
                     if result is None:
                         raise ValueError("Got None result")
                     results.extend(result)

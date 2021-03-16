@@ -13,7 +13,7 @@ import unittest
 
 IGNORE_TEST = False
 IS_PLOT = False
-COUNT = 10000
+COUNT = 5000
 
 
 def findPrimes(count=COUNT):
@@ -52,13 +52,26 @@ class TestParallelRunner(unittest.TestCase):
         self.assertEqual(len(primes), COUNT)
 
     def runPrimes(self, **kwargs):
-        SIZE = 10
+        SIZE = 15
         arguments = np.repeat(COUNT, SIZE)
         results = self.runner.runSync(arguments, **kwargs)
         self.assertEqual(len(results), SIZE)
         for idx in range(1, SIZE):
             diff = set(results[0]).symmetric_difference(results[idx])
             self.assertEqual(len(diff), 0)
+
+    def testRunner(self):
+        if IGNORE_TEST:
+            return
+        NUM_WORK = 15
+        NUM_PROCESS = 5
+        ARGUMENTS = [5, 10, 15]
+        result1 = pr._runner(findPrimes, ARGUMENTS, 0, NUM_WORK, NUM_PROCESS,
+              "task", None)
+        result2 = pr._runner(findPrimes, ARGUMENTS, 1, NUM_WORK, NUM_PROCESS,
+              "task", None)
+        self.assertEqual(len(result1), NUM_WORK // NUM_PROCESS)
+        self.assertEqual(len(result1), len(result2))
 
     def testRunSync(self):
         if IGNORE_TEST:
