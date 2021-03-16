@@ -52,7 +52,7 @@ class TestParallelRunner(unittest.TestCase):
         self.assertEqual(len(primes), COUNT)
 
     def runPrimes(self, **kwargs):
-        SIZE = 4
+        SIZE = 10
         arguments = np.repeat(COUNT, SIZE)
         results = self.runner.runSync(arguments, **kwargs)
         self.assertEqual(len(results), SIZE)
@@ -69,6 +69,23 @@ class TestParallelRunner(unittest.TestCase):
         if IGNORE_TEST:
             return
         self.runPrimes(isParallel=False)
+
+    def testMkArgumentCollections(self):
+        if IGNORE_TEST:
+            return
+        MAX_SIZE = 20
+        MAX_PROCESS = 3
+        runner = pr.ParallelRunner(findPrimes, maxProcess=MAX_PROCESS)
+        for size in range(1, MAX_SIZE+1):
+            arguments = list(range(size))
+            argumentsCollection = runner._mkArgumentsCollections(arguments)
+            newArguments = []
+            _ = [newArguments.extend(c) for c in argumentsCollection]
+            diff = set(arguments).symmetric_difference(newArguments)
+            self.assertEqual(len(diff), 0)
+            trues = [len(argumentsCollection[0]) - len(c) in [0, 1]
+                  for c in argumentsCollection]
+            self.assertTrue(all(trues))
         
 
 if __name__ == '__main__':
