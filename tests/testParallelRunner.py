@@ -31,7 +31,6 @@ class PrimeFinder(pr.AbstracRunner):
     def _isPrime(number, primes):
         if number < 2:
             return False
-        upper = int(np.sqrt(number))
         maxNumber = np.sqrt(number)
         for prime in primes:
             if prime > maxNumber:
@@ -53,7 +52,49 @@ class PrimeFinder(pr.AbstracRunner):
         if len(self._primes) == self.count:
             self.isDone = True
         return num
-    
+
+
+class TestRunnerManager(unittest.TestCase):
+
+    def setUp(self):
+        self.arguments = [10, 20, 30]
+        self.numWork = sum(self.arguments)
+        self.manager = pr.RunnerManager(PrimeFinder, self.arguments, "primes")
+
+    def testConstructor(self):
+        if IGNORE_TEST:
+            return
+        self.assertEqual(len(self.arguments), len(self.manager.runners))
+
+    def generatorTest(self, generator):
+        count = 0
+        for _ in generator:
+            count += 1
+        self.assertEqual(count, self.numWork)
+
+    def testProgressGenerator(self):
+        if IGNORE_TEST:
+            return
+        MULTIPLIER = 2
+        generator = self.manager._progressGenerator(MULTIPLIER)
+        self.generatorTest(generator)
+
+    def testDummyGenerator(self):
+        if IGNORE_TEST:
+            return
+        MULTIPLIER = 2
+        generator = self.manager._dummyGenerator(MULTIPLIER)
+        self.generatorTest(generator)
+
+    def testRunAll(self):
+        if IGNORE_TEST:
+            return
+        for numProcess in [1, 2]:
+            for isReport in [False, True]:
+                manager = pr.RunnerManager(PrimeFinder, self.arguments, "primes")
+                results = manager.runAll(isReport, numProcess)
+                self.assertEqual(len(results), self.numWork)
+
 
 class TestParallelRunner(unittest.TestCase):
 
@@ -76,7 +117,7 @@ class TestParallelRunner(unittest.TestCase):
         results = self.runner.runSync(arguments, **kwargs)
         self.assertEqual(len(results), numWork)
         trues = [r is not None for r in results]
-        self.assertTrue(all(results))
+        self.assertTrue(all(trues))
 
 
     def testToplevelRunner(self):
@@ -95,7 +136,6 @@ class TestParallelRunner(unittest.TestCase):
     def testRunner2(self):
         if IGNORE_TEST:
             return
-        NUM_WORK = 15
         NUM_PROCESS = 5
         ARGUMENTS = [5, 10, 15]
         numWork = sum(ARGUMENTS)
@@ -132,7 +172,7 @@ class TestParallelRunner(unittest.TestCase):
             trues = [len(argumentsCollection[0]) - len(c) in [0, 1]
                   for c in argumentsCollection]
             self.assertTrue(all(trues))
-        
+
 
 if __name__ == '__main__':
     unittest.main()

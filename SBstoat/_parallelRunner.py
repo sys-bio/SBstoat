@@ -9,7 +9,7 @@ with multiple instances of arguments. Provides progress bar.
 
 The user wraps their function in a class that inherits from AbstractRunner.
 This class if provided to ParallelRunner, which runs the codes in parallel.
-    
+
     Usage
     -----
     runner = ParallelRunner(cls)  # cls is an AbstractRunner
@@ -41,14 +41,14 @@ def _toplevelRunner(cls, arguments, isReport, numProcess, desc, queue):
     desc: str
         description of the work unit
     queue: multiprocessing queue
-    
+
     Returns
     -------
     list
     """
     manager = RunnerManager(cls, arguments, desc)
     results = manager.runAll(isReport, numProcess)
-    # Post the results        
+    # Post the results
     if queue is None:
         return results
     queue.put(results)
@@ -72,7 +72,7 @@ class AbstracRunner(object):
     def run(self):
         """
         Interface for repeated running of work units.
-        
+
         Returns
         -------
         Object
@@ -83,7 +83,7 @@ class AbstracRunner(object):
 
 class RunnerManager():
     """Manages runners for a process. There is a runner for each argument."""
-    
+
     def __init__(self, cls, arguments, desc):
         """
         Parameters
@@ -112,29 +112,46 @@ class RunnerManager():
         ----------
         unitMultiplier: int
             How many units are updated for a work unit.
-        
+
         Returns
         -------
         generator
         """
         allWork = unitMultiplier*self.totalWork
         indices = range(allWork)
-        count = unitMultiplier
-        for idx in tqdm(indices, desc=self.desc, total=len(indices)):
+        count = 0
+        for _ in tqdm(indices, desc=self.desc, total=len(indices)):
             if count == 0:
                 count = unitMultiplier
                 yield None
             count -= 1
 
-    def _dummyGenerator(self, numIteration):
-        for _ in range(numIteration):
+    def _dummyGenerator(self, _):
+        """Interface identical to _progressGenerator."""
+        for _ in range(self.totalWork):
             yield None
 
     def runAll(self, isReport, numProcess):
+        """
+        Runs all of the work units. Handles progress bar.
+
+        Parameters
+        ----------
+        isReport: bool
+            display progress bar
+        numProcess: int
+            number of prceses
+        
+        Returns
+        -------
+        list-object
+            results for each work unit
+        """
         if isReport:
             generator = self._progressGenerator(numProcess)
         else:
-            generator = self._dummyGenerator(numProcess*self.totalWork)
+            # This doesn't generate a progress bar
+            generator = self._dummyGenerator(numProcess)
         #
         results = []
         for runner in self.runners:
@@ -143,10 +160,11 @@ class RunnerManager():
                 try:
                     _ = generator.__next__()
                 except StopIteration:
+                    import pdb; pdb.set_trace()
                     break
         #
         return results
-        
+
 
 class ParallelRunner():
 
@@ -179,36 +197,31 @@ class ParallelRunner():
 
     def _mkArgumentsCollections(self, arguments):
         """
-        Makes a collection of arguments lists.
+        Allocates arguments among a set of processes.
 
         Parameters
         ----------
         arguments: list
-        
+
         Returns
         -------
         list-list
         """
-        count = len(arguments)
         collection = [[] for _ in range(self.maxProcess)]
-        idx = 0
-        for argument in arguments:
-            collection[idx].append(argument)
-            if idx >= self.maxProcess-1:
-                idx = 0
-            else:
-                idx += 1
+        for idx, argument in enumerate(arguments):
+            pos = np.mod(idx, self.maxProcess)
+            collection[pos].append(argument)
         return collection
-   
 
-    def runSync(self, arguments, isParallel=True):
+
+    def runSync(self, argumentsList, isParallel=True):
         """
         Runs the function for each of the arguments.
         The caller waits for completion.
 
         Parameters
         ----------
-        args: List
+        argumentsList: List
             each element results in running a separate process
         isParallel: True
             runs the function in parallel
@@ -223,7 +236,7 @@ class ParallelRunner():
             self.processes = []
             queue = multiprocessing.Queue()
             # Start the processes
-            argumentsCollection = self._mkArgumentsCollections(arguments)
+            argumentsCollection = self._mkArgumentsCollections(argumentsList)
             for idx, arguments in enumerate(argumentsCollection):
                 isReporter = idx == 0
                 process = multiprocessing.Process(target=_toplevelRunner,
@@ -245,5 +258,8 @@ class ParallelRunner():
             for process in self.processes:
                 process.terminate()
         else:
-            results = _toplevelRunner(self.cls, arguments, True, 1, self.desc, None)
+            numProcess = 1
+            isReport = True
+            results = _toplevelRunner(self.cls, argumentsList,
+                isReport, numProcess, self.desc, None)
         return results
