@@ -16,10 +16,21 @@ IS_PLOT = False
 COUNT = 5000
 
 
-def findPrimes(count=COUNT):
-    # finds the specified number of primes
+class PrimeFinder(pr.AbstracRunner):
+    """A work unit is the calculation of a prime."""
 
-    def isPrime(number, primes):
+    def __init__(self, count):
+        super().__init__()
+        # Rquired instance variables
+        self.numWorkUnit = count
+        # Instance variables for this class
+        self.count = count  # each count is a work unit
+        self._primes = []
+
+    @staticmethod
+    def _isPrime(number, primes):
+        if number < 2:
+            return False
         upper = int(np.sqrt(number))
         maxNumber = np.sqrt(number)
         for prime in primes:
@@ -28,49 +39,71 @@ def findPrimes(count=COUNT):
             if np.mod(number, prime) == 0:
                 return False
         return True
-    #
-    currentInt = 2
-    primes = []
-    done = False
-    while len(primes) < count:
-        if isPrime(currentInt, primes):
-            primes.append(currentInt)
-        currentInt += 1
-    #
-    return primes
+
+    def run(self):
+        # Find primes until enough are accumulated
+        if len(self._primes) == 0:
+            num = 2
+        else:
+            num = self._primes[-1] + 1  # Start with number after the last prime
+        if len(self._primes) < self.count:
+            while not self._isPrime(num, self._primes):
+                num += 1
+            self._primes.append(num)
+        if len(self._primes) == self.count:
+            self.isDone = True
+        return num
     
 
 class TestParallelRunner(unittest.TestCase):
 
     def setUp(self):
-        self.runner = pr.ParallelRunner(findPrimes)
+        self.runner = pr.ParallelRunner(PrimeFinder)
 
-    def testFindPrimes(self):
+    def testPrimeFinder(self):
         if IGNORE_TEST:
             return
-        primes = findPrimes()
+        finder = PrimeFinder(COUNT)
+        primes = []
+        while not finder.isDone:
+            primes.append(finder.run())
         self.assertEqual(len(primes), COUNT)
 
     def runPrimes(self, **kwargs):
         SIZE = 15
         arguments = np.repeat(COUNT, SIZE)
+        numWork = COUNT*SIZE
         results = self.runner.runSync(arguments, **kwargs)
-        self.assertEqual(len(results), SIZE)
-        for idx in range(1, SIZE):
-            diff = set(results[0]).symmetric_difference(results[idx])
-            self.assertEqual(len(diff), 0)
+        self.assertEqual(len(results), numWork)
+        trues = [r is not None for r in results]
+        self.assertTrue(all(results))
 
-    def testRunner(self):
+
+    def testToplevelRunner(self):
+        if IGNORE_TEST:
+            return
+        NUM_PROCESS = 1
+        ARGUMENTS = [5, 10, 15]
+        numWork = sum(ARGUMENTS)
+        result2 = pr._toplevelRunner(PrimeFinder, ARGUMENTS, False, NUM_PROCESS,
+            "iterations", None)
+        result1 = pr._toplevelRunner(PrimeFinder, ARGUMENTS, True, NUM_PROCESS,
+            "iterations", None)
+        self.assertEqual(len(result1), numWork)
+        self.assertEqual(len(result1), len(result2))
+
+    def testRunner2(self):
         if IGNORE_TEST:
             return
         NUM_WORK = 15
         NUM_PROCESS = 5
         ARGUMENTS = [5, 10, 15]
-        result1 = pr._runner(findPrimes, ARGUMENTS, 0, NUM_WORK, NUM_PROCESS,
-              "task", None)
-        result2 = pr._runner(findPrimes, ARGUMENTS, 1, NUM_WORK, NUM_PROCESS,
-              "task", None)
-        self.assertEqual(len(result1), NUM_WORK // NUM_PROCESS)
+        numWork = sum(ARGUMENTS)
+        result1 = pr._toplevelRunner(PrimeFinder, ARGUMENTS, True,
+            NUM_PROCESS, "tasks", None)
+        result2 = pr._toplevelRunner(PrimeFinder, ARGUMENTS, False,
+             NUM_PROCESS, "tasks", None)
+        self.assertEqual(len(result1), numWork)
         self.assertEqual(len(result1), len(result2))
 
     def testRunSync(self):
@@ -88,7 +121,7 @@ class TestParallelRunner(unittest.TestCase):
             return
         MAX_SIZE = 20
         MAX_PROCESS = 3
-        runner = pr.ParallelRunner(findPrimes, maxProcess=MAX_PROCESS)
+        runner = pr.ParallelRunner(PrimeFinder, maxProcess=MAX_PROCESS)
         for size in range(1, MAX_SIZE+1):
             arguments = list(range(size))
             argumentsCollection = runner._mkArgumentsCollections(arguments)

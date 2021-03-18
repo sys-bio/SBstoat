@@ -17,6 +17,7 @@ from SBstoat._bootstrapResult import BootstrapResult
 from SBstoat.observationSynthesizer import  \
       ObservationSynthesizerRandomizedResiduals
 from SBstoat import _modelFitterCrossValidator as mfc
+from SBstoat._parallelRunner import ParallelRunner
 from SBstoat import _helpers
 from SBstoat.logs import Logger
 
@@ -38,33 +39,27 @@ MAX_ITERATION_TIME = 10.0
 class _Arguments():
     """ Arguments passed to _runBootstrap. """
 
-    def __init__(self, fitter, numProcess:int, processIdx:int,
+    def __init__(self, fitter, 
                  numIteration:int=10,
-                 reportInterval:int=-1,
-                 synthesizerClass=  \
-                 ObservationSynthesizerRandomizedResiduals,
+                 synthesizerClass=ObservationSynthesizerRandomizedResiduals,
                  _loggerPrefix="",
                  **kwargs: dict):
         # Same the antimony model, not roadrunner bcause of Pickle
         self.fitter = fitter.copy(isKeepLogger=True)
         self.numIteration  = numIteration
-        self.reportInterval  = reportInterval
-        self.numProcess = numProcess
-        self.processIdx = processIdx
         self.synthesizerClass = synthesizerClass
         self._loggerPrefix = _loggerPrefix
         self.kwargs = kwargs
 
 
 ################# FUNCTIONS ####################
-def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
+def _runBootstrap(arguments:_Arguments)->BootstrapResult:
     """
     Executes bootstrapping.
 
     Parameters
     ----------
     arguments: inputs to bootstrap
-    queue: multiprocessing.Queue
 
     Notes
     -----
@@ -88,22 +83,18 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
             lastErr = err
     # Set up logging for this process
     fd = logger.getFileDescriptor()
-    processIdx = arguments.processIdx
     if fd is not None:
         sys.stderr = logger.getFileDescriptor()
         sys.stdout = logger.getFileDescriptor()
     iterationGuid = None
     if not isSuccess:
-        msg = "Process %d/modelFitterBootstrip/_runBootstrap" % processIdx
+        msg = "modelFitterBootstrip/_runBootstrap"
         logger.error(msg,  lastErr)
         fittedStatistic = TimeseriesStatistic(fitter.observedTS, percentiles=[])
         bootstrapResult = BootstrapResult(fitter, 0, {},
               fittedStatistic)
     else:
         numIteration = arguments.numIteration
-        reportInterval = arguments.reportInterval
-        processingRate = min(arguments.numProcess,
-                             multiprocessing.cpu_count())
         cols = fitter.selectedColumns
         synthesizer = arguments.synthesizerClass(
               observedTS=fitter.observedTS.subsetColumns(cols),
@@ -112,7 +103,6 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
         # Initialize
         parameterDct = {str(p): [] for p in fitter.parametersToFit}
         numSuccessIteration = 0
-        lastReport = 0
         if fitter.minimizerResult is None:
             fitter.fitModel()
         baseChisq = fitter.minimizerResult.redchi
@@ -141,16 +131,6 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
                   percentiles=[])
             logger.endBlock(fittingSetupGuid)
             try:
-                if (iteration > 0) and (iteration != lastReport)  \
-                        and (processIdx == 0):
-                    totalSuccessIteration = numSuccessIteration*processingRate
-                    totalIteration = iteration*processingRate
-                    if totalIteration % reportInterval == 0:
-                        msg = "Bootstrap completed %d total iterations "
-                        msg += "with %d successes."
-                        msg = msg % (totalIteration, totalSuccessIteration)
-                        fitter.logger.status(msg)
-                        lastReport = numSuccessIteration
                 if numSuccessIteration >= numIteration:
                     # Performed the iterations
                     break
@@ -162,17 +142,17 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
                     newFitter.fitModel(params=fitter.params)
                     logger.endBlock(tryFitterGuid)
                 except Exception as err:
-                    # Problem with the fit. Don't numSuccessIteration it.
-                    msg = "Process %d/modelFitterBootstrap" % processIdx
-                    msg += " Fit failed on iteration %d."  % iteration
+                    # Problem with the fit.
+                    msg = "modelFitterBootstrap. Fit failed on iteration %d."  \
+                          % iteration
                     fitter.logger.error(msg, err)
                     logger.endBlock(tryGuid)
                     continue
                 if newFitter.minimizerResult.redchi > MAX_CHISQ_MULT*baseChisq:
                     if IS_REPORT:
-                        msg = "Process %d: Fit has high chisq: %2.2f on iteration %d."
-                        fitter.logger.exception(msg % (processIdx,
-                              newFitter.minimizerResult.redchi, iteration))
+                        msg = "Fit has high chisq: %2.2f on iteration %d."
+                        fitter.logger.exception(msg 
+                              % (newFitter.minimizerResult.redchi, iteration))
                     logger.endBlock(tryGuid)
                     continue
                 if newFitter.params is None:
@@ -186,11 +166,10 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
                 newFitter.observedTS = synthesizer.calculate()
                 logger.endBlock(tryGuid)
             except Exception as err:
-                msg = "Process %d/modelFitterBootstrap" % processIdx
+                msg = "modelFitterBootstrap"
                 msg += " Error on iteration %d."  % iteration
                 fitter.logger.error(msg, err)
                 bootstrapError += 1
-        fitter.logger.status("Process %d: completed bootstrap." % (processIdx + 1))
         bootstrapResult = BootstrapResult(fitter, numSuccessIteration, parameterDct,
               fittedStatistic, bootstrapError=bootstrapError)
     if iterationGuid is not None:
@@ -199,18 +178,15 @@ def _runBootstrap(arguments:_Arguments, queue=None)->BootstrapResult:
     if fd is not None:
         if not fd.closed:
             fd.close()
-    if queue is None:
-        return bootstrapResult
-    queue.put(bootstrapResult)
+    return bootstrapResult
 
 
 ##################### CLASSES #########################
 class ModelFitterBootstrap(mfc.ModelFitterCrossValidator):
 
-    def bootstrap(self,
+    def bootstrap(self, isParallel=True,
           # The following must be kept in sync with ModelFitterCore.__init__
           numIteration:int=None,
-          reportInterval:int=None,
           synthesizerClass=ObservationSynthesizerRandomizedResiduals,
           maxProcess:int=None,
           serializePath:str=None,
@@ -220,8 +196,9 @@ class ModelFitterBootstrap(mfc.ModelFitterCrossValidator):
 
         Parameters
         ----------
+        isParallel: bool
+            run in parallel
         numIteration: number of bootstrap iterations
-        reportInterval: number of iterations between progress reports
         synthesizerClass: object that synthesizes new observations
             Must subclass ObservationSynthesizer
         maxProcess: Maximum number of processes to use. Default: numCPU
@@ -239,7 +216,7 @@ class ModelFitterBootstrap(mfc.ModelFitterCrossValidator):
                the keyword argument bootstrapKwargs.
         ----
         """
-        def get(name, value):
+        def getValue(name, value):
             if value is not None:
                 return value
             # Handle arguments specified in constructor
@@ -248,66 +225,31 @@ class ModelFitterBootstrap(mfc.ModelFitterCrossValidator):
                     return self.bootstrapKwargs[name]
             # None specified
             return None
-        # Handle overrides of arguments specified in constructor
-        numIteration = get("numIteration", numIteration)
-        reportInterval = get("reportInterval", reportInterval)
-        synthesizerClass = get("synthesizerClass", synthesizerClass)
+        #
+        # Initialization
+        numIteration = getValue("numIteration", numIteration)
+        synthesizerClass = getValue("synthesizerClass", synthesizerClass)
         if maxProcess is None:
             maxProcess = self._maxProcess
-        serializePath = get("serializePath", serializePath)
-        # Other initializations
         if maxProcess is None:
             maxProcess = multiprocessing.cpu_count()
+        serializePath = getValue("serializePath", serializePath)
+        # Ensure that there is a fitted model
         if self.minimizerResult is None:
             self.fitModel()
-        # Run processes
-        numProcess = max(int(numIteration/ITERATION_PER_PROCESS), 1)
-        numProcess = min(numProcess, maxProcess)
-        numProcessIteration = int(np.ceil(numIteration/numProcess))
-        msg = "Running bootstrap for %d successful iterations " % numIteration
-        msg += "with %d processes." % numProcess
-        self.logger.activity(msg)
-        # Run separate processes for each bootstrap
-        processes = []
-        queue = multiprocessing.Queue()
-        results = []
-        # Set to False for debug so not doing multiple processes
-        if True:
-            args_list = [_Arguments(self, numProcess, i,
-                  numIteration=numProcessIteration,
-                  reportInterval=reportInterval,
-                  synthesizerClass=synthesizerClass,
-                  _loggerPrefix="bootstrap",
-                  **kwargs) for i in range(numProcess)]
-            for args in args_list:
-                p = multiprocessing.Process(target=_runBootstrap,
-                      args=(args, queue,))
-                p.start()
-                processes.append(p)
-            timeout = MAX_ITERATION_TIME*numProcessIteration
-            try:
-                # Get rid of possible zombies
-                for _ in range(len(processes)):
-                    results.append(queue.get(timeout=timeout))
-                # Get rid of possible zombies
-                for process in processes:
-                    process.terminate()
-            except Exception as err:
-                msg = "modelFitterBootstrap/Error in process management"
-                self.logger.error(msg, err)
-            finally:
-                pass
-        else:
-            # Keep to debug _runBootstrap single threaded
-            thisNumProcess = 1
-            thisProcessIdx = 0
-            args = _Arguments(self, thisNumProcess, thisProcessIdx,
-                  numIteration=numIteration,
-                  reportInterval=reportInterval,
-                  synthesizerClass=synthesizerClass,
-                  _loggerPrefix="bootstrap",
-                  **kwargs)
-            results = [_runBootstrap(args)]
+        # Construct arguments collection
+        numProcess = min(maxProcess, numIteration)
+        batchSize = numIteration // numProcess
+        argumentsCol = [_Arguments(self,
+              numIteration=batchSize,
+              synthesizerClass=synthesizerClass,
+              _loggerPrefix="bootstrap",
+              **kwargs) for i in range(numProcess)]
+        # Run separate processes for each batch
+        runner = ParallelRunner(_runBootstrap, desc="iteration",
+              maxProcess=numProcess, batchSize=batchSize)
+        results = runner.runSync(argumentsCol, isParallel=isParallel)
+        # Check the results
         if len(results) == 0:
             msg = "modelFitterBootstrap/timeout in solving model."
             msg = "\nConsider increasing per timeout."

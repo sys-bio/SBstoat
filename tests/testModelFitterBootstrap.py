@@ -30,8 +30,8 @@ def remove(ffile):
     if os.path.isfile(ffile):
         os.remove(ffile)
 
-IGNORE_TEST = False
-IS_PLOT = False
+IGNORE_TEST = True
+IS_PLOT = True
 TIMESERIES = th.getTimeseries()
 DIR = os.path.dirname(os.path.abspath(__file__))
 LOG_FILE = os.path.join(DIR, "testModelFitterBootstrap.log")
@@ -42,7 +42,7 @@ if IGNORE_TEST:
 else:
     FITTER = th.getFitter(cls=mfb.ModelFitterBootstrap, logger=LOGGER)
 FITTER.fitModel()
-NUM_ITERATION = 50
+NUM_ITERATION = 10
 FILE_SERIALIZE = os.path.join(DIR, "modelFitterBootstrap.pcl")
 FILES = [FILE_SERIALIZE]
 MEAN_UNIFORM = 0.5  # Mean of uniform distribution
@@ -78,7 +78,7 @@ class TestModelFitterBootstrap(unittest.TestCase):
         self._init()
         NUM_ITERATION = 10
         MAX_DIFF = 4
-        arguments = mfb._Arguments(self.fitter, 1, 0,
+        arguments = mfb._Arguments(self.fitter,
               synthesizerClass=ObservationSynthesizerRandomErrors,
               std=0.01)
         arguments.numIteration = NUM_ITERATION
@@ -125,13 +125,13 @@ class TestModelFitterBootstrap(unittest.TestCase):
         timeIt(2)
         timeIt(4)
 
-    def testBootstrap1(self):
+    def testBootstrapSequential(self):
         if IGNORE_TEST:
             return
         self._init()
-        self.fitter.bootstrap(numIteration=50,
-              reportInterval=10, maxProcess=2,
-              serializePath=FILE_SERIALIZE)
+        self.fitter.bootstrap(numIteration=5,
+              maxProcess=1,
+              serializePath=FILE_SERIALIZE, isParallel=False)
         NUM_STD = 10
         result = self.fitter.bootstrapResult
         for p in self.fitter.parametersToFit:
@@ -148,14 +148,14 @@ class TestModelFitterBootstrap(unittest.TestCase):
         fitter = mfb.ModelFitterBootstrap.deserialize(FILE_SERIALIZE)
         self.assertIsNotNone(fitter.bootstrapResult)
 
-    def testBoostrap2(self):
-        if IGNORE_TEST:
-            return
+    def testBoostrapParallel(self):
+        # TESTING
         self._init()
-        numIteration = 10
-        self.fitter.bootstrap(numIteration=numIteration)
+        numIteration = 50
+        self.fitter.bootstrap(numIteration=numIteration, isParallel=True)
         fitterLow = th.getFitter(cls=mfb.ModelFitterBootstrap,
             logger=LOGGER)
+        import pdb; pdb.set_trace()
         # Filters more and so lower std
         fitterLow.bootstrap(numIteration=numIteration, filterSL=0.5)
         #

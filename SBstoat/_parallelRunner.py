@@ -5,7 +5,16 @@
 @author: joseph-hellerstein
 
 Provides a simple interface for running a function in parallel
-with multiple instances of arguments.
+with multiple instances of arguments. Provides progress bar.
+
+The user wraps their function in a class that inherits from AbstractRunner.
+This class if provided to ParallelRunner, which runs the codes in parallel.
+    
+    Usage
+    -----
+    runner = ParallelRunner(cls)  # cls is an AbstractRunner
+    arguments = list of arguments for instances of cls
+    listOfResults = runner.runSync(arguments)
 """
 
 import multiprocessing
@@ -13,22 +22,22 @@ import numpy as np
 from tqdm import tqdm
 
 TASK_TIMEOUT = 120  # 2 minute timeout for a task
+WORK_UNIT_DESC = "task"
 
 
-def _runner(function, arguments, processIdx, numWork, numProcess, desc, queue):
+##################### FUNCTIONS #########################
+def _toplevelRunner(cls, arguments, isReport, numProcess, desc, queue):
     """
-    Wrapper for running a function.
+    Top level function that runs each process. Handles progress reporting.
 
     Parameters
     ----------
-    function: 1 argument, 1 return value function
-    arguements: list of arguments to function
-    processIdx: int
-        index of the running process
-    numWork: int
-        total number of work units to process
+    cls: inherits from AbstractWorkUnit
+    arguements: each element is an argument to construct
+        an instance of cls
+    isReport: bool
+        This process reports progress
     numProcess: int
-        total number of processes
     desc: str
         description of the work unit
     queue: multiprocessing queue
@@ -37,51 +46,122 @@ def _runner(function, arguments, processIdx, numWork, numProcess, desc, queue):
     -------
     list
     """
-    def nullIterFun(x, **kwargs):
-        # Returns the argument
-        return x
-    #
-    results = []
-    # Process 0 runs the progress bar
-    if processIdx == 0:
-        iterFun = tqdm
-    else:
-        iterFun = nullIterFun
-    # To provide the progress bar, iterate across all work units.
-    # Select the current work unit if it is a multiple of the processIdx
-    workIdxs = list(range(numWork))
-    curIdx = 0
-    for workIdx in iterFun(workIdxs, desc=desc, total=numWork):
-        if np.mod(workIdx, numProcess) == processIdx:
-            argument = arguments[curIdx]
-            curIdx += 1
-            results.append(function(argument))   
-    #
+    manager = RunnerManager(cls, arguments, desc)
+    results = manager.runAll(isReport, numProcess)
+    # Post the results        
     if queue is None:
         return results
     queue.put(results)
 
 
+##################### CLASSES #########################
+class AbstracRunner(object):
+    """
+    Wrapper for user-provided code that is run in parallel.
+    An AbstractRunner has a run method that returns a list of
+    work unit results.
+    """
+
+    def __init__(self):
+        # The following instance variables are required
+        # The following need to be assigned
+        self.totalWorkUnit = None  # Total number of work units
+        # The following are initialized
+        self.isDone = False
+
+    def run(self):
+        """
+        Interface for repeated running of work units.
+        
+        Returns
+        -------
+        Object
+            list of work unit results
+        """
+        raise RuntimeError("Must override.")
+
+
+class RunnerManager():
+    """Manages runners for a process. There is a runner for each argument."""
+    
+    def __init__(self, cls, arguments, desc):
+        """
+        Parameters
+        ----------
+        cls: inherits from AbstractWorkUnit
+        arguements: each element is an argument to construct
+            an instance of cls
+        desc: str
+            description of the work unit
+        """
+        self.cls = cls
+        self.runners = [self.cls(a) for a in arguments]
+        self.desc = desc
+        try:
+            self.totalWork = sum([r.numWorkUnit for r in self.runners])
+        except Exception:
+            msg = "Must implement attribute 'numWorkUnit' in AbstractRunner"
+            raise ValueError(msg)
+
+    def _progressGenerator(self, unitMultiplier):
+        """
+        Updates the progress bar.
+        Should be called exactly self.totalWork times.
+
+        Parameters
+        ----------
+        unitMultiplier: int
+            How many units are updated for a work unit.
+        
+        Returns
+        -------
+        generator
+        """
+        allWork = unitMultiplier*self.totalWork
+        indices = range(allWork)
+        count = unitMultiplier
+        for idx in tqdm(indices, desc=self.desc, total=len(indices)):
+            if count == 0:
+                count = unitMultiplier
+                yield None
+            count -= 1
+
+    def _dummyGenerator(self, numIteration):
+        for _ in range(numIteration):
+            yield None
+
+    def runAll(self, isReport, numProcess):
+        if isReport:
+            generator = self._progressGenerator(numProcess)
+        else:
+            generator = self._dummyGenerator(numProcess*self.totalWork)
+        #
+        results = []
+        for runner in self.runners:
+            while not runner.isDone:
+                results.append(runner.run())
+                try:
+                    _ = generator.__next__()
+                except StopIteration:
+                    break
+        #
+        return results
+        
+
 class ParallelRunner():
 
     """
     Interface to running in parallel multiple instances of the same function.
-    
-    Usage
-    -----
-    runner = ParallelRunner(function)
-    arguments = list of arguments for the instances run in parallel
-    listOfResults = runner.runSync(arguments)
+    The user implements a class that inherits from AbstractRunner and provides
+    this class to the constructor of ParallelRunner.
     """
 
-    def __init__(self, function, maxProcess=None,
-          taskTimeout=TASK_TIMEOUT, desc="task"):
+    def __init__(self, cls, maxProcess=None,
+           taskTimeout=TASK_TIMEOUT, desc=WORK_UNIT_DESC):
         """
         Parameters
         ----------
-        function: Calable
-            single argument
-            one return value
+        cls: Inherits from AbstractRunner
         maxProcess: int
             maximum number of concurrent tasks
         taskTimeout: float
@@ -89,13 +169,12 @@ class ParallelRunner():
         desc: str
             description of the work unit
         """
-        self.function = function
+        self.cls = cls
         self.taskTimeout = taskTimeout
         self.desc = desc
-        numCPU = multiprocessing.cpu_count()
         if maxProcess is None:
-            maxProcess = numCPU
-        self.numProcess = min(maxProcess, numCPU)
+            maxProcess = multiprocessing.cpu_count()
+        self.maxProcess = min(maxProcess, multiprocessing.cpu_count())
         self.processes = []
 
     def _mkArgumentsCollections(self, arguments):
@@ -111,11 +190,11 @@ class ParallelRunner():
         list-list
         """
         count = len(arguments)
-        collection = [[] for _ in range(self.numProcess)]
+        collection = [[] for _ in range(self.maxProcess)]
         idx = 0
         for argument in arguments:
             collection[idx].append(argument)
-            if idx >= self.numProcess-1:
+            if idx >= self.maxProcess-1:
                 idx = 0
             else:
                 idx += 1
@@ -130,14 +209,14 @@ class ParallelRunner():
         Parameters
         ----------
         args: List
-            each element is an argument for self.function
+            each element results in running a separate process
         isParallel: True
             runs the function in parallel
 
         Returns
         -------
         list
-            list of results from self.function
+            list of results
         """
         results = []
         if isParallel:
@@ -145,11 +224,11 @@ class ParallelRunner():
             queue = multiprocessing.Queue()
             # Start the processes
             argumentsCollection = self._mkArgumentsCollections(arguments)
-            numWork = len(arguments)
             for idx, arguments in enumerate(argumentsCollection):
-                process = multiprocessing.Process(target=_runner,
-                      args=(self.function, arguments, idx, numWork,
-                      self.numProcess, self.desc, queue,))
+                isReporter = idx == 0
+                process = multiprocessing.Process(target=_toplevelRunner,
+                      args=(self.cls, arguments, isReporter, self.maxProcess,
+                      self.desc, queue,))
                 process.start()
                 self.processes.append(process)
             # Wait for the results
@@ -166,5 +245,5 @@ class ParallelRunner():
             for process in self.processes:
                 process.terminate()
         else:
-            results = [self.function(a) for a in arguments]
+            results = _toplevelRunner(self.cls, arguments, True, 1, self.desc, None)
         return results
