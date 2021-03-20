@@ -19,6 +19,7 @@ from tests import _testConstants as tcn
 import matplotlib
 import numpy as np
 import os
+import pandas as pd
 import time
 import unittest
 
@@ -153,9 +154,9 @@ class TestModelFitterBootstrap(unittest.TestCase):
         self._init()
         numIteration = 50
         self.fitter.bootstrap(numIteration=numIteration, isParallel=True)
+        df = pd.DataFrame(self.fitter.bootstrapResult.parameterDct)
         fitterLow = th.getFitter(cls=mfb.ModelFitterBootstrap,
-            logger=LOGGER)
-        import pdb; pdb.set_trace()
+              logger=LOGGER)
         # Filters more and so lower std
         fitterLow.bootstrap(numIteration=numIteration, filterSL=0.5)
         #

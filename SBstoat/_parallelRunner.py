@@ -130,7 +130,7 @@ class RunnerManager():
         """
         allWork = unitMultiplier*self.totalWork
         indices = range(allWork)
-        count = 0
+        count = unitMultiplier
         for _ in tqdm(indices, desc=self.desc, total=len(indices)):
             if count == 0:
                 count = unitMultiplier
@@ -172,7 +172,6 @@ class RunnerManager():
                 try:
                     _ = generator.__next__()
                 except StopIteration:
-                    import pdb; pdb.set_trace()
                     break
         #
         return results
