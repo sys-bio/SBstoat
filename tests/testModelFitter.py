@@ -17,7 +17,7 @@ import unittest
 
 
 IGNORE_TEST = False
-IS_PLOT = False
+IS_PLOT = True
 TIMESERIES = th.getTimeseries()
 optimizerMethod = _helpers.OptimizerMethod(SBstoat.METHOD_LEASTSQ,
       kwargs={"max_nfev": 100})

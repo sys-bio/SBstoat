@@ -308,5 +308,11 @@ class SuiteFitter():
         if not isPlot:
             return
         for model, fitter in self.fitterDct.items():
-            print("\n\n%s\n" % model)
-            fitter.plotFitAll(**kwargs)
+            if fitter is None:
+                print("\n\n%s\n %s: Could not fit model." % model)
+            else:
+                newKwargs = dict(kwargs)
+                if not cn.PARAMS in newKwargs:
+                    newKwargs[cn.PARAMS] = fitter.suiteFitterParams
+                print("\n\n%s\n" % model)
+                fitter.plotFitAll(**newKwargs)

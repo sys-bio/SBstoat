@@ -191,8 +191,10 @@ class NamedTimeseries(rpickle.RPickler):
         return str(df)
 
     def _addColname(self, name):
-        self.allColnames.append(name)
-        self._indexDct[name] = self.allColnames.index(name)
+        """Adds the name. Strips leading and trailing blanks."""
+        newName = name.strip()
+        self.allColnames.append(newName)
+        self._indexDct[newName] = self.allColnames.index(newName)
         self.colnames = list(self.allColnames)
         if TIME in self.colnames:
             self.colnames.remove(TIME)

@@ -151,7 +151,7 @@ class ModelFitterCore(rpickle.RPickler):
             #
             if (selectedColumns is None) and (self.observedTS is not None):
                 selectedColumns = self.observedTS.colnames
-            self.selectedColumns = selectedColumns
+            self.selectedColumns = [c.strip() for c in selectedColumns]
             if self.observedTS is not None:
                 self._observedArr = self.observedTS[self.selectedColumns].flatten()
             else:
@@ -171,7 +171,6 @@ class ModelFitterCore(rpickle.RPickler):
                 self._bootstrapMethods = [self._bootstrapMethods]
             self._isPlot = isPlot
             self._plotter = tp.TimeseriesPlotter(isPlot=self._isPlot)
-            self._plotFittedTS = None  # Timeseries that is plotted
             self.logger = logger
             self._numRestart = numRestart
             # The following are calculated during fitting

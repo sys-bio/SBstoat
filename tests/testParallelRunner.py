@@ -16,16 +16,21 @@ IS_PLOT = False
 COUNT = 5000
 
 
-class PrimeFinder(pr.AbstracRunner):
+class PrimeFinder(pr.AbstractRunner):
     """A work unit is the calculation of a prime."""
 
     def __init__(self, count):
-        super().__init__()
-        # Rquired instance variables
-        self.numWorkUnit = count
-        # Instance variables for this class
         self.count = count  # each count is a work unit
         self._primes = []
+        self._isDone = False
+
+    @property
+    def numWorkUnit(self):
+        return self.count
+
+    @property
+    def isDone(self):
+        return self._isDone
 
     @staticmethod
     def _isPrime(number, primes):
@@ -50,7 +55,7 @@ class PrimeFinder(pr.AbstracRunner):
                 num += 1
             self._primes.append(num)
         if len(self._primes) == self.count:
-            self.isDone = True
+            self._isDone = True
         return num
 
 

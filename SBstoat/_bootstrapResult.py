@@ -227,7 +227,8 @@ class BootstrapResult(rpickle.RPickler):
             fitter.logger = Logger.merge([b.fitter.logger
                   for b in bootstrapResults])
             # Merge the statistics for fitted timeseries
-            fittedStatistics = [b.fittedStatistic for b in bootstrapResults]
+            fittedStatistics = [b.fittedStatistic for b in bootstrapResults
+                  if b.fittedStatistic is not None]
             fittedStatistic = TimeseriesStatistic.merge(fittedStatistics)
             # Accumulate the results
             for bootstrapResult in bootstrapResults:

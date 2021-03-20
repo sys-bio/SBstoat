@@ -55,19 +55,30 @@ def _toplevelRunner(cls, arguments, isReport, numProcess, desc, queue):
 
 
 ##################### CLASSES #########################
-class AbstracRunner(object):
+class AbstractRunner(object):
     """
     Wrapper for user-provided code that is run in parallel.
     An AbstractRunner has a run method that returns a list of
     work unit results.
     """
 
-    def __init__(self):
-        # The following instance variables are required
-        # The following need to be assigned
-        self.totalWorkUnit = None  # Total number of work units
-        # The following are initialized
-        self.isDone = False
+    @property
+    def numWorkUnit(self):
+        """
+        Returns
+        -------
+        int: number of work units to be processed by runner
+        """
+        raise RuntimeError("Must override.")
+
+    @property
+    def isDone(self):
+        """
+        Returns
+        -------
+        bool: all work has been processed
+        """
+        raise RuntimeError("Must override.")
 
     def run(self):
         """
@@ -155,8 +166,9 @@ class RunnerManager():
         #
         results = []
         for runner in self.runners:
-            while not runner.isDone:
-                results.append(runner.run())
+            for _ in range(runner.numWorkUnit):
+                if not runner.isDone:
+                    results.append(runner.run())
                 try:
                     _ = generator.__next__()
                 except StopIteration:
