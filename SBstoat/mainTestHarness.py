@@ -44,6 +44,7 @@ IS_PLOT = True
 DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(os.path.dirname(DIR), "biomodels")
 PATH_PAT = os.path.join(DATA_DIR, "BIOMD0000000%03d.xml")
+LOG_LEVEL = 3
 LOG_PATH = os.path.join(DIR, "mainTestHarness.log")
 FIG_PATH = os.path.join(DIR, "mainTestHarness.png")
 FIRST_MODEL = 210
@@ -310,5 +311,5 @@ if __name__ == '__main__':
                     useExistingData=useExistingData,
                     figPath=args.figPath,
                     isPlot=args.plot,
-                    logger=Logger(toFile=args.logPath))
+                    logger=Logger(toFile=args.logPath, logLevel=LOG_LEVEL))
     runner.run()

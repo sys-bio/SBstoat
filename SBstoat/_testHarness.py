@@ -8,6 +8,7 @@ harness.evaluate(stdResiduals=0.5, maxRelativeError=0.1)
 """
 
 import SBstoat
+from SBstoat.logs import Logger
 from SBstoat.modelFitter import ModelFitter
 from SBstoat.namedTimeseries import NamedTimeseries, TIME
 from SBstoat import _helpers
@@ -19,8 +20,6 @@ import tellurium as te
 import typing
 
 
-HTTP200 = 200
-HTTP = "http://"
 MAX_PARAMETER = 5  # Maximum number of parameters estimated
 NUM_BOOTSTRAP_ITERATION = 100
 

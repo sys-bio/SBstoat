@@ -9,9 +9,9 @@ Created on Tue Aug 19, 2020
 import SBstoat
 import SBstoat._modelFitterCore as mf
 import SBstoat._constants as cn
+from SBstoat.logs import Logger
 from SBstoat.modelFitter import ModelFitter
 from SBstoat import _helpers
-from SBstoat.logs import Logger, LEVEL_MAX
 from SBstoat._modelFitterCore import ModelFitterCore
 from SBstoat.namedTimeseries import NamedTimeseries, TIME
 import tellurium as te
@@ -382,7 +382,7 @@ class TestModelFitterCore(unittest.TestCase):
                       {cn.MAX_NFEV: 10}))
             kwargs["fitterMethods"] = methods
         observedPath = os.path.join(DIR, "mike_bug.csv")
-        fitter = ModelFitter(model, observedPath,
+        fitter = ModelFitter(model, observedPath, logger=Logger(logLevel=1),
          parametersToFit=[
          #"v_0", "ra_0", "kf_0", "kr_0", "Kma_0", "Kms_0", "Kmp_0", "wa_0", "ms_0",
          #"mp_0", "v_1", "ri_1", "kf_1", "kr_1", "Kmi_1", "Kms_1", "Kmp_1", "wi_1",
