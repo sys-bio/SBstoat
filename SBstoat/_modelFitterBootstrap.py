@@ -91,7 +91,8 @@ class ModelFitterBootstrap(mfc.ModelFitterCrossValidator):
         # Run separate processes for each batch
         runner = ParallelRunner(BootstrapRunner,
               desc="iteration", maxProcess=numProcess)
-        results = runner.runSync(argumentsCol, isParallel=isParallel)
+        #results = runner.runSync(argumentsCol, isParallel=isParallel)
+        results = runner.runSync(argumentsCol, isParallel=True)
         # Check the results
         if len(results) == 0:
             msg = "modelFitterBootstrap/timeout in solving model."
@@ -103,8 +104,7 @@ class ModelFitterBootstrap(mfc.ModelFitterCrossValidator):
             # Update the logger in place
             _ = _helpers.copyObject(self.bootstrapResult.fitter.logger,
                   self.logger)
-            if self.bootstrapResult.fittedStatistic is not None:
-                self.bootstrapResult.fittedStatistic.calculate()
+            self.bootstrapResult.fittedStatistic.calculate()
             self.logger.result("%d bootstrap estimates of parameters."
                   % self.bootstrapResult.numSimulation)
             if serializePath is not None:

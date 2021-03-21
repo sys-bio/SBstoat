@@ -31,8 +31,8 @@ def remove(ffile):
     if os.path.isfile(ffile):
         os.remove(ffile)
 
-IGNORE_TEST = True
-IS_PLOT = True
+IGNORE_TEST = False
+IS_PLOT = False
 TIMESERIES = th.getTimeseries()
 DIR = os.path.dirname(os.path.abspath(__file__))
 LOG_FILE = os.path.join(DIR, "testModelFitterBootstrap.log")
@@ -73,26 +73,6 @@ class TestModelFitterBootstrap(unittest.TestCase):
         for ffile in FILES:
             remove(ffile)
 
-    def testRunBootstrap(self):
-        if IGNORE_TEST:
-            return
-        self._init()
-        NUM_ITERATION = 10
-        MAX_DIFF = 4
-        arguments = mfb._Arguments(self.fitter,
-              synthesizerClass=ObservationSynthesizerRandomErrors,
-              std=0.01)
-        arguments.numIteration = NUM_ITERATION
-        bootstrapResult = mfb._runBootstrap(arguments)
-        self.assertEqual(bootstrapResult.numIteration, NUM_ITERATION)
-        trues = [len(v)==NUM_ITERATION for _, v in
-              bootstrapResult.parameterDct.items()]
-        self.assertTrue(all(trues))
-        # Test not too far from true values
-        trues = [np.abs(np.mean(v) - th.PARAMETER_DCT[p]) <= MAX_DIFF
-              for p, v in bootstrapResult.parameterDct.items()]
-        self.assertTrue(all(trues))
-
     def checkParameterValues(self):
         dct = self.fitter.params.valuesdict()
         self.assertEqual(len(dct), len(self.fitter.parametersToFit))
@@ -104,73 +84,51 @@ class TestModelFitterBootstrap(unittest.TestCase):
     def testGetMeanParameters(self):
         if IGNORE_TEST:
             return
+        self._init()
         _ = self.checkParameterValues()
         #
         self.fitter.bootstrap(numIteration=5)
         _ = self.checkParameterValues()
 
-    def testBoostrapTimeMultiprocessing(self):
-        return
+    def testBootstrap1(self):
         if IGNORE_TEST:
             return
-        print("\n")
-        def timeIt(maxProcess):
-            startTime = time.time()
-            self.fitter.bootstrap(numIteration=10000,
-                  reportInterval=1000, maxProcess=maxProcess)
-            elapsed_time = time.time() - startTime
-            print("%s processes: %3.2f" % (str(maxProcess), elapsed_time))
+        def test(isParallel):
+            self._init()
+            self.fitter.bootstrap(numIteration=10,
+                  maxProcess=1,
+                  serializePath=FILE_SERIALIZE, isParallel=isParallel)
+            NUM_STD = 10
+            result = self.fitter.bootstrapResult
+            for p in self.fitter.parametersToFit:
+                isLowerOk = result.parameterMeanDct[p]  \
+                      - NUM_STD*result.parameterStdDct[p]  \
+                      < th.PARAMETER_DCT[p]
+                isUpperOk = result.parameterMeanDct[p]  \
+                      + NUM_STD*result.parameterStdDct[p]  \
+                      > th.PARAMETER_DCT[p]
+                self.assertTrue(isLowerOk)
+                self.assertTrue(isUpperOk)
+            self.assertIsNotNone(self.fitter.bootstrapResult)
+            fitter = mfb.ModelFitterBootstrap.deserialize(FILE_SERIALIZE)
+            self.assertIsNotNone(fitter.bootstrapResult)
         #
-        timeIt(None)
-        timeIt(1)
-        timeIt(2)
-        timeIt(4)
+        test(False)
+        test(True)
 
-    def testBootstrapSequential(self):
+
+    def testBoostrapAccuracy(self):
         if IGNORE_TEST:
             return
-        self._init()
-        self.fitter.bootstrap(numIteration=5,
-              maxProcess=1,
-              serializePath=FILE_SERIALIZE, isParallel=False)
-        NUM_STD = 10
-        result = self.fitter.bootstrapResult
-        for p in self.fitter.parametersToFit:
-            isLowerOk = result.parameterMeanDct[p]  \
-                  - NUM_STD*result.parameterStdDct[p]  \
-                  < th.PARAMETER_DCT[p]
-            isUpperOk = result.parameterMeanDct[p]  \
-                  + NUM_STD*result.parameterStdDct[p]  \
-                  > th.PARAMETER_DCT[p]
-            self.assertTrue(isLowerOk)
-            self.assertTrue(isUpperOk)
-        self.assertIsNotNone(self.fitter.bootstrapResult)
-        #
-        fitter = mfb.ModelFitterBootstrap.deserialize(FILE_SERIALIZE)
-        self.assertIsNotNone(fitter.bootstrapResult)
-
-    def testBoostrapParallel(self):
-        # TESTING
         self._init()
         numIteration = 50
         self.fitter.bootstrap(numIteration=numIteration, isParallel=True)
         df = pd.DataFrame(self.fitter.bootstrapResult.parameterDct)
-        fitterLow = th.getFitter(cls=mfb.ModelFitterBootstrap,
-              logger=LOGGER)
-        # Filters more and so lower std
-        fitterLow.bootstrap(numIteration=numIteration, filterSL=0.5)
-        #
-        stdLows = fitterLow.bootstrapResult.parameterStdDct.values()
-        stdHighs = self.fitter.bootstrapResult.parameterStdDct.values()
-        trues = [l <= h for l,h in zip(stdLows, stdHighs)]
-        self.assertGreater(sum(trues), len(trues)*0.6)
-        #
-        meanHighs = self.fitter.bootstrapResult.parameterMeanDct.values()
-        meanLows = fitterLow.bootstrapResult.parameterMeanDct.values()
-        trues = [np.abs(l - h) < 0.5 for l,h in zip(meanLows, meanHighs)]
-        if tcn.IGNORE_ACCURACY:
-            return
-        self.assertTrue(sum(trues) > len(trues)*0.6)
+        meanDF = df.mean()
+        stdDF = df.std()
+        cvDF = stdDF / meanDF
+        trues = [c < 0.5 for c in cvDF.values]
+        self.assertTrue(all(trues))
 
     def testGetParameter(self):
         if IGNORE_TEST:
@@ -194,6 +152,7 @@ class TestModelFitterBootstrap(unittest.TestCase):
         if IGNORE_TEST:
             return
         # Smoke test
+        self._init()
         self.fitter.bootstrap(numIteration=3)
         _ = self.fitter.getParameterMeans()
         _ = self.fitter.getParameterStds()
@@ -201,7 +160,7 @@ class TestModelFitterBootstrap(unittest.TestCase):
     def testFittedStd(self):
         if IGNORE_TEST:
             return
-        #
+        self._init()
         self.fitter.bootstrap(numIteration=3)
         stds = self.fitter.bootstrapResult.fittedStatistic.stdTS.flatten()
         for std in stds:
@@ -210,9 +169,10 @@ class TestModelFitterBootstrap(unittest.TestCase):
     def testBootstrap3(self):
         if IGNORE_TEST:
             return
+        self._init()
         self.fitter.bootstrap(numIteration=50,
               synthesizerClass=ObservationSynthesizerRandomErrors,
-              reportInterval=10, maxProcess=2, std=0.02)
+              std=0.02,isParallel=True)
         result = self.fitter.bootstrapResult
         self.assertTrue(result is not None)
 

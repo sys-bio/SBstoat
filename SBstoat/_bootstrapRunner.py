@@ -9,6 +9,7 @@ Running a single thread of bootstrapping.
 
 from SBstoat._modelFitterCore import ModelFitterCore
 from SBstoat._bootstrapResult import BootstrapResult
+from SBstoat.timeseriesStatistic import TimeseriesStatistic
 from SBstoat.observationSynthesizer import  \
       ObservationSynthesizerRandomizedResiduals
 from SBstoat._parallelRunner import AbstractRunner
@@ -67,17 +68,19 @@ class BootstrapRunner(AbstractRunner):
         self._isDone = not self._fitInitial()
         self.columns = self.fitter.selectedColumns
         # Initializations for bootstrap loop
-        self.synthesizer = self.synthesizerClass(
-              observedTS=self.fitter.observedTS.subsetColumns(self.columns),
-              fittedTS=self.fitter.fittedTS.subsetColumns(self.columns),
-              **self.kwargs)
-        self.numSuccessIteration = 0
-        if self.fitter.minimizerResult is None:
-            self.fitter.fitModel()
-        self.baseChisq = self.fitter.minimizerResult.redchi
-        self.bootstrapError = 0
-        self.curIteration = 0
-        self.fd = self.logger.getFileDescriptor()
+        if not self.isDone:
+            fittedTS = self.fitter.fittedTS.subsetColumns(self.columns)
+            self.synthesizer = self.synthesizerClass(
+                  observedTS=self.fitter.observedTS.subsetColumns(self.columns),
+                  fittedTS=fittedTS,
+                  **self.kwargs)
+            self.numSuccessIteration = 0
+            if self.fitter.minimizerResult is None:
+                self.fitter.fitModel()
+            self.baseChisq = self.fitter.minimizerResult.redchi
+            self.bootstrapError = 0
+            self.curIteration = 0
+            self.fd = self.logger.getFileDescriptor()
 
     def report(self, id=None):
         if True:
@@ -105,7 +108,8 @@ class BootstrapRunner(AbstractRunner):
         BootstrapResult
         """
         def mkNullResult():
-            return BootstrapResult(self.fitter, 0, {}, None)
+            fittedStatistic = TimeseriesStatistic(self.fitter.observedTS)
+            return BootstrapResult(self.fitter, 0, {}, fittedStatistic)
         #
         if self.isDone:
             return
@@ -156,9 +160,11 @@ class BootstrapRunner(AbstractRunner):
             self.numSuccessIteration += 1
             parameterDct = {k: [v] for k, v 
                   in newFitter.params.valuesdict().items()}
+            fittedStatistic = TimeseriesStatistic(self.fitter.observedTS)
+            fittedStatistic.accumulate(newFitter.fittedTS)
             bootstrapResult = BootstrapResult(self.fitter,
                   self.numSuccessIteration, parameterDct,
-                  None, bootstrapError=self.bootstrapError)
+                  fittedStatistic, bootstrapError=self.bootstrapError)
         else:
             bootstrapResult = mkNullResult()
             self._isDone = True
