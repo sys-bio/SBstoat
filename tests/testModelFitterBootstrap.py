@@ -36,7 +36,7 @@ IS_PLOT = False
 TIMESERIES = th.getTimeseries()
 DIR = os.path.dirname(os.path.abspath(__file__))
 LOG_FILE = os.path.join(DIR, "testModelFitterBootstrap.log")
-LOGGER = logs.Logger()
+LOGGER = logs.Logger(logLevel=logs.LEVEL_RESULT)
 if IGNORE_TEST:
     # Write log to std output
     FITTER = th.getFitter(cls=mfb.ModelFitterBootstrap)
@@ -220,7 +220,7 @@ class TestModelFitterBootstrap(unittest.TestCase):
               SBstoat.Parameter("c", lower=0,  upper=10, value=5.2),
               ]
         if IGNORE_TEST:
-            logger = logs.Logger(logLevel=logs.LEVEL_MAX)
+            logger = logs.Logger(logLevel=logs.LEVEL_RESULT)
         else:
             logger = LOGGER
         study = ModelStudy(ANTIMONY_MODEL, [dataSource],

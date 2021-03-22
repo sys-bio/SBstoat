@@ -17,7 +17,7 @@ import unittest
 
 
 IGNORE_TEST = False
-IS_PLOT = True
+IS_PLOT = False
 TIMESERIES = th.getTimeseries()
 optimizerMethod = _helpers.OptimizerMethod(SBstoat.METHOD_LEASTSQ,
       kwargs={"max_nfev": 100})
@@ -102,8 +102,7 @@ class TestModelFitter(unittest.TestCase):
         print(fitter.reportFit())
         print (fitter.getParameterMeans())  
         
-        fitter.bootstrap(numIteration=1000,
-              reportInterval=500)
+        fitter.bootstrap(numIteration=1000)
               #calcObservedFunc=ModelFitter.calcObservedTSNormal, std=0.01)
         fitter.plotParameterEstimatePairs(['k1', 'k2'],
               markersize=2)

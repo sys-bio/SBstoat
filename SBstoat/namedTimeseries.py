@@ -557,13 +557,15 @@ class NamedTimeseries(rpickle.RPickler):
             return [arg]
         return arg
 
-    def subsetColumns(self, colnames):
+    def subsetColumns(self, colnames, isCopy=True):
         """
         Creates a NamedTimeseries consisting of a subset of columns.
 
         Parameters
         ----------
         colnames: single column name or list of column names
+        isCopy: bool
+            make a copy
 
         Returns
         ------
@@ -574,6 +576,9 @@ class NamedTimeseries(rpickle.RPickler):
         newTS = ts.subsetColumns("S1", "S2")  # The new timeseries only has S1, S2
         """
         colnames = self._getStringOrListstring(colnames)
+        diff = set(colnames).symmetric_difference(self.colnames)
+        if (len(diff) == 0) and (not isCopy):
+            return self
         df = self.to_dataframe()
         return NamedTimeseries(dataframe=df[colnames])
 

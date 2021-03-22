@@ -71,25 +71,34 @@ class TestRunnerManager(unittest.TestCase):
             return
         self.assertEqual(len(self.arguments), len(self.manager.runners))
 
-    def generatorTest(self, generator):
+    def generatorTest(self, multiplier, totalWork=None):
+        if totalWork is None:
+            totalWork = self.numWork
+        else:
+            self.manager.totalWork = totalWork
+        generator = self.manager._progressGenerator(multiplier)
         count = 0
         for _ in generator:
             count += 1
-        self.assertEqual(count, self.numWork)
+        self.assertEqual(count, totalWork)
 
     def testProgressGenerator(self):
         if IGNORE_TEST:
             return
         MULTIPLIER = 2
-        generator = self.manager._progressGenerator(MULTIPLIER)
-        self.generatorTest(generator)
+        self.generatorTest(MULTIPLIER)
+
+    def testProgressGenerator1(self):
+        if IGNORE_TEST:
+            return
+        MULTIPLIER = 2
+        self.generatorTest(MULTIPLIER, totalWork=50)
 
     def testDummyGenerator(self):
         if IGNORE_TEST:
             return
         MULTIPLIER = 2
-        generator = self.manager._dummyGenerator(MULTIPLIER)
-        self.generatorTest(generator)
+        self.generatorTest(MULTIPLIER)
 
     def testRunAll(self):
         if IGNORE_TEST:
@@ -155,6 +164,11 @@ class TestParallelRunner(unittest.TestCase):
         if IGNORE_TEST:
             return
         self.runPrimes()
+
+    def testRunSyncNoProgressBar(self):
+        if IGNORE_TEST:
+            return
+        self.runPrimes(isProgressBar=False)
 
     def testRunSyncSequential(self):
         if IGNORE_TEST:

@@ -224,7 +224,7 @@ class TestModelFitterCore(unittest.TestCase):
     def getFitter(self):
         fitter = th.getFitter(cls=ModelFitter)
         fitter.fitModel()
-        fitter.bootstrap(numIteration=10)
+        fitter.bootstrap(numIteration=2, isParallel=True)
         return fitter
 
     def testSerialize(self):

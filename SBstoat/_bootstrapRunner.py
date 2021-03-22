@@ -69,18 +69,21 @@ class BootstrapRunner(AbstractRunner):
         self.columns = self.fitter.selectedColumns
         # Initializations for bootstrap loop
         if not self.isDone:
-            fittedTS = self.fitter.fittedTS.subsetColumns(self.columns)
+            fittedTS = self.fitter.fittedTS.subsetColumns(self.columns, isCopy=False)
             self.synthesizer = self.synthesizerClass(
-                  observedTS=self.fitter.observedTS.subsetColumns(self.columns),
+                  observedTS=self.fitter.observedTS.subsetColumns(
+                  self.columns, isCopy=False),
                   fittedTS=fittedTS,
                   **self.kwargs)
             self.numSuccessIteration = 0
             if self.fitter.minimizerResult is None:
                 self.fitter.fitModel()
             self.baseChisq = self.fitter.minimizerResult.redchi
-            self.bootstrapError = 0
             self.curIteration = 0
             self.fd = self.logger.getFileDescriptor()
+            self.baseFittedStatistic = TimeseriesStatistic(
+                  self.fitter.observedTS.subsetColumns(
+                  self.fitter.selectedColumns, isCopy=False))
 
     def report(self, id=None):
         if True:
@@ -108,7 +111,8 @@ class BootstrapRunner(AbstractRunner):
         BootstrapResult
         """
         def mkNullResult():
-            fittedStatistic = TimeseriesStatistic(self.fitter.observedTS)
+            fittedStatistic = TimeseriesStatistic(
+                  self.fitter.observedTS[self.fitter.selectedColumns])
             return BootstrapResult(self.fitter, 0, {}, fittedStatistic)
         #
         if self.isDone:
@@ -118,6 +122,7 @@ class BootstrapRunner(AbstractRunner):
             sys.stderr = self.fd
             sys.stdout = self.fd
         isSuccess = False
+        bootstrapError = 0
         self.report()
         for idx in range(ITERATION_MULTIPLIER):
             newObservedTS = self.synthesizer.calculate()
@@ -143,6 +148,7 @@ class BootstrapRunner(AbstractRunner):
                 msg = "modelFitterBootstrap. Fit failed on iteration %d."  \
                       % iteration
                 self.logger.error(msg, err)
+                bootstrapError += 1
                 continue
             # Check if the fit is of sufficient quality
             if newFitter.minimizerResult.redchi > MAX_CHISQ_MULT*self.baseChisq:
@@ -160,11 +166,12 @@ class BootstrapRunner(AbstractRunner):
             self.numSuccessIteration += 1
             parameterDct = {k: [v] for k, v 
                   in newFitter.params.valuesdict().items()}
-            fittedStatistic = TimeseriesStatistic(self.fitter.observedTS)
-            fittedStatistic.accumulate(newFitter.fittedTS)
+            fittedStatistic = self.baseFittedStatistic.copy()
+            fittedStatistic.accumulate(newFitter.fittedTS.subsetColumns(
+                  self.fitter.selectedColumns, isCopy=False))
             bootstrapResult = BootstrapResult(self.fitter,
                   self.numSuccessIteration, parameterDct,
-                  fittedStatistic, bootstrapError=self.bootstrapError)
+                  fittedStatistic, bootstrapError=bootstrapError)
         else:
             bootstrapResult = mkNullResult()
             self._isDone = True

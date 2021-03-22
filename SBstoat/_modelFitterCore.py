@@ -79,9 +79,10 @@ class ModelFitterCore(rpickle.RPickler):
           numRestart=0,
           parameterLowerBound=PARAMETER_LOWER_BOUND,
           parameterUpperBound=PARAMETER_UPPER_BOUND,
-          reportInterval:int=1000,
           selectedColumns=None,
           serializePath:str=None,
+          isParallel=True,
+          isProgressBar=True,
           ):
         """
         Constructs estimates of parameter values.
@@ -114,12 +115,15 @@ class ModelFitterCore(rpickle.RPickler):
         numIteration: number of bootstrap iterations
         numPoint: int
             number of time points in the simulation
-        reportInterval: number of iterations between progress reports
         maxProcess: Maximum number of processes to use. Default: numCPU
         serializePath: Where to serialize the fitter after bootstrap
         numRestart: int
             number of times the minimization is restarted with random
             initial values for parameters to fit.
+        isParallel: bool
+            run in parallel where possible
+        isProgressBar: bool
+            display the progress bar
 
         Usage
         -----
@@ -141,7 +145,6 @@ class ModelFitterCore(rpickle.RPickler):
             self._maxProcess = maxProcess
             self.bootstrapKwargs = dict(
                   numIteration=numIteration,
-                  reportInterval=reportInterval,
                   serializePath=serializePath,
                   )
             self._numFitRepeat = numFitRepeat
@@ -173,6 +176,8 @@ class ModelFitterCore(rpickle.RPickler):
             self._plotter = tp.TimeseriesPlotter(isPlot=self._isPlot)
             self.logger = logger
             self._numRestart = numRestart
+            self._isParallel = isParallel
+            self._isProgressBar = isProgressBar
             # The following are calculated during fitting
             self.roadrunnerModel = None
             self.minimizerResult = None  # Results of minimization
@@ -446,7 +451,14 @@ class ModelFitterCore(rpickle.RPickler):
             newObservedTS = observedTS
         return newObservedTS, newSelectedColumns
 
-    def copy(self, isKeepLogger=False):
+    def clean(self):
+        """
+        Cleans the object so that it can be pickled.
+        """
+        self.roadrunnerModel = None
+        return self
+
+    def copy(self, isKeepLogger=False, isKeepOptimizer=False):
         """
         Creates a copy of the model fitter.
         Preserves the user-specified settings and the results
@@ -484,7 +496,8 @@ class ModelFitterCore(rpickle.RPickler):
               logger=logger,
               isPlot=self._isPlot)
         if self.optimizer is not None:
-            newModelFitter.optimizer = self.optimizer.copyResults()
+            if isKeepOptimizer:
+                newModelFitter.optimizer = self.optimizer.copyResults()
         if self.bootstrapResult is not None:
             newModelFitter.bootstrapResult = self.bootstrapResult.copy()
         else:

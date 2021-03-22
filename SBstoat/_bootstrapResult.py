@@ -83,7 +83,7 @@ class BootstrapResult(rpickle.RPickler):
         # Fitting parameters from result
         self._params = None
 
-    def copy(self):
+    def copy(self, isCopyParams=False):
         """
         Create a pickle-able copy.
         
@@ -94,7 +94,8 @@ class BootstrapResult(rpickle.RPickler):
         newResult = BootstrapResult(None, self.numIteration, self.parameterDct,
           self.fittedStatistic, bootstrapError=self.bootstrapError)
         if self._params is not None:
-            newResult._params = self._params.copy()
+            if isCopyParams:
+                newResult._params = self._params.copy()
         return newResult
 
     @classmethod

@@ -336,6 +336,13 @@ class TestNamedTimeseries(unittest.TestCase):
         ts1 = ts.subsetColumns(self.timeseries.colnames)
         self.assertTrue(self.timeseries.equals(ts1))
 
+    def testSubsetColumnsNocopy(self):
+        if IGNORE_TEST:
+            return
+        ts = self.timeseries.copy()
+        ts1 = ts.subsetColumns(self.timeseries.colnames, isCopy=False)
+        self.assertTrue(self.timeseries.equals(ts1))
+
     def testGetTimes(self):
         if IGNORE_TEST:
             return

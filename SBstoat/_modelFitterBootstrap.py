@@ -61,18 +61,22 @@ class ModelFitterBootstrap(mfc.ModelFitterCrossValidator):
                the keyword argument bootstrapKwargs.
         ----
         """
-        def getValue(name, value):
+        def getValue(name, value, defaultValue=None):
             if value is not None:
                 return value
             # Handle arguments specified in constructor
             if name in self.bootstrapKwargs:
                 if self.bootstrapKwargs[name] is not None:
                     return self.bootstrapKwargs[name]
+            if name in self.__dict__.keys():
+                return self.__dict__[name]
             # None specified
-            return None
+            return defaultValue
         #
         # Initialization
         numIteration = getValue("numIteration", numIteration)
+        isParallel = getValue("_isParallel", isParallel)
+        isProgressBar = getValue("_isProgressBar", None, defaultValue=True)
         if maxProcess is None:
             maxProcess = self._maxProcess
         if maxProcess is None:
@@ -91,8 +95,8 @@ class ModelFitterBootstrap(mfc.ModelFitterCrossValidator):
         # Run separate processes for each batch
         runner = ParallelRunner(BootstrapRunner,
               desc="iteration", maxProcess=numProcess)
-        #results = runner.runSync(argumentsCol, isParallel=isParallel)
-        results = runner.runSync(argumentsCol, isParallel=True)
+        results = runner.runSync(argumentsCol, isParallel=isParallel,
+            isProgressBar=isProgressBar)
         # Check the results
         if len(results) == 0:
             msg = "modelFitterBootstrap/timeout in solving model."

@@ -34,7 +34,8 @@ class TestRunnerArgument(unittest.TestCase):
     def testConstructor(self):
         if IGNORE_TEST:
             return
-        self.assertEqual(self.fitter, self.argument.fitter)
+        self.assertTrue(self.fitter.observedTS.equals(
+              self.argument.fitter.observedTS))
 
 class TestBootstrapRunner(unittest.TestCase):
 

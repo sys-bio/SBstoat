@@ -26,7 +26,7 @@ WORK_UNIT_DESC = "task"
 
 
 ##################### FUNCTIONS #########################
-def _toplevelRunner(cls, arguments, isReport, numProcess, desc, queue):
+def _toplevelRunner(cls, arguments, isProgressBar, numProcess, desc, queue):
     """
     Top level function that runs each process. Handles progress reporting.
 
@@ -35,7 +35,7 @@ def _toplevelRunner(cls, arguments, isReport, numProcess, desc, queue):
     cls: inherits from AbstractWorkUnit
     arguements: each element is an argument to construct
         an instance of cls
-    isReport: bool
+    isProgressBar: bool
         This process reports progress
     numProcess: int
     desc: str
@@ -47,7 +47,7 @@ def _toplevelRunner(cls, arguments, isReport, numProcess, desc, queue):
     list
     """
     manager = RunnerManager(cls, arguments, desc)
-    results = manager.runAll(isReport, numProcess)
+    results = manager.runAll(isProgressBar, numProcess)
     # Post the results
     if queue is None:
         return results
@@ -130,25 +130,22 @@ class RunnerManager():
         """
         allWork = unitMultiplier*self.totalWork
         indices = range(allWork)
-        count = unitMultiplier
-        for _ in tqdm(indices, desc=self.desc, total=len(indices)):
-            if count == 0:
-                count = unitMultiplier
+        for idx in tqdm(indices, desc=self.desc, total=len(indices)):
+            if np.mod(idx, unitMultiplier) == 0:
                 yield None
-            count -= 1
 
     def _dummyGenerator(self, _):
         """Interface identical to _progressGenerator."""
         for _ in range(self.totalWork):
             yield None
 
-    def runAll(self, isReport, numProcess):
+    def runAll(self, isProgressBar, numProcess):
         """
         Runs all of the work units. Handles progress bar.
 
         Parameters
         ----------
-        isReport: bool
+        isProgressBar: bool
             display progress bar
         numProcess: int
             number of prceses
@@ -158,7 +155,7 @@ class RunnerManager():
         list-object
             results for each work unit
         """
-        if isReport:
+        if isProgressBar:
             generator = self._progressGenerator(numProcess)
         else:
             # This doesn't generate a progress bar
@@ -166,13 +163,12 @@ class RunnerManager():
         #
         results = []
         for runner in self.runners:
-            for _ in range(runner.numWorkUnit):
+            for idx in range(runner.numWorkUnit):
+                _ = generator.__next__()
                 if not runner.isDone:
                     results.append(runner.run())
-                try:
-                    _ = generator.__next__()
-                except StopIteration:
-                    break
+        # Ensure generator is emptied
+        _ = [g for g in generator]
         #
         return results
 
@@ -186,7 +182,7 @@ class ParallelRunner():
     """
 
     def __init__(self, cls, maxProcess=None,
-           taskTimeout=TASK_TIMEOUT, desc=WORK_UNIT_DESC):
+           taskTimeout=TASK_TIMEOUT, desc=WORK_UNIT_DESC, isProgressBar=True):
         """
         Parameters
         ----------
@@ -197,6 +193,8 @@ class ParallelRunner():
             maximum runtime for a task
         desc: str
             description of the work unit
+        isProgressBar: bool
+            display the progress bar
         """
         self.cls = cls
         self.taskTimeout = taskTimeout
@@ -205,6 +203,7 @@ class ParallelRunner():
             maxProcess = multiprocessing.cpu_count()
         self.maxProcess = min(maxProcess, multiprocessing.cpu_count())
         self.processes = []
+        self._isProgressBar = isProgressBar
 
     def _mkArgumentsCollections(self, arguments):
         """
@@ -225,7 +224,7 @@ class ParallelRunner():
         return collection
 
 
-    def runSync(self, argumentsList, isParallel=True):
+    def runSync(self, argumentsList, isParallel=True, isProgressBar=True):
         """
         Runs the function for each of the arguments.
         The caller waits for completion.
@@ -236,6 +235,8 @@ class ParallelRunner():
             each element results in running a separate process
         isParallel: True
             runs the function in parallel
+        isProgressBar: bool
+            display the progress bar
 
         Returns
         -------
@@ -249,9 +250,9 @@ class ParallelRunner():
             # Start the processes
             argumentsCollection = self._mkArgumentsCollections(argumentsList)
             for idx, arguments in enumerate(argumentsCollection):
-                isReporter = idx == 0
+                isThisProgresBar = isProgressBar and (idx == 0)
                 process = multiprocessing.Process(target=_toplevelRunner,
-                      args=(self.cls, arguments, isReporter, self.maxProcess,
+                      args=(self.cls, arguments, isThisProgresBar, self.maxProcess,
                       self.desc, queue,))
                 process.start()
                 self.processes.append(process)
@@ -270,7 +271,6 @@ class ParallelRunner():
                 process.terminate()
         else:
             numProcess = 1
-            isReport = True
             results = _toplevelRunner(self.cls, argumentsList,
-                isReport, numProcess, self.desc, None)
+                isProgressBar, numProcess, self.desc, None)
         return results

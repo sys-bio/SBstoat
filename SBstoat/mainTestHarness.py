@@ -63,7 +63,7 @@ LOGGER = "logger"
 #  otherwise: int: initialized to 0
 CONTEXT =  [ "firstModel", "numModel", "numNoError", "fitModelRelerrors",
       "bootstrapRelerrors", "processedModels", "nonErroredModels", "erroredModels",
-      "modelParameterDct", "pclPath", "figPath", "isPlot", "reportInterval",
+      "modelParameterDct", "pclPath", "figPath", "isPlot", 
       "kwargDct"
       ]
 
@@ -91,7 +91,7 @@ class Runner(object):
 
     def __init__(self, firstModel:int=210, numModel:int=2,
           pclPath=PCL_FILE, figPath=FIG_PATH,
-          useExistingData:bool=False, reportInterval:int=10,
+          useExistingData:bool=False,
           isPlot=IS_PLOT, **kwargDct):
         """
         Parameters
@@ -99,7 +99,6 @@ class Runner(object):
         firstModel: first model to use
         numModel: number of models to use
         pclPath: file to which results are saved
-        reportInterval: how frequently report progress
         useExistingData: use data in existing PCL file
         """
         self.useExistingData = useExistingData and os.path.isfile(pclPath)
@@ -124,7 +123,6 @@ class Runner(object):
         self.numModel = numModel
         self.pclPath = pclPath
         self.figPath = figPath
-        self.reportInterval = reportInterval
         self.kwargDct = kwargDct
         self.isPlot = isPlot
         self.useExistingData = useExistingData
@@ -200,8 +198,6 @@ class Runner(object):
                 # Count models without exceptions
                 self.nonErroredModels.append(modelNum)
                 self.numNoError = len(self.nonErroredModels)
-                if modelNum % self.reportInterval == 0:
-                    self.logger.result("Processed model %d" % modelNum)
                 self.save()
         # Check for plot
         if self.isPlot:
