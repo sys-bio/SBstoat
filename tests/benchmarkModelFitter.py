@@ -13,7 +13,7 @@ date         Version         numIteration    numProcess  Time (sec)
 12/06/2020   1.1             10,000          5            18.1
 02/03/2021*  1.3             10,000          5            33.6
 02/15/2021*  1.4             10,000          5            30.9
-03/21/2021*  1.4             10,000          5            52
+03/21/2021*  1.4             10,000          5            34.8
 
 *Using only leastsq, 100 function evaluations, S1, S3
 """
@@ -31,7 +31,7 @@ import time
 
 IS_TEST = False
 IS_PLOT = False
-IS_PARALLEL = False
+IS_PARALLEL = True
 DIR = os.path.dirname(os.path.abspath(__file__))
 BENCHMARK_PATH = os.path.join(DIR, "groundtruth_2_step_0_1.txt")
 MODEL = """

@@ -259,8 +259,5 @@ class ModelFitter(ModelFitterReport):
         if params is None:
             params = self.params
         fittedTS = self.simulate(params=params, numPoint=numPoint)
-        try:
-            fittedTS = fittedTS.subsetColumns(self.selectedColumns)
-        except Exception as err:
-            import pdb; pdb.set_trace()
+        fittedTS = fittedTS.subsetColumns(self.selectedColumns)
         return fittedTS

@@ -13,11 +13,8 @@ from SBstoat.timeseriesStatistic import TimeseriesStatistic
 from SBstoat.observationSynthesizer import  \
       ObservationSynthesizerRandomizedResiduals
 from SBstoat._parallelRunner import AbstractRunner
-from SBstoat.logs import Logger
 
 import time
-import multiprocessing
-import numpy as np
 import sys
 
 MAX_CHISQ_MULT = 5
@@ -124,25 +121,16 @@ class BootstrapRunner(AbstractRunner):
         isSuccess = False
         bootstrapError = 0
         self.report()
-        for idx in range(ITERATION_MULTIPLIER):
+        for _ in range(ITERATION_MULTIPLIER):
             newObservedTS = self.synthesizer.calculate()
             self.report("newObservedTS")
             # Construct a new fitter
-            newFitter = ModelFitterCore(self.fitter.roadrunnerModel,
-                  newObservedTS,
-                  parametersToFit=self.fitter.parametersToFit,
-                  selectedColumns=self.fitter.selectedColumns,
-                  # Use bootstrap methods for fitting
-                  fitterMethods=self.fitter._bootstrapMethods,
-                  parameterLowerBound=self.fitter.lowerBound,
-                  parameterUpperBound=self.fitter.upperBound,
-                  logger=self.logger,
-                  isPlot=self.fitter._isPlot)
-            self.report("newFitter")
+            _ = self.fitter._updateObservedTS(newObservedTS, isCheck=False)
+            self.report("updated fitter")
             # Try fitting
             try:
-                newFitter.fitModel(params=self.fitter.params)
-                self.report("newFitter.fit")
+                self.fitter.fitModel(params=self.fitter.params)
+                self.report("fitter.fit")
             except Exception as err:
                 # Problem with the fit.
                 msg = "modelFitterBootstrap. Fit failed on iteration %d."  \
@@ -151,12 +139,12 @@ class BootstrapRunner(AbstractRunner):
                 bootstrapError += 1
                 continue
             # Check if the fit is of sufficient quality
-            if newFitter.minimizerResult.redchi > MAX_CHISQ_MULT*self.baseChisq:
+            if self.fitter.minimizerResult.redchi > MAX_CHISQ_MULT*self.baseChisq:
                 # msg = "Fit has high chisq: %2.2f on iteration %d."
                 # self.logger.exception(msg
-                #      % (newFitter.minimizerResult.redchi, iteration))
+                #      % (fitter.minimizerResult.redchi, iteration))
                 continue
-            if newFitter.params is None:
+            if self.fitter.params is None:
                 continue
             isSuccess = True
             self.report("break")
@@ -165,9 +153,9 @@ class BootstrapRunner(AbstractRunner):
         if isSuccess:
             self.numSuccessIteration += 1
             parameterDct = {k: [v] for k, v 
-                  in newFitter.params.valuesdict().items()}
+                  in self.fitter.params.valuesdict().items()}
             fittedStatistic = self.baseFittedStatistic.copy()
-            fittedStatistic.accumulate(newFitter.fittedTS.subsetColumns(
+            fittedStatistic.accumulate(self.fitter.fittedTS.subsetColumns(
                   self.fitter.selectedColumns, isCopy=False))
             bootstrapResult = BootstrapResult(self.fitter,
                   self.numSuccessIteration, parameterDct,

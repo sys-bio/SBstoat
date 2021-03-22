@@ -41,6 +41,7 @@ import pandas as pd
 
 DELIMITER = ","
 TIME = "time"
+SMALL_RATIO = 10e-6
 
 
 ################## FUNCTIONS ########################
@@ -447,6 +448,33 @@ class NamedTimeseries(rpickle.RPickler):
                 ts[column] = 0.0
         return ts
 
+    def equalSchema(self, other):
+        """
+        Checks if two timeseries have the same time values, column names and length.
+
+        Parameters
+        ----------
+        other: NamedTimeseries
+
+        Returns
+        -------
+        bool
+        """
+        # Same columns?
+        diff = set(self.allColnames).symmetric_difference(other.allColnames)
+        checks = [len(diff) == 0]
+        # Same length?
+        checks.append(len(self) == len(other))
+        # Same times?
+        selfVar = np.var(self[TIME])
+        residualVar = np.var(self[TIME] - other[TIME])
+        if np.isclose(selfVar, 0):
+            checks.append(np.isclose(residualVar, 0))
+        else:
+            ratio = residualVar/selfVar
+            checks.append(ratio <= SMALL_RATIO)
+        return all(checks)
+
     def equals(self, other):
         """
         Checks if two timeseries have the same columns and values.
@@ -459,12 +487,14 @@ class NamedTimeseries(rpickle.RPickler):
         -------
         bool
         """
-        diff = set(self.allColnames).symmetric_difference(other.allColnames)
-        if len(diff) > 0:
-            return False
-        checks = []
-        for col in self.allColnames:
-            checks.append(arrayEquals(self[col], other[col]))
+        checks = [self.equalSchema(other)]
+        # Check values
+        for col in self.colnames:
+            try:
+                np.testing.assert_array_almost_equal(self[col], other[col])
+                checks.append(True)
+            except Exception:
+                return False
         return all(checks)
 
     def to_dataframe(self):

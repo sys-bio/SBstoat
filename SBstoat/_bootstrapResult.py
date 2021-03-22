@@ -13,9 +13,7 @@ from SBstoat.timeseriesStatistic import TimeseriesStatistic
 from SBstoat.logs import Logger
 from SBstoat import rpickle
 from SBstoat import _helpers
-from SBstoat import _modelFitterCore as mfc
 
-import copy
 import lmfit
 import numpy as np
 import pandas as pd
@@ -49,7 +47,7 @@ class BootstrapResult(rpickle.RPickler):
         # Timeseries statistics for fits
         self.fittedStatistic = fittedStatistic
         if fitter is not None:
-            self.fitter = self.fitter.copy()
+            self.fitter = self.copyFitter(self.fitter)
             # population of parameter values
             self.parameterDct = dict(self.parameterDct)
             # list of parameters
@@ -83,10 +81,35 @@ class BootstrapResult(rpickle.RPickler):
         # Fitting parameters from result
         self._params = None
 
+    def copyFitter(self, fitter):
+        """
+        Creates a copy of the model fitter for bootstrap result.
+
+        Parameters
+        ----------
+        fitter: ModelFitter
+
+        Returns
+        -------
+        ModelFitter
+        """
+        newModelFitter = fitter.__class__(
+              fitter.modelSpecification,
+              fitter.observedTS,
+              fitter.parametersToFit,
+              selectedColumns=fitter.selectedColumns,
+              fitterMethods=fitter._fitterMethods,
+              bootstrapMethods=fitter._bootstrapMethods,
+              parameterLowerBound=fitter.lowerBound,
+              parameterUpperBound=fitter.upperBound,
+              logger=fitter.logger,
+              isPlot=fitter._isPlot)
+        return newModelFitter
+
     def copy(self, isCopyParams=False):
         """
         Create a pickle-able copy.
-        
+
         Returns
         -------
         BootstrapResult

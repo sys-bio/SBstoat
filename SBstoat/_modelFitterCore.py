@@ -148,17 +148,11 @@ class ModelFitterCore(rpickle.RPickler):
                   serializePath=serializePath,
                   )
             self._numFitRepeat = numFitRepeat
-            self.observedTS = observedData
-            if self.observedTS is not None:
-                self.observedTS = mkNamedTimeseries(observedData)
+            self.selectedColumns = selectedColumns
+            self.observedTS, self.selectedColumns = self._updateObservedTS(
+                  mkNamedTimeseries(observedData))
             #
-            if (selectedColumns is None) and (self.observedTS is not None):
-                selectedColumns = self.observedTS.colnames
-            self.selectedColumns = [c.strip() for c in selectedColumns]
-            if self.observedTS is not None:
-                self._observedArr = self.observedTS[self.selectedColumns].flatten()
-            else:
-                self._observedArr = None
+            self.selectedColumns = [c.strip() for c in self.selectedColumns]
             self.numPoint = numPoint
             if self.numPoint is None:
                 self.numPoint = len(self.observedTS)
@@ -178,6 +172,7 @@ class ModelFitterCore(rpickle.RPickler):
             self._numRestart = numRestart
             self._isParallel = isParallel
             self._isProgressBar = isProgressBar
+            self._selectedIdxs = None
             # The following are calculated during fitting
             self.roadrunnerModel = None
             self.minimizerResult = None  # Results of minimization
@@ -187,16 +182,56 @@ class ModelFitterCore(rpickle.RPickler):
             self.optimizer = None
             self.suiteFitterParams = None  # Result from a suite fitter
             #
-            resultTS = self.simulate()
-            if resultTS is not None:
-                self._selectedIdxs =  \
-                      ModelFitterCore.selectCompatibleIndices(resultTS[TIME],
-                      self.observedTS[TIME])
-            else:
-                self._selectedIdxs = list(range(self.numPoint))   
-            self.roadrunnerModel = None  # Ensure can pickle
         else:
             pass
+ 
+    def _updateSelectedIdxs(self):
+        resultTS = self.simulate()
+        if resultTS is not None:
+            self._selectedIdxs =  \
+                  ModelFitterCore.selectCompatibleIndices(resultTS[TIME],
+                  self.observedTS[TIME])
+        else:
+            self._selectedIdxs = list(range(self.numPoint))   
+
+    def _updateObservedTS(self, newObservedTS, isCheck=True):
+        """
+        Changes just the observed timeseries. The new timeseries must have
+        the same shape as the old one. Also used on initialization,
+        in which case, the check should be disabled.
+
+        Parameters
+        ----------
+        newObservedTS: NamedTimeseries
+        isCheck: Bool
+            verify that new timeseries as the same shape as the old one
+
+        Returns
+        -------
+        NamedTimeseries
+            ObservedTS
+        list-str
+            selectedColumns
+        """
+        if isCheck:
+            isError = False
+            if not isinstance(newObservedTS, NamedTimeseries):
+                isError = True
+            if "observedTS" in self.__dict__.keys():
+                isError = isError  \
+                      or (not self.observedTS.equalSchema(newObservedTS))
+            if isError:
+                raise RuntimeError("Timeseries argument: incorrect type or shape.")
+        #
+        self.observedTS = newObservedTS
+        if (self.selectedColumns is None) and (self.observedTS is not None):
+            self.selectedColumns = self.observedTS.colnames
+        if self.observedTS is None:
+            self._observedArr = None
+        else:
+            self._observedArr = self.observedTS[self.selectedColumns].flatten()
+        #
+        return self.observedTS, self.selectedColumns
 
     @property
     def params(self):
@@ -463,6 +498,17 @@ class ModelFitterCore(rpickle.RPickler):
         Creates a copy of the model fitter.
         Preserves the user-specified settings and the results
         of bootstrapping.
+        
+        Parameters
+        ----------
+        isKeepLogger: bool
+        isKeepOptimizer: bool
+        isMinimalCopy: bool
+            copy minimal context for bootstrap
+        
+        Returns
+        -------
+        ModelFitter
         """
         if not isinstance(self.modelSpecification, str):
             try:
@@ -508,8 +554,9 @@ class ModelFitterCore(rpickle.RPickler):
         """
         Sets self.roadrunnerModel.
         """
-        self.roadrunnerModel = ModelFitterCore.initializeRoadrunnerModel(
-              self.modelSpecification)
+        if self.roadrunnerModel is None:
+            self.roadrunnerModel = ModelFitterCore.initializeRoadrunnerModel(
+                  self.modelSpecification)
 
     def getDefaultParameterValues(self):
         """
@@ -584,6 +631,8 @@ class ModelFitterCore(rpickle.RPickler):
         1-d ndarray of residuals
         """
         self.fittedTS = self.simulate(**kwargs)  # Updates self.fittedTS
+        if self._selectedIdxs is None:
+            self._updateSelectedIdxs()
         self.fittedTS = self.fittedTS[self._selectedIdxs]
         residualsArr = self.calcResiduals(self.params)
         numRow = len(self.fittedTS)
@@ -631,6 +680,8 @@ class ModelFitterCore(rpickle.RPickler):
         -------
         1-d ndarray of residuals
         """
+        if self._selectedIdxs is None:
+            self._updateSelectedIdxs()
         dataTS = ModelFitterCore.runSimulation(parameters=params,
               modelSpecification=self.roadrunnerModel,
               startTime=self.observedTS.start,

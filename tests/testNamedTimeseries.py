@@ -223,6 +223,11 @@ class TestNamedTimeseries(unittest.TestCase):
         arr2 = 1.0001*arr1
         self.assertFalse(namedTimeseries.arrayEquals(arr1, arr2))
 
+    def testEqualSchema(self):
+        if IGNORE_TEST:
+            return
+        timeseries = self.timeseries.copy(isInitialize=True)
+        self.assertTrue(self.timeseries.equalSchema(timeseries))
 
     def testEquals(self):
         if IGNORE_TEST:
