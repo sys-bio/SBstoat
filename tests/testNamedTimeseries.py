@@ -92,7 +92,7 @@ class TestNamedTimeseries(unittest.TestCase):
             return
         self.assertEqual(len(self.timeseries), LENGTH)
 
-    def testGetitem(self):
+    def testGetitem1(self):
         if IGNORE_TEST:
             return
         times = self.timeseries[TIME]
@@ -112,6 +112,24 @@ class TestNamedTimeseries(unittest.TestCase):
         trues = np.array([v1 == v2 for v1, v2 in 
               zip(values, self.timeseries.values[:, 1:])])
         self.assertTrue(all(trues.flatten()))
+
+    def testGetitemArray(self):
+        if IGNORE_TEST:
+            return
+        # Use an array to index rows
+        SIZE = 10
+        indices = np.array(range(SIZE))
+        smallTS = self.timeseries[indices]
+        self.assertEqual(len(smallTS), SIZE)
+
+    def testGetitemArrayOfFloat(self):
+        if IGNORE_TEST:
+            return
+        # Use an array to index rows
+        SIZE = 10
+        indices = np.array([float(v) for v in range(SIZE)])
+        smallTS = self.timeseries[indices]
+        self.assertEqual(len(smallTS), SIZE)
 
     def testMissingData(self):
         if IGNORE_TEST:
@@ -205,6 +223,11 @@ class TestNamedTimeseries(unittest.TestCase):
         arr2 = 1.0001*arr1
         self.assertFalse(namedTimeseries.arrayEquals(arr1, arr2))
 
+    def testEqualSchema(self):
+        if IGNORE_TEST:
+            return
+        timeseries = self.timeseries.copy(isInitialize=True)
+        self.assertTrue(self.timeseries.equalSchema(timeseries))
 
     def testEquals(self):
         if IGNORE_TEST:
@@ -316,6 +339,13 @@ class TestNamedTimeseries(unittest.TestCase):
             return
         ts = self.timeseries.concatenateColumns(self.timeseries)
         ts1 = ts.subsetColumns(self.timeseries.colnames)
+        self.assertTrue(self.timeseries.equals(ts1))
+
+    def testSubsetColumnsNocopy(self):
+        if IGNORE_TEST:
+            return
+        ts = self.timeseries.copy()
+        ts1 = ts.subsetColumns(self.timeseries.colnames, isCopy=False)
         self.assertTrue(self.timeseries.equals(ts1))
 
     def testGetTimes(self):

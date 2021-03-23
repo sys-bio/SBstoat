@@ -14,9 +14,11 @@ install:
   - pip install --upgrade numpy>=1.19
   - pip install tellurium
   - pip install codecov
+  - pip install tqdm
   - python setup.py install
 
 script:
   - cd biomodels; unzip biomodels.zip > /dev/null; cd ..
-  - nosetests --with-coverage --cover-package=SBstoat tests
+# - nosetests --with-coverage --cover-package=SBstoat tests
+  - for f in `ls tests/test*.py`; do echo "**$f**"; python $f 2>> /dev/null; done
   - python tests/benchmarkModelFitter.py

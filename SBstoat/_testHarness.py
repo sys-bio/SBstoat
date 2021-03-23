@@ -7,6 +7,8 @@ harness = TestHarness(sbmlPath, selectedColumns, parametersToFit)
 harness.evaluate(stdResiduals=0.5, maxRelativeError=0.1)
 """
 
+import SBstoat
+from SBstoat.logs import Logger
 from SBstoat.modelFitter import ModelFitter
 from SBstoat.namedTimeseries import NamedTimeseries, TIME
 from SBstoat import _helpers
@@ -18,8 +20,6 @@ import tellurium as te
 import typing
 
 
-HTTP200 = 200
-HTTP = "http://"
 MAX_PARAMETER = 5  # Maximum number of parameters estimated
 NUM_BOOTSTRAP_ITERATION = 100
 
@@ -114,7 +114,7 @@ class TestHarness():
         except Exception as err:
             msg = "sbmlPath is not a valid file path or URL: %s" \
                   % self.sbmlPath
-            self.logger.error("_initializeRoadrunner", err)
+            self.logger.error(msg, err)
             raise err
         return te.loads(self.sbmlPath)
 
@@ -179,15 +179,17 @@ class TestHarness():
               fittedTS=simTS, std=stdResiduals)
         observedTS = synthesizer.calculate()
         # Construct the parameter ranges
-        parameterDct = {}
+        parametersToFit = []
         for name in self.parameterValueDct.keys():
             lower = self.parameterValueDct[name]*(1 - fractionParameterDeviation)
             upper = self.parameterValueDct[name]*(1 + fractionParameterDeviation)
             value = np.random.uniform(lower, upper)
-            parameterDct[name] = (lower, upper, value)
+            parametersToFit.append(SBstoat.Parameter(name,
+                  lower=lower, upper=upper, value=value))
         # Create the fitter
         fitter = ModelFitter(self.roadRunner, observedTS,
-              selectedColumns=self.selectedColumns, parameterDct=parameterDct,
+              selectedColumns=self.selectedColumns,
+              parametersToFit=parametersToFit,
               **self.kwargs)
         msg = "Fitting the parameters %s" % str(self.parameterValueDct.keys())
         self.logger.result(msg)

@@ -7,6 +7,7 @@ Created on Tue Jul  7 14:24:09 2020
 """
 
 import SBstoat
+from SBstoat import _helpers
 from SBstoat.modelFitter import ModelFitter
 from tests import _testHelpers as th
 
@@ -18,7 +19,7 @@ import unittest
 IGNORE_TEST = False
 IS_PLOT = False
 TIMESERIES = th.getTimeseries()
-optimizerMethod = ModelFitter.OptimizerMethod(SBstoat.METHOD_LEASTSQ,
+optimizerMethod = _helpers.OptimizerMethod(SBstoat.METHOD_LEASTSQ,
       kwargs={"max_nfev": 100})
 FITTER = th.getFitter(cls=ModelFitter, isPlot=IS_PLOT,
       fitterMethods=[optimizerMethod],
@@ -53,6 +54,7 @@ class TestModelFitter(unittest.TestCase):
     def testPlotResiduals(self):
         if IGNORE_TEST:
             return
+        self._init()
         self.fitter.plotResiduals(numCol=3, numRow=2, ylim=[-1.5, 1.5])
 
     def testPlotFitAll(self):
@@ -93,14 +95,14 @@ class TestModelFitter(unittest.TestCase):
             k1 = 0; k2 = 0; 
         """
         columns = ["S1", "S3"]
-        fitter = ModelFitter(model, BENCHMARK_PATH, ["k1", "k2"],
+        fitter = ModelFitter(model, BENCHMARK_PATH,
+                             parametersToFit= ["k1", "k2"],
                              selectedColumns=columns, isPlot=IS_PLOT)
         fitter.fitModel()
         print(fitter.reportFit())
         print (fitter.getParameterMeans())  
         
-        fitter.bootstrap(numIteration=1000,
-              reportInterval=500)
+        fitter.bootstrap(numIteration=1000)
               #calcObservedFunc=ModelFitter.calcObservedTSNormal, std=0.01)
         fitter.plotParameterEstimatePairs(['k1', 'k2'],
               markersize=2)

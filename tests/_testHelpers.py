@@ -40,14 +40,15 @@ ANTIMONY_MODEL = """
 """ % parametersStr
 DIR = os.path.dirname(os.path.abspath(__file__))
 TEST_DATA_PATH = os.path.join(DIR, "tst_data.txt")
+NUM_POINT = 30 # Number of timepoints in a simulation
 
 
 def getTimeseries():
     return NamedTimeseries(TEST_DATA_PATH)
 
 def getFitter(cls=ModelFitterCore, isPlot=False, **kwargs):
-    return cls(ANTIMONY_MODEL, getTimeseries(),
-      list(PARAMETER_DCT.keys()), isPlot=isPlot, **kwargs)
+    return cls(ANTIMONY_MODEL, getTimeseries(), list(PARAMETER_DCT.keys()),
+          isPlot=isPlot, **kwargs)
 
 def getObservedFitted():
     fitter = getFitter()

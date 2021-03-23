@@ -124,7 +124,8 @@ class ObservationSynthesizerRandomizedResiduals(ObservationSynthesizer):
         """
         numRow = len(self.observedTS)
         newObservedTS = self.fittedTS.copy()
-        for column in self.columns:
+        allIdxs = np.random.randint(0, numRow, len(self.columns)*numRow)
+        for idx, column in enumerate(self.columns):
             if len(self._filteredResidualsDct[column]) == 0:
                 msg = "No residuals left after filtering."
                 msg += " Make filter less restrictive."

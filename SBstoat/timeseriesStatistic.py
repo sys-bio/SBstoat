@@ -198,6 +198,9 @@ class TimeseriesStatistic(rpickle.RPickler):
         -------
         TimeseriesStatistic
         """
-        statistic = others[0]
-        newOthers = list(others[1:])
-        return statistic._merge(newOthers)
+        if len(others) > 0:
+            statistic = others[0]
+            newOthers = list(others[1:])
+            return statistic._merge(newOthers)
+        else:
+           return None

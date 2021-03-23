@@ -8,13 +8,12 @@ Container for the results of bootstrapping. Provides
 metrics that are calculated from the results.
 """
 
+import SBstoat
 from SBstoat.timeseriesStatistic import TimeseriesStatistic
 from SBstoat.logs import Logger
 from SBstoat import rpickle
 from SBstoat import _helpers
-from SBstoat import _modelFitterCore as mfc
 
-import copy
 import lmfit
 import numpy as np
 import pandas as pd
@@ -48,7 +47,7 @@ class BootstrapResult(rpickle.RPickler):
         # Timeseries statistics for fits
         self.fittedStatistic = fittedStatistic
         if fitter is not None:
-            self.fitter = self.fitter.copy()
+            self.fitter = self.copyFitter(self.fitter)
             # population of parameter values
             self.parameterDct = dict(self.parameterDct)
             # list of parameters
@@ -82,6 +81,46 @@ class BootstrapResult(rpickle.RPickler):
         # Fitting parameters from result
         self._params = None
 
+    def copyFitter(self, fitter):
+        """
+        Creates a copy of the model fitter for bootstrap result.
+
+        Parameters
+        ----------
+        fitter: ModelFitter
+
+        Returns
+        -------
+        ModelFitter
+        """
+        newModelFitter = fitter.__class__(
+              fitter.modelSpecification,
+              fitter.observedTS,
+              fitter.parametersToFit,
+              selectedColumns=fitter.selectedColumns,
+              fitterMethods=fitter._fitterMethods,
+              bootstrapMethods=fitter._bootstrapMethods,
+              parameterLowerBound=fitter.lowerBound,
+              parameterUpperBound=fitter.upperBound,
+              logger=fitter.logger,
+              isPlot=fitter._isPlot)
+        return newModelFitter
+
+    def copy(self, isCopyParams=False):
+        """
+        Create a pickle-able copy.
+
+        Returns
+        -------
+        BootstrapResult
+        """
+        newResult = BootstrapResult(None, self.numIteration, self.parameterDct,
+          self.fittedStatistic, bootstrapError=self.bootstrapError)
+        if self._params is not None:
+            if isCopyParams:
+                newResult._params = self._params.copy()
+        return newResult
+
     @classmethod
     def rpConstruct(cls):
         """
@@ -93,9 +132,6 @@ class BootstrapResult(rpickle.RPickler):
         Instance of cls
         """
         return cls(None, None, None, None)
-
-    def copy(self):
-        return copy.deepcopy(self)
 
     def __str__(self) -> str:
         """
@@ -181,12 +217,12 @@ class BootstrapResult(rpickle.RPickler):
         dcts = df_sample.to_dict('records')
         results = []
         for dct in dcts:
-            parameterDct = {}
+            parametersToFit = []
             for name in dct.keys():
                 value = dct[name]
-                parameterDct[name] = mfc.ParameterSpecification(
-                      lower=value*0.9, value=value, upper=value*1.1)
-            params = self.fitter.mkParams(parameterDct=parameterDct)
+                parametersToFit.append(SBstoat.Parameter(name,
+                      lower=value*0.9, value=value, upper=value*1.1))
+            params = self.fitter.mkParams(parametersToFit)
             results.append(params)
         return results
 
@@ -215,7 +251,8 @@ class BootstrapResult(rpickle.RPickler):
             fitter.logger = Logger.merge([b.fitter.logger
                   for b in bootstrapResults])
             # Merge the statistics for fitted timeseries
-            fittedStatistics = [b.fittedStatistic for b in bootstrapResults]
+            fittedStatistics = [b.fittedStatistic for b in bootstrapResults
+                  if b.fittedStatistic is not None]
             fittedStatistic = TimeseriesStatistic.merge(fittedStatistics)
             # Accumulate the results
             for bootstrapResult in bootstrapResults:

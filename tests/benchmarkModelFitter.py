@@ -12,11 +12,14 @@ date         Version         numIteration    numProcess  Time (sec)
 11/30/2020   1.1             10,000          5           110.0
 12/06/2020   1.1             10,000          5            18.1
 02/03/2021*  1.3             10,000          5            33.6
+02/15/2021*  1.4             10,000          5            30.9
+03/21/2021*  1.4             10,000          5            34.8
 
-*Using only leastsq, 100 function evaluations
+*Using only leastsq, 100 function evaluations, S1, S3
 """
 
 from SBstoat import modelFitter as mf
+from SBstoat import _helpers
 import SBstoat
 from SBstoat import logs
 
@@ -28,6 +31,7 @@ import time
 
 IS_TEST = False
 IS_PLOT = False
+IS_PARALLEL = True
 DIR = os.path.dirname(os.path.abspath(__file__))
 BENCHMARK_PATH = os.path.join(DIR, "groundtruth_2_step_0_1.txt")
 MODEL = """
@@ -37,6 +41,7 @@ MODEL = """
     S1 = 1; S2 = 0; S3 = 0;
     k1 = 0; k2 = 0; 
 """
+NUM_ITERATION = 10000
         
 
 def main(numIteration):
@@ -52,17 +57,18 @@ def main(numIteration):
     float: time in seconds
     """
     logger = logs.Logger(logLevel=logs.LEVEL_STATUS, logPerformance=IS_TEST)
-    optimizerMethod = mf.ModelFitter.OptimizerMethod(SBstoat.METHOD_LEASTSQ,
+    optimizerMethod = SBstoat.OptimizerMethod(SBstoat.METHOD_LEASTSQ,
           {"max_nfev": 100})
     fitter = mf.ModelFitter(MODEL, BENCHMARK_PATH,
           ["k1", "k2"], selectedColumns=['S1', 'S3'], isPlot=IS_PLOT,
           logger=logger,
           fitterMethods=[optimizerMethod],
           bootstrapMethods=[optimizerMethod],
+          isProgressBar=False,
           )
     fitter.fitModel()
     startTime = time.time()
-    fitter.bootstrap(numIteration=numIteration, reportInterval=numIteration)
+    fitter.bootstrap(numIteration=numIteration, isParallel=IS_PARALLEL)
     elapsedTime = time.time() - startTime
     if IS_TEST:
         print(fitter.logger.formatPerformanceDF())
@@ -73,4 +79,4 @@ def main(numIteration):
 if __name__ == '__main__':
     if IS_PLOT:
         matplotlib.use('TkAgg')
-    print("Elapsed time: %4.2f" % main(10000))
+    print("Elapsed time: %4.2f" % main(NUM_ITERATION))

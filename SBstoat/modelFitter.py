@@ -43,7 +43,6 @@ from SBstoat.residualsAnalyzer import ResidualsAnalyzer
 
 from docstring_expander.expander import Expander
 import lmfit
-import numpy as np
 import pandas as pd
 
 
@@ -121,8 +120,8 @@ class ModelFitter(ModelFitterReport):
             statement = "self.plot%s(**kwargs)" % kind
             exec(statement)
         else:
-            self._updateFit(params, numPoint)
-            analyzer = ResidualsAnalyzer(self.observedTS, self._plotFittedTS,
+            fittedTS = self._getFittedTS(params, numPoint)
+            analyzer = ResidualsAnalyzer(self.observedTS, fittedTS,
                   meanFittedTS=self.bootstrapResult.fittedStatistic.meanTS,
                   stdFittedTS=self.bootstrapResult.fittedStatistic.stdTS,
                   residualsTS=self.residualsTS,
@@ -141,8 +140,8 @@ class ModelFitter(ModelFitterReport):
         ----------
         #@expand
         """
-        self._updateFit(params, numPoint)
-        analyzer = ResidualsAnalyzer(self.observedTS, self._plotFittedTS,
+        fittedTS = self._getFittedTS(params, numPoint)
+        analyzer = ResidualsAnalyzer(self.observedTS, fittedTS,
               residualsTS=self.residualsTS,
               isPlot=self._isPlot)
         analyzer.plotAll(**kwargs)
@@ -158,8 +157,8 @@ class ModelFitter(ModelFitterReport):
         ----------
         #@expand
         """
-        self._updateFit(params, numPoint)
-        analyzer = ResidualsAnalyzer(self.observedTS, self._plotFittedTS,
+        fittedTS = self._getFittedTS(params, numPoint)
+        analyzer = ResidualsAnalyzer(self.observedTS, fittedTS,
               residualsTS=self.residualsTS,
               isPlot=self._isPlot)
         analyzer.plotResidualsOverTime(**kwargs)
@@ -174,15 +173,17 @@ class ModelFitter(ModelFitterReport):
         ----------
         #@expand
         """
-        self._updateFit(params, numPoint)
+        if numPoint is None:
+            numPoint = len(self.observedTS)
+        fittedTS = self._getFittedTS(params, numPoint)
         bandLowTS = None
         bandHighTS = None
         if self.bootstrapResult is not None:
             statistic = self.bootstrapResult.simulate(numPoint=100, numSample=1000)
-            self._plotFittedTS = statistic.meanTS
+            fittedTS = statistic.meanTS
             bandLowTS = statistic.percentileDct[LOW_PERCENTILE]
             bandHighTS = statistic.percentileDct[HIGH_PERCENTILE]
-        analyzer = ResidualsAnalyzer(self.observedTS, self._plotFittedTS,
+        analyzer = ResidualsAnalyzer(self.observedTS, fittedTS,
               residualsTS=self.residualsTS,
               bandLowTS=bandLowTS, bandHighTS=bandHighTS,
               isPlot=self._isPlot)
@@ -242,27 +243,21 @@ class ModelFitter(ModelFitterReport):
         ts = self._mkParameterDF(parameters=parameters)
         self._plotter.plotHistograms(ts, **kwargs)
 
-    def _updateFit(self, params:lmfit.Parameters, numPoint:int):
+    def _getFittedTS(self, params, numPoint):
         """
-        Checks and updates the fitted values useing the specified parameters
-        and number of poitns.
+        Constructs a fit for the particular parameters and number of points.
 
         Parameters
         ----------
+        params: lmfit.parameters
+        numPoint: int
 
         Returns
         -------
+        NamedTimeseries
         """
-        self._checkFit()
-        if self.fittedTS is None:
-            self.fittedTS = self.simulate(
-                  params=params, numPoint=len(self.observedTS))
-            self.residualsTS = None
-        if self.residualsTS is None:
-            self.residualsTS = self.fittedTS.copy()
-            cols = self.observedTS.colnames
-            self.residualsTS[cols] = self.observedTS[cols] - self.fittedTS[cols]
-            self.residualsTS[cols]  \
-                  = np.nan_to_num(self.residualsTS[cols], nan=0.0)
-        self._plotFittedTS = self.simulate(params=params, numPoint=numPoint)
-        self._plotFittedTS = self._plotFittedTS.subsetColumns(self.selectedColumns)
+        if params is None:
+            params = self.params
+        fittedTS = self.simulate(params=params, numPoint=numPoint)
+        fittedTS = fittedTS.subsetColumns(self.selectedColumns)
+        return fittedTS

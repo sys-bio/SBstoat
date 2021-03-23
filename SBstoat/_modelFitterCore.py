@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
  Created on August 18, 2020
 
@@ -7,12 +6,15 @@
 Core logic of model fitter. Does not include plots.
 """
 
+import SBstoat
+import SBstoat._constants as cn
+from SBstoat._optimizer import Optimizer
 from SBstoat.namedTimeseries import NamedTimeseries, TIME, mkNamedTimeseries
 from SBstoat.logs import Logger
 import SBstoat.timeseriesPlotter as tp
 from SBstoat import rpickle
+from SBstoat import _helpers
 
-import collections
 import copy
 import lmfit
 import numpy as np
@@ -22,76 +24,78 @@ import typing
 # Constants
 PARAMETER_LOWER_BOUND = 0
 PARAMETER_UPPER_BOUND = 10
-#  Minimizer methods
-METHOD_DIFFERENTIAL_EVOLUTION = "differential_evolution"
-METHOD_BOTH = "both"
-METHOD_LEASTSQ = "leastsq"
-METHOD_FITTER_DEFAULTS = [METHOD_DIFFERENTIAL_EVOLUTION, METHOD_LEASTSQ]
-METHOD_BOOTSTRAP_DEFAULTS = [METHOD_LEASTSQ,
-      METHOD_DIFFERENTIAL_EVOLUTION, METHOD_LEASTSQ]
 MAX_CHISQ_MULT = 5
 PERCENTILES = [2.5, 97.55]  # Percentile for confidence limits
-INDENTATION = "  "
-NULL_STR = ""
-IS_REPORT = False
 LOWER_PARAMETER_MULT = 0.95
-UPPER_PARAMETER_MULT = 0.95
+UPPER_PARAMETER_MULT = 1.05
 LARGE_RESIDUAL = 1000000
 
 
-_BestParameters = collections.namedtuple("_BestParameters",
-      "params rssq")  #  parameters, residuals sum of squares
-
-
-
 ##############################
-class ParameterSpecification():
+class Parameter():
 
-    def __init__(self, lower=None, value=None, upper=None):
+    def __init__(self, name, lower=PARAMETER_LOWER_BOUND,
+              value=None, upper=PARAMETER_UPPER_BOUND):
+        self.name = name
         self.lower = lower
-        self.value = value
         self.upper = upper
+        self.value = value
+        if value is None:
+            self.value = (lower + upper)/2.0
+        if self.value <= self.lower:
+            self.lower = LOWER_PARAMETER_MULT*self.value
+        if self.value >= self.upper:
+            self.upper = UPPER_PARAMETER_MULT*self.value
+        if np.isclose(self.lower, 0.0):
+            self.lower = -0.001
+        if np.isclose(self.upper, 0.0):
+            self.upper = 0.001
+
+    def __str__(self):
+        return self.name
+
+    def copy(self, name=None):
+        if name is None:
+            name = self.name
+        return Parameter(name, lower=self.lower, upper=self.upper,
+              value=self.value)
 
 
 class ModelFitterCore(rpickle.RPickler):
 
-    # Subclasses used in interface
-    class OptimizerMethod():
-
-        def __init__(self, method, kwargs):
-            self.method = method
-            self.kwargs = kwargs
-
-
     def __init__(self, modelSpecification, observedData,
-          parametersToFit=None,
-          selectedColumns=None,
-          fitterMethods=None,
-          numFitRepeat=1,
+          # The following must be kept in sync with ModelFitterBootstrap.bootstrap
+          parametersToFit=None, # Must be first kw for backwards compatibility
           bootstrapMethods=None,
+          endTime=None,
+          fitterMethods=None,
+          logger=Logger(),
+          _loggerPrefix="",
+          isPlot=True,
+          maxProcess:int=None,
+          numFitRepeat=1,
+          numIteration:int=10,
+          numPoint=None,
+          numRestart=0,
           parameterLowerBound=PARAMETER_LOWER_BOUND,
           parameterUpperBound=PARAMETER_UPPER_BOUND,
-          parameterDct=None,
-          fittedDataTransformDct=None,
-          logger=Logger(),
-          isPlot=True,
-          _loggerPrefix="",
-          # The following must be kept in sync with ModelFitterBootstrap.bootstrap
-          numIteration:int=10,
-          reportInterval:int=1000,
-          maxProcess:int=None,
+          selectedColumns=None,
           serializePath:str=None,
+          isParallel=True,
+          isProgressBar=True,
           ):
         """
         Constructs estimates of parameter values.
 
         Parameters
         ----------
+        endTime: float
+            end time for the simulation
         modelSpecification: ExtendedRoadRunner/str
             roadrunner model or antimony model
         observedData: NamedTimeseries/str
             str: path to CSV file
-        parametersToFit: list-str/None
+        parametersToFit: list-str/SBstoat.Parameter/None
             parameters in the model that you want to fit
             if None, no parameters are fit
         selectedColumns: list-str
@@ -101,14 +105,6 @@ class ModelFitterCore(rpickle.RPickler):
             lower bound for the fitting parameters
         parameterUpperBound: float
             upper bound for the fitting parameters
-        parameterDct: dict
-            key: parameter name
-            value: triple - (lowerVange, startingValue, upperRange)
-        fittedDataTransformDct: dict
-            key: column in selectedColumns
-            value: function of the data in selectedColumns;
-                   input: NamedTimeseries
-                   output: array for the values of the column
         logger: Logger
         fitterMethods: str/list-str/list-OptimizerMethod
             method used for minimization in fitModel
@@ -117,17 +113,25 @@ class ModelFitterCore(rpickle.RPickler):
         bootstrapMethods: str/list-str/list-OptimizerMethod
             method used for minimization in bootstrap
         numIteration: number of bootstrap iterations
-        reportInterval: number of iterations between progress reports
+        numPoint: int
+            number of time points in the simulation
         maxProcess: Maximum number of processes to use. Default: numCPU
         serializePath: Where to serialize the fitter after bootstrap
+        numRestart: int
+            number of times the minimization is restarted with random
+            initial values for parameters to fit.
+        isParallel: bool
+            run in parallel where possible
+        isProgressBar: bool
+            display the progress bar
 
         Usage
         -----
-        parameterDct = {
-            "k1": (1, 5, 10),  # name of parameter: low value, initial, high
-            "k2": (2, 3, 6)}
+        parametersToFit = [SBstoat.Parameter("k1", lower=1, upper=10, value=5),
+                           SBstoat.Parameter("k2", lower=2, upper=6, value=3),
+                          ]
         ftter = ModelFitter(roadrunnerModel, "observed.csv",
-            parameterDct=parameterDct)
+            parametersToFit=parametersToFit)
         fitter.fitModel()  # Do the fit
         fitter.bootstrap()  # Estimate parameter variance with bootstrap
         """
@@ -138,55 +142,114 @@ class ModelFitterCore(rpickle.RPickler):
             self.parametersToFit = parametersToFit
             self.lowerBound = parameterLowerBound
             self.upperBound = parameterUpperBound
+            self._maxProcess = maxProcess
             self.bootstrapKwargs = dict(
                   numIteration=numIteration,
-                  reportInterval=reportInterval,
-                  maxProcess=maxProcess,
                   serializePath=serializePath,
                   )
-            self.parameterDct = ModelFitterCore._updateParameterDct(parameterDct)
             self._numFitRepeat = numFitRepeat
-            if self.parametersToFit is None:
-                self.parametersToFit = list(self.parameterDct.keys())
-            self.observedTS = observedData
-            if self.observedTS is not None:
-                self.observedTS = mkNamedTimeseries(observedData)
-            #
-            self.fittedDataTransformDct = fittedDataTransformDct
-            #
-            if (selectedColumns is None) and (self.observedTS is not None):
-                selectedColumns = self.observedTS.colnames
             self.selectedColumns = selectedColumns
-            if self.observedTS is not None:
-                self._observedArr = self.observedTS[self.selectedColumns].flatten()
-            else:
-                self._observedArr = None
+            self.observedTS, self.selectedColumns = self._updateObservedTS(
+                  mkNamedTimeseries(observedData))
+            #
+            self.selectedColumns = [c.strip() for c in self.selectedColumns]
+            self.numPoint = numPoint
+            if self.numPoint is None:
+                self.numPoint = len(self.observedTS)
+            self.endTime = endTime
+            if self.endTime is None:
+                self.endTime = self.observedTS.end
             # Other internal state
-            self._fitterMethods = self._makeMethods(fitterMethods,
-                  METHOD_FITTER_DEFAULTS)
-            self._bootstrapMethods = self._makeMethods(bootstrapMethods,
-                  METHOD_BOOTSTRAP_DEFAULTS)
+            self._fitterMethods = ModelFitterCore.makeMethods(fitterMethods,
+                  cn.METHOD_FITTER_DEFAULTS)
+            self._bootstrapMethods = ModelFitterCore.makeMethods(bootstrapMethods,
+                  cn.METHOD_BOOTSTRAP_DEFAULTS)
             if isinstance(self._bootstrapMethods, str):
                 self._bootstrapMethods = [self._bootstrapMethods]
             self._isPlot = isPlot
             self._plotter = tp.TimeseriesPlotter(isPlot=self._isPlot)
-            self._plotFittedTS = None  # Timeseries that is plotted
             self.logger = logger
+            self._numRestart = numRestart
+            self._isParallel = isParallel
+            self._isProgressBar = isProgressBar
+            self._selectedIdxs = None
             # The following are calculated during fitting
             self.roadrunnerModel = None
-            self.minimizer = None  # lmfit.minimizer
             self.minimizerResult = None  # Results of minimization
-            self.params = None  # params property in lmfit.minimizer
             self.fittedTS = self.observedTS.copy(isInitialize=True)  # Initialize
             self.residualsTS = None  # Residuals for selectedColumns
             self.bootstrapResult = None  # Result from bootstrapping
-            # Validation checks
-            self._validateFittedDataTransformDct()
-            self._bestParameters = _BestParameters(rssq=None, params=None)
+            self.optimizer = None
+            self.suiteFitterParams = None  # Result from a suite fitter
+            #
         else:
             pass
+ 
+    def _updateSelectedIdxs(self):
+        resultTS = self.simulate()
+        if resultTS is not None:
+            self._selectedIdxs =  \
+                  ModelFitterCore.selectCompatibleIndices(resultTS[TIME],
+                  self.observedTS[TIME])
+        else:
+            self._selectedIdxs = list(range(self.numPoint))   
 
-    def _makeMethods(self, methods, default):
+    def _updateObservedTS(self, newObservedTS, isCheck=True):
+        """
+        Changes just the observed timeseries. The new timeseries must have
+        the same shape as the old one. Also used on initialization,
+        in which case, the check should be disabled.
+
+        Parameters
+        ----------
+        newObservedTS: NamedTimeseries
+        isCheck: Bool
+            verify that new timeseries as the same shape as the old one
+
+        Returns
+        -------
+        NamedTimeseries
+            ObservedTS
+        list-str
+            selectedColumns
+        """
+        if isCheck:
+            isError = False
+            if not isinstance(newObservedTS, NamedTimeseries):
+                isError = True
+            if "observedTS" in self.__dict__.keys():
+                isError = isError  \
+                      or (not self.observedTS.equalSchema(newObservedTS))
+            if isError:
+                raise RuntimeError("Timeseries argument: incorrect type or shape.")
+        #
+        self.observedTS = newObservedTS
+        if (self.selectedColumns is None) and (self.observedTS is not None):
+            self.selectedColumns = self.observedTS.colnames
+        if self.observedTS is None:
+            self._observedArr = None
+        else:
+            self._observedArr = self.observedTS[self.selectedColumns].flatten()
+        #
+        return self.observedTS, self.selectedColumns
+
+    @property
+    def params(self):
+        params = None
+        #
+        if params is None:
+            if self.suiteFitterParams is not None:
+                params = self.suiteFitterParams
+        if self.bootstrapResult is not None:
+            if self.bootstrapResult.params is not None:
+                params = self.bootstrapResult.params
+        if params is None:
+            if self.optimizer is not None:
+                params = self.optimizer.params
+        return params
+
+    @staticmethod
+    def makeMethods(methods, default):
         """
         Creates a method dictionary.
 
@@ -205,27 +268,25 @@ class ModelFitterCore(rpickle.RPickler):
         if methods is None:
             methods = default
         if isinstance(methods, str):
-            if methods == METHOD_BOTH:
-                methods = METHOD_FITTER_DEFAULTS
+            if methods == cn.METHOD_BOTH:
+                methods = cn.METHOD_FITTER_DEFAULTS
             else:
                 methods = [methods]
         if isinstance(methods, list):
             if isinstance(methods[0], str):
-                results = [ModelFitterCore.OptimizerMethod(method=m, kwargs={})
+                results = [_helpers.OptimizerMethod(method=m, kwargs={})
                       for m in methods]
             else:
                 results = methods
         else:
             raise RuntimeError("Must be a list")
-        trues = [isinstance(m, ModelFitterCore.OptimizerMethod) for m in results]
+        trues = [isinstance(m, _helpers.OptimizerMethod) for m in results]
         if not all(trues):
             raise ValueError("Invalid methods: %s" % str(methods))
         return results
 
-
     @classmethod
-    def mkParameters(cls, parameterDct:dict=None,
-          parametersToFit:list=None,
+    def mkParameters(cls, parametersToFit:list,
           logger:Logger=Logger(),
           lowerBound:float=PARAMETER_LOWER_BOUND,
           upperBound:float=PARAMETER_UPPER_BOUND)->lmfit.Parameters:
@@ -234,8 +295,7 @@ class ModelFitterCore(rpickle.RPickler):
 
         Parameters
         ----------
-        parameterDct: key=name, value=ParameterSpecification
-        parametersToFit: list of parameters to fit
+        parametersToFit: list-Parameter/list-str
         logger: error logger
         lowerBound: lower value of range for parameters
         upperBound: upper value of range for parameters
@@ -244,47 +304,20 @@ class ModelFitterCore(rpickle.RPickler):
         -------
         lmfit.Parameters
         """
-        def get(value, base_value, multiplier):
-            if value is not None:
-                return value
-            return base_value*multiplier
-        #
-        if (parametersToFit is None) and (parameterDct is None):
-            raise RuntimeError("Must specify one of these parameters.")
-        if parameterDct is None:
-            parameterDct = {}
-        if parametersToFit is None:
-            parametersToFit = parameterDct.keys()
+        if len(parametersToFit) == 0:
+            raise RuntimeError("Must specify at least one parameter.")
         if logger is None:
             logger = logger()
-        params = lmfit.Parameters()
-        for parameterName in parametersToFit:
-            if parameterName in parameterDct.keys():
-                specification = parameterDct[parameterName]
-                value = get(specification.value, specification.value, 1.0)
-                if value > 0:
-                    lower_factor = LOWER_PARAMETER_MULT
-                    upper_factor = UPPER_PARAMETER_MULT
-                else:
-                    upper_factor = UPPER_PARAMETER_MULT
-                    lower_factor = LOWER_PARAMETER_MULT
-                lower = get(specification.lower, specification.value,
-                      lower_factor)
-                upper = get(specification.upper, specification.value,
-                      upper_factor)
-                if np.isclose(lower - upper, 0):
-                    upper = 0.0001
-                try:
-                    params.add(parameterName, value=value, min=lower, max=upper)
-                except Exception as err:
-                    msg = "modelFitterCore/mkParameters parameterName %s" \
-                          % parameterName
-                    logger.error(msg, err)
-            else:
-                value = np.mean([lowerBound, upperBound])
-                params.add(parameterName, value=value,
-                      min=lowerBound, max=upperBound)
-        return params
+        lmfitParameters = lmfit.Parameters()
+        # Process each parameter
+        for element in parametersToFit:
+            # Get the lower bound, upper bound, and initial value for the parameter
+            if not isinstance(element, SBstoat.Parameter):
+                element = SBstoat.Parameter(element,
+                      lower=lowerBound, upper=upperBound)
+            lmfitParameters.add(element.name,
+                  min=element.lower, max=element.upper, value=element.value)
+        return lmfitParameters
 
     @classmethod
     def initializeRoadrunnerModel(cls, modelSpecification):
@@ -333,7 +366,7 @@ class ModelFitterCore(rpickle.RPickler):
 
     @classmethod
     def runSimulation(cls, parameters=None,
-          roadrunner=None,
+          modelSpecification=None,
           startTime=0,
           endTime=5,
           numPoint=30,
@@ -347,7 +380,7 @@ class ModelFitterCore(rpickle.RPickler):
 
         Parameters
        ----------
-        roadrunner: ExtendedRoadRunner/str
+        modelSpecification: ExtendedRoadRunner/str
             Roadrunner model
         parameters: lmfit.Parameters
             lmfit parameters
@@ -369,27 +402,28 @@ class ModelFitterCore(rpickle.RPickler):
         ------
         NamedTimeseries (or None if fail to converge)
         """
-        if isinstance(roadrunner, str):
-            roadrunner = cls.initializeRoadrunnerModel(roadrunner)
+        roadrunnerModel = modelSpecification
+        if isinstance(modelSpecification, str):
+            roadrunnerModel = cls.initializeRoadrunnerModel(roadrunnerModel)
         else:
-            roadrunner.reset()
+            roadrunnerModel.reset()
         if parameters is not None:
             # Parameters have been specified
-            cls.setupModel(roadrunner, parameters, logger=_logger)
+            cls.setupModel(roadrunnerModel, parameters, logger=_logger)
         # Do the simulation
         if selectedColumns is not None:
             newSelectedColumns = list(selectedColumns)
             if TIME not in newSelectedColumns:
                 newSelectedColumns.insert(0, TIME)
             try:
-                data = roadrunner.simulate(startTime, endTime, numPoint,
+                data = roadrunnerModel.simulate(startTime, endTime, numPoint,
                       newSelectedColumns)
             except Exception as err:
                 _logger.error("Roadrunner exception: ", err)
                 data = None
         else:
             try:
-                data = roadrunner.simulate(startTime, endTime, numPoint)
+                data = roadrunnerModel.simulate(startTime, endTime, numPoint)
             except Exception as err:
                 _logger.exception("Roadrunner exception: %s", err)
                 data = None
@@ -420,72 +454,6 @@ class ModelFitterCore(rpickle.RPickler):
         """
         if "logger" not in self.__dict__.keys():
             self.logger = Logger()
-
-    def _validateFittedDataTransformDct(self):
-        if self.fittedDataTransformDct is not None:
-            keySet = set(self.fittedDataTransformDct.keys())
-            selectedColumnsSet = self.selectedColumns
-            if (keySet is not None) and (selectedColumnsSet is not None):
-                excess = set(keySet).difference(selectedColumnsSet)
-                if len(excess) > 0:
-                    msg = "Columns not in selectedColumns: %s"  % str(excess)
-                    raise ValueError(msg)
-
-    def _transformFittedTS(self, data):
-        """
-        Updates the fittedTS taking into account required transformations.
-
-        Parameters
-        ----------
-        data: np.ndarray
-
-        Results
-        ----------
-        NamedTimeseries
-        """
-        colnames = list(self.selectedColumns)
-        colnames.insert(0, TIME)
-        fittedTS = NamedTimeseries(array=data[:, :], colnames=colnames)
-        if self.fittedDataTransformDct is not None:
-            for column, func in self.fittedDataTransformDct.items():
-                if func is not None:
-                    fittedTS[column] = func(fittedTS)
-        return fittedTS
-
-    @staticmethod
-    def _updateParameterDct(parameterDct):
-        """
-        Handles values that are tuples instead of ParameterSpecification.
-        """
-        if parameterDct is None:
-            parameterDct = {}
-        dct = dict(parameterDct)
-        for name, value in parameterDct.items():
-            if isinstance(value, tuple):
-                dct[name] = ParameterSpecification(lower=value[0],
-                      upper=value[1], value=value[2])
-        return dct
-
-    @staticmethod
-    def addParameter(parameterDct: dict,
-          name: str, lower: float, upper: float, value: float):
-        """
-        Adds a parameter to a list of parameters.
-
-        Parameters
-        ----------
-        parameterDct: parameter dictionary to agument
-        name: parameter name
-        lower: lower range of parameter value
-        upper: upper range of parameter value
-        value: initial value
-
-        Returns
-        -------
-        dict
-        """
-        parameterDct[name] = ParameterSpecification(
-              lower=lower, upper=upper, value=value)
 
     def _adjustNames(self, antimonyModel:str, observedTS:NamedTimeseries)  \
           ->typing.Tuple[NamedTimeseries, list]:
@@ -518,11 +486,29 @@ class ModelFitterCore(rpickle.RPickler):
             newObservedTS = observedTS
         return newObservedTS, newSelectedColumns
 
-    def copy(self, isKeepLogger=False):
+    def clean(self):
+        """
+        Cleans the object so that it can be pickled.
+        """
+        self.roadrunnerModel = None
+        return self
+
+    def copy(self, isKeepLogger=False, isKeepOptimizer=False):
         """
         Creates a copy of the model fitter.
         Preserves the user-specified settings and the results
         of bootstrapping.
+        
+        Parameters
+        ----------
+        isKeepLogger: bool
+        isKeepOptimizer: bool
+        isMinimalCopy: bool
+            copy minimal context for bootstrap
+        
+        Returns
+        -------
+        ModelFitter
         """
         if not isinstance(self.modelSpecification, str):
             try:
@@ -553,24 +539,24 @@ class ModelFitterCore(rpickle.RPickler):
               bootstrapMethods=self._bootstrapMethods,
               parameterLowerBound=self.lowerBound,
               parameterUpperBound=self.upperBound,
-              parameterDct=copy.deepcopy(self.parameterDct),
-              fittedDataTransformDct=copy.deepcopy(self.fittedDataTransformDct),
               logger=logger,
               isPlot=self._isPlot)
+        if self.optimizer is not None:
+            if isKeepOptimizer:
+                newModelFitter.optimizer = self.optimizer.copyResults()
         if self.bootstrapResult is not None:
             newModelFitter.bootstrapResult = self.bootstrapResult.copy()
-            newModelFitter.params = newModelFitter.bootstrapResult.params
         else:
             newModelFitter.bootstrapResult = None
-            newModelFitter.params = self.params
         return newModelFitter
 
     def initializeRoadRunnerModel(self):
         """
         Sets self.roadrunnerModel.
         """
-        self.roadrunnerModel = ModelFitterCore.initializeRoadrunnerModel(
-              self.modelSpecification)
+        if self.roadrunnerModel is None:
+            self.roadrunnerModel = ModelFitterCore.initializeRoadrunnerModel(
+                  self.modelSpecification)
 
     def getDefaultParameterValues(self):
         """
@@ -578,9 +564,7 @@ class ModelFitterCore(rpickle.RPickler):
 
         Returns
         -------
-        dict:
-            key: parameter name
-            value: value of parameter
+        list-SBstoat.Parameter
         """
         dct = {}
         self.initializeRoadRunnerModel()
@@ -611,14 +595,14 @@ class ModelFitterCore(rpickle.RPickler):
             return parameter
         #
         startTime = setValue(self.observedTS.start, startTime)
-        endTime = setValue(self.observedTS.end, endTime)
-        numPoint = setValue(len(self.observedTS), numPoint)
+        endTime = setValue(self.endTime, endTime)
+        numPoint = setValue(self.numPoint, numPoint)
         #
         if self.roadrunnerModel is None:
             self.initializeRoadRunnerModel()
         #
         return ModelFitterCore.runSimulation(parameters=params,
-              roadrunner=self.roadrunnerModel,
+              modelSpecification=self.roadrunnerModel,
               startTime=startTime,
               endTime=endTime,
               numPoint=numPoint,
@@ -647,7 +631,10 @@ class ModelFitterCore(rpickle.RPickler):
         1-d ndarray of residuals
         """
         self.fittedTS = self.simulate(**kwargs)  # Updates self.fittedTS
-        residualsArr = self._residuals(self.params)
+        if self._selectedIdxs is None:
+            self._updateSelectedIdxs()
+        self.fittedTS = self.fittedTS[self._selectedIdxs]
+        residualsArr = self.calcResiduals(self.params)
         numRow = len(self.fittedTS)
         numCol = len(residualsArr)//numRow
         residualsArr = np.reshape(residualsArr, (numRow, numCol))
@@ -656,7 +643,29 @@ class ModelFitterCore(rpickle.RPickler):
             self.residualsTS = self.observedTS.subsetColumns(cols)
         self.residualsTS[cols] = residualsArr
 
-    def _residuals(self, params)->np.ndarray:
+    @staticmethod
+    def selectCompatibleIndices(bigTimes, smallTimes):
+        """
+        Finds the indices such that smallTimes[n] is close to bigTimes[indices[n]]
+
+        Parameters
+        ----------
+        bigTimes: np.ndarray
+        smalltimes: np.ndarray
+
+        Returns
+        np.ndarray
+        """
+        indices = []
+        for idx, _ in enumerate(smallTimes):
+            distances = (bigTimes - smallTimes[idx])**2
+            def getValue(k):
+                return distances[k]
+            thisIndices = sorted(range(len(distances)), key=getValue)
+            indices.append(thisIndices[0])
+        return np.array(indices)
+
+    def calcResiduals(self, params)->np.ndarray:
         """
         Compute the residuals between objective and experimental data
         Handle nan values in observedTS. This internal-only method
@@ -664,35 +673,33 @@ class ModelFitterCore(rpickle.RPickler):
 
         Parameters
         ----------
-        kwargs: dict
+        params: lmfit.Parameters
             arguments for simulation
 
         Returns
         -------
         1-d ndarray of residuals
         """
-        data = ModelFitterCore.runSimulation(parameters=params,
-              roadrunner=self.roadrunnerModel,
+        if self._selectedIdxs is None:
+            self._updateSelectedIdxs()
+        dataTS = ModelFitterCore.runSimulation(parameters=params,
+              modelSpecification=self.roadrunnerModel,
               startTime=self.observedTS.start,
-              endTime=self.observedTS.end,
-              numPoint=len(self.observedTS),
+              endTime=self.endTime,
+              numPoint=self.numPoint,
               selectedColumns=self.selectedColumns,
               _logger=self.logger,
               _loggerPrefix=self._loggerPrefix,
               returnDataFrame=False)
-        if data is None:
+        if dataTS is None:
             residualsArr = np.repeat(LARGE_RESIDUAL, len(self._observedArr))
         else:
-            residualsArr = self._observedArr - data.flatten()
+            truncatedTS = dataTS[self._selectedIdxs]
+            residualsArr = self._observedArr - truncatedTS.flatten()
             residualsArr = np.nan_to_num(residualsArr)
-        rssq = sum(residualsArr**2)
-        if (self._bestParameters.rssq is None)  \
-              or (rssq < self._bestParameters.rssq):
-            self._bestParameters = _BestParameters(
-                  params=params.copy(), rssq=rssq)
         return residualsArr
 
-    def fitModel(self, params:lmfit.Parameters=None, max_nfev=100):
+    def fitModel(self, params:lmfit.Parameters=None):
         """
         Fits the model by adjusting values of parameters based on
         differences between simulated and provided values of
@@ -700,69 +707,23 @@ class ModelFitterCore(rpickle.RPickler):
 
         Parameters
         ----------
-        params: starting values of parameters
+        params: lmfit.parameters
+            starting values of parameters
 
         Example
         -------
         f.fitModel()
         """
-        ParameterDescriptor = collections.namedtuple("ParameterDescriptor",
-              "params method rssq kwargs minimizer minimizerResult")
-        MAX_NFEV = "max_nfev"
-        block = Logger.join(self._loggerPrefix, "fitModel")
-        guid = self.logger.startBlock(block)
         self.initializeRoadRunnerModel()
-        self.params = None
         if self.parametersToFit is not None:
             if params is None:
                 params = self.mkParams()
-            # Fit the model to the data using one or more methods.
-            # Choose the result with the lowest residual standard deviation
-            paramResults = []
-            lastExcp = None
-            for idx, optimizerMethod in enumerate(self._fitterMethods):
-                method = optimizerMethod.method
-                kwargs = optimizerMethod.kwargs
-                if MAX_NFEV not in kwargs:
-                    kwargs[MAX_NFEV] = max_nfev
-                for _ in range(self._numFitRepeat):
-                    self._bestParameters = _BestParameters(params=None, rssq=None)
-                    minimizer = lmfit.Minimizer(self._residuals, params)
-                    try:
-                        minimizerResult = minimizer.minimize(
-                              method=method, **kwargs)
-                    except Exception as excp:
-                        lastExcp = excp
-                        msg = "Error minimizing for method: %s" % method
-                        self.logger.error(msg, excp)
-                        continue
-                    params = self._bestParameters.params.copy()
-                    rssq = np.sum(self._residuals(params)**2)
-                    if len(paramResults) > idx:
-                        if rssq >= paramResults[idx].rssq:
-                            continue
-                    parameterDescriptor = ParameterDescriptor(
-                          params=params,
-                          method=method,
-                          rssq=rssq,
-                          kwargs=dict(kwargs),
-                          minimizer=minimizer,
-                          minimizerResult=minimizerResult,
-                          )
-                    paramResults.append(parameterDescriptor)
-            if len(paramResults) == 0:
-                msg = "*** Minimizer failed for this model and data."
-                self.logger.error(msg, lastExcp)
-            else:
-                # Select the result that has the smallest residuals
-                sortedMethods = sorted(paramResults, key=lambda r: r.rssq)
-                bestMethod = sortedMethods[0]
-                self.params = bestMethod.params
-                self.minimizer= bestMethod.minimizer
-                self.minimizerResult = bestMethod.minimizerResult
+            self.optimizer = Optimizer.optimize(self.calcResiduals, params,
+                  self._fitterMethods, logger=self.logger,
+                  numRestart=self._numRestart)
+            self.minimizerResult = self.optimizer.minimizerResult
         # Ensure that residualsTS and fittedTS match the parameters
         self.updateFittedAndResiduals(params=self.params)
-        self.logger.endBlock(guid)
 
     def getFittedModel(self):
         """
@@ -786,24 +747,24 @@ class ModelFitterCore(rpickle.RPickler):
         parameters: lmfit.Parameters
 
         """
-        ModelFitterCore.setupModel(self.roadrunnerModel, parameters, logger=self.logger)
+        ModelFitterCore.setupModel(self.roadrunnerModel, parameters,
+              logger=self.logger)
 
-    def mkParams(self, parameterDct:dict=None)->lmfit.Parameters:
+    def mkParams(self, parametersToFit:list=None)->lmfit.Parameters:
         """
         Constructs lmfit parameters based on specifications.
 
         Parameters
         ----------
-        parameterDct: key=name, value=ParameterSpecification
+        parametersToFit: list-Parameter
 
         Returns
         -------
         lmfit.Parameters
         """
-        if parameterDct is None:
-            parameterDct = self.parameterDct
-        return ModelFitterCore.mkParameters(parameterDct,
-              parametersToFit=self.parametersToFit,
+        if parametersToFit is None:
+            parametersToFit = self.parametersToFit
+        return ModelFitterCore.mkParameters(parametersToFit,
               logger=self.logger,
               lowerBound=self.lowerBound,
               upperBound=self.upperBound)

@@ -134,6 +134,12 @@ More details of the features of `SBstoat` can be found in this
     1. `cd SBstoat`
     1. `nosetests tests`
 
+# Release Notes
+## Release 1.14
+* Support for suites of models. A suite is a collection of models with overlapping sets of parameters. A common use case is having model variants (e.g., different initial concentrations of floating species or gene knock-outs) that reflect different experimental conditions. Parameter fitting requires simultaneously fitting all models in the suite. See the class ``SuiteFitter``.
+* Cross validation. Provides a way to assess model quality and estimates of parameter variance. Once you have an instance of ``ModelFitter``, invoke the method ``crossValidate(numFold)``, where ``numFold`` is the number of folds.
+* Progress bar. Long running activities have a progress bar. In this release, only bootstrapping has a progress bar. Future releases will extend this.
+* Random restarts for fitting. The quality of a fit often depends on the initial values used for parameters. The optional keyword ``numRestart`` for constructing ``ModelFitter`` indicates the number of random restarts to use in a fit.
 
 # Developer Notes
 

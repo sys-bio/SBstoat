@@ -41,6 +41,7 @@ import pandas as pd
 
 DELIMITER = ","
 TIME = "time"
+SMALL_RATIO = 10e-6
 
 
 ################## FUNCTIONS ########################
@@ -191,8 +192,10 @@ class NamedTimeseries(rpickle.RPickler):
         return str(df)
 
     def _addColname(self, name):
-        self.allColnames.append(name)
-        self._indexDct[name] = self.allColnames.index(name)
+        """Adds the name. Strips leading and trailing blanks."""
+        newName = name.strip()
+        self.allColnames.append(newName)
+        self._indexDct[newName] = self.allColnames.index(newName)
         self.colnames = list(self.allColnames)
         if TIME in self.colnames:
             self.colnames.remove(TIME)
@@ -308,11 +311,18 @@ class NamedTimeseries(rpickle.RPickler):
         isListInt = False
         isSlice = False
         isListStr = False
+        if isinstance(reference, np.ndarray):
+            reference = reference.tolist()
         if isinstance(reference, list):
             if isinstance(reference[0], str):
                 isListStr = True
-            elif isinstance(reference[0], int):
-                isListInt = True
+            else:
+                try:
+                    newReference = [int(r) for r in reference]
+                    isListInt = True
+                    reference = newReference
+                except ValueError:
+                    pass
         elif isinstance(reference, int):
             isInt = True
         elif isinstance(reference, slice):
@@ -438,6 +448,33 @@ class NamedTimeseries(rpickle.RPickler):
                 ts[column] = 0.0
         return ts
 
+    def equalSchema(self, other):
+        """
+        Checks if two timeseries have the same time values, column names and length.
+
+        Parameters
+        ----------
+        other: NamedTimeseries
+
+        Returns
+        -------
+        bool
+        """
+        # Same columns?
+        diff = set(self.allColnames).symmetric_difference(other.allColnames)
+        checks = [len(diff) == 0]
+        # Same length?
+        checks.append(len(self) == len(other))
+        # Same times?
+        selfVar = np.var(self[TIME])
+        residualVar = np.var(self[TIME] - other[TIME])
+        if np.isclose(selfVar, 0):
+            checks.append(np.isclose(residualVar, 0))
+        else:
+            ratio = residualVar/selfVar
+            checks.append(ratio <= SMALL_RATIO)
+        return all(checks)
+
     def equals(self, other):
         """
         Checks if two timeseries have the same columns and values.
@@ -450,12 +487,14 @@ class NamedTimeseries(rpickle.RPickler):
         -------
         bool
         """
-        diff = set(self.allColnames).symmetric_difference(other.allColnames)
-        if len(diff) > 0:
-            return False
-        checks = []
-        for col in self.allColnames:
-            checks.append(arrayEquals(self[col], other[col]))
+        checks = [self.equalSchema(other)]
+        # Check values
+        for col in self.colnames:
+            try:
+                np.testing.assert_array_almost_equal(self[col], other[col])
+                checks.append(True)
+            except Exception:
+                return False
         return all(checks)
 
     def to_dataframe(self):
@@ -548,13 +587,15 @@ class NamedTimeseries(rpickle.RPickler):
             return [arg]
         return arg
 
-    def subsetColumns(self, colnames):
+    def subsetColumns(self, colnames, isCopy=True):
         """
         Creates a NamedTimeseries consisting of a subset of columns.
 
         Parameters
         ----------
         colnames: single column name or list of column names
+        isCopy: bool
+            make a copy
 
         Returns
         ------
@@ -565,6 +606,9 @@ class NamedTimeseries(rpickle.RPickler):
         newTS = ts.subsetColumns("S1", "S2")  # The new timeseries only has S1, S2
         """
         colnames = self._getStringOrListstring(colnames)
+        diff = set(colnames).symmetric_difference(self.colnames)
+        if (len(diff) == 0) and (not isCopy):
+            return self
         df = self.to_dataframe()
         return NamedTimeseries(dataframe=df[colnames])
 

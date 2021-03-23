@@ -16,8 +16,9 @@ function report {
 cp ${INPUT} ${TEMP}
 # Analyze the log
 echo "Files processed: " `report "xml"`
-echo "Successfully processed: " `report '\*[1-9][0-9]*.* bootstrap'`
-echo "No bootstrap results: " `report '\*0 *.* bootstrap'`
+echo "Successful fit: " `report 'Fitting the parameters'`
+echo "Successfully fit+bootstrap: " `report '\*100 bootstrap'`
+#echo "No bootstrap results: " `report '\*0 *.* bootstrap'`
 echo "No fitable parameters: " `report 'No fitable parameters'`
 echo "CVODE fails: " `report '(TestHarness failed.*CVODE'`
 echo "Non-empty list: " `report 'Must provide a non-empty list'`

@@ -44,6 +44,7 @@ IS_PLOT = True
 DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(os.path.dirname(DIR), "biomodels")
 PATH_PAT = os.path.join(DATA_DIR, "BIOMD0000000%03d.xml")
+LOG_LEVEL = 3
 LOG_PATH = os.path.join(DIR, "mainTestHarness.log")
 FIG_PATH = os.path.join(DIR, "mainTestHarness.png")
 FIRST_MODEL = 210
@@ -62,7 +63,7 @@ LOGGER = "logger"
 #  otherwise: int: initialized to 0
 CONTEXT =  [ "firstModel", "numModel", "numNoError", "fitModelRelerrors",
       "bootstrapRelerrors", "processedModels", "nonErroredModels", "erroredModels",
-      "modelParameterDct", "pclPath", "figPath", "isPlot", "reportInterval",
+      "modelParameterDct", "pclPath", "figPath", "isPlot", 
       "kwargDct"
       ]
 
@@ -90,7 +91,7 @@ class Runner(object):
 
     def __init__(self, firstModel:int=210, numModel:int=2,
           pclPath=PCL_FILE, figPath=FIG_PATH,
-          useExistingData:bool=False, reportInterval:int=10,
+          useExistingData:bool=False,
           isPlot=IS_PLOT, **kwargDct):
         """
         Parameters
@@ -98,7 +99,6 @@ class Runner(object):
         firstModel: first model to use
         numModel: number of models to use
         pclPath: file to which results are saved
-        reportInterval: how frequently report progress
         useExistingData: use data in existing PCL file
         """
         self.useExistingData = useExistingData and os.path.isfile(pclPath)
@@ -123,7 +123,6 @@ class Runner(object):
         self.numModel = numModel
         self.pclPath = pclPath
         self.figPath = figPath
-        self.reportInterval = reportInterval
         self.kwargDct = kwargDct
         self.isPlot = isPlot
         self.useExistingData = useExistingData
@@ -149,11 +148,9 @@ class Runner(object):
             if isinstance(value, list):
                 isEqual = self._isListSame(value, other.__getattribute__(key))
                 if not isEqual:
-                    import pdb; pdb.set_trace()
                     return False
             elif any([isinstance(value, t) for t in [int, str, float, bool]]):
                 if self.__getattribute__(key) != other.__getattribute__(key):
-                    import pdb; pdb.set_trace()
                     return False
             else:
                 pass
@@ -201,8 +198,6 @@ class Runner(object):
                 # Count models without exceptions
                 self.nonErroredModels.append(modelNum)
                 self.numNoError = len(self.nonErroredModels)
-                if modelNum % self.reportInterval == 0:
-                    self.logger.result("Processed model %d" % modelNum)
                 self.save()
         # Check for plot
         if self.isPlot:
@@ -312,5 +307,5 @@ if __name__ == '__main__':
                     useExistingData=useExistingData,
                     figPath=args.figPath,
                     isPlot=args.plot,
-                    logger=Logger(toFile=args.logPath))
+                    logger=Logger(toFile=args.logPath, logLevel=LOG_LEVEL))
     runner.run()
