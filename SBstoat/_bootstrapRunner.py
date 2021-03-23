@@ -54,8 +54,6 @@ class BootstrapRunner(AbstractRunner):
         -----
         1. Uses METHOD_LEASTSQ for fitModel iterations.
         """
-        super().__init__()
-        #
         self.lastErr = ""
         self.fitter = runnerArgument.fitter
         self.numIteration = runnerArgument.numIteration
