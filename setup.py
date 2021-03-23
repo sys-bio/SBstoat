@@ -47,6 +47,7 @@ setup(
         'pandas',
         'nose',
         'python-libsbml',
+        'tqdm',
         'docstring_expander',
     ],
     python_requires='>=3.6',
