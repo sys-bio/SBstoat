@@ -18,6 +18,7 @@
 This repo provides easy-to-use tools for doing parameter fitting using the Tellurium simulator.
 The project is named after the stoat, an animal that has superb skills at fitting into small places.
 ``SBstoat`` provides the following:
+
 * Parameter fitting for a single model and for model suites (collections of models with overlapping parameters). The user can select any optimization method or combinations of methods that are available in ``scipy.optimize``.
 * Cross validation
 * Bootstrapping
