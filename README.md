@@ -23,6 +23,7 @@ The project is named after the stoat, an animal that has superb skills at fittin
 * A variety plots to assess the quality of parameter fits.
 * Cross validation to assess model quality.
 * Bootstrapping for estimating confidence intervals for parameters.
+* Multiprocess implementation.
 
 A [Jupyter Notebook](https://github.com/sys-bio/SBstoat/blob/master/notebooks/Tutorial%20on%20Utilities%20for%20Model%20Fitting.ipynb) of detailed examples can be found here. Below is a summary.
 
