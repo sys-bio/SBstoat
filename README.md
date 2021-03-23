@@ -20,10 +20,10 @@ The project is named after the stoat, an animal that has superb skills at fittin
 ``SBstoat`` provides the following:
 
 * Parameter fitting for a single model and for model suites (collections of models with overlapping parameters). The user can select any optimization method or combinations of methods that are available in ``scipy.optimize``.
-* A variety plots to assess the quality of parameter fits.
+* A variety of plots to assess the quality of parameter fits.
 * Cross validation to assess model quality.
 * Bootstrapping for estimating confidence intervals for parameters.
-* Multiprocess implementation.
+* Multiprocess implementation for increased performance and scaling.
 
 A [Jupyter Notebook](https://github.com/sys-bio/SBstoat/blob/master/notebooks/Tutorial%20on%20Utilities%20for%20Model%20Fitting.ipynb) of detailed examples can be found here. Below is a summary.
 
