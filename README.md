@@ -15,8 +15,14 @@
 
 # Fitting SBML Models with Tellurium
 
-This repo provides easy-to-use tools for doing parameter using the Tellurium simulator.
+This repo provides easy-to-use tools for doing parameter fitting using the Tellurium simulator.
 The project is named after the stoat, an animal that has superb skills at fitting into small places.
+``SBstoat`` provides the following:
+* Parameter fitting for a single model and for model suites (collections of models with overlapping parameters). The user can select any optimization method or combinations of methods that are available in ``scipy.optimize``.
+* Cross validation
+* Bootstrapping
+
+A [Jupyter Notebook](https://github.com/sys-bio/SBstoat/blob/master/notebooks/Tutorial%20on%20Utilities%20for%20Model%20Fitting.ipynb) of detailed examples can be found here. Below is a summary.
 
 The main module is `modelFitter`. A typically parameter fitting session is
 shown below. For convenience, the model is expressed using the [Antimony](http://antimony.sourceforge.net/) modeling language.
