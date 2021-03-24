@@ -32,7 +32,7 @@ def _toplevelRunner(cls, arguments, isProgressBar, numProcess, desc, queue):
 
     Parameters
     ----------
-    cls: inherits from AbstractWorkUnit
+    cls: inherits from AbstractRunner
     arguements: each element is an argument to construct
         an instance of cls
     isProgressBar: bool
