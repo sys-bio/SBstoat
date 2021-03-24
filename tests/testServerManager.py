@@ -6,19 +6,26 @@ Created on March 23, 2021
 """
 
 import SBstoat._serverManager as sm
+from SBstoat.logs import Logger
 
 import multiprocessing
 import numpy as np
 import unittest
 
 
-IGNORE_TEST = True
-IS_PLOT = True
+IGNORE_TEST = False
+IS_PLOT = False
 SIZE = 10
+PRIME_SIZES = [5, 10, 15]
 
 
-class PrimeFinder(sm.AbstractConsumer):
+class PrimeFinder(sm.AbstractServer):
     """A work unit is number of primes to calculate."""
+
+    def __init__(self, initialArgument, inputQ, outputQ, isException=False,
+              logger=Logger()):
+        super().__init__(initialArgument, inputQ, outputQ, logger=Logger())
+        self.isException = isException
 
     @staticmethod
     def _isPrime(number, primes):
@@ -32,18 +39,20 @@ class PrimeFinder(sm.AbstractConsumer):
                 return False
         return True
 
-    def _function(self, numPrime):
+    def runFunction(self, numPrime):
         """
         Calculates the specified number of prime numbers.
 
         Parameters
         ----------
         numPrime: int
-        
+
         Returns
         -------
         np.array
         """
+        if self.isException:
+            raise RuntimeError("Generated RuntimeError.")
         # Find primes until enough are accumulated
         primes = []
         num = 2
@@ -65,24 +74,52 @@ class TestAbstractConsumer(unittest.TestCase):
     def testPrimeFinder(self):
         if IGNORE_TEST:
             return
-        primes = self.finder._function(SIZE)
+        primes = self.finder.runFunction(SIZE)
         self.assertEqual(len(primes), SIZE)
 
-    def testRun(self):
-        # TESTING
-        consumer = PrimeFinder(None, self.inputQ, self.outputQ)
-        consumer.start()
+    def testRunNoException(self):
+        if IGNORE_TEST:
+            return
+        server = PrimeFinder(None, self.inputQ, self.outputQ)
+        server.start()
         self.inputQ.put(SIZE)
         result = self.outputQ.get()
         self.inputQ.put(None)
         self.assertEqual(len(result), SIZE)
-        
-        
+
+    def testRunWithException(self):
+        if IGNORE_TEST:
+            return
+        server = PrimeFinder(None, self.inputQ, self.outputQ,
+              isException=True)
+        server.start()
+        self.inputQ.put(SIZE)
+        result = self.outputQ.get()
+        self.inputQ.put(None)
+        self.assertIsNone(result)
+
 
 class TestConsumerlRunner(unittest.TestCase):
 
-    def setUp(self):
-        pass
+    def _init(self):
+        self.manager = sm.ServerManager(PrimeFinder, PRIME_SIZES)
+
+    def testConstructor(self):
+        if IGNORE_TEST:
+            return
+        self._init()
+        pids = [s.pid for s in self.manager.servers]
+        self.assertEqual(len(pids), len(PRIME_SIZES))
+        self.manager.stop()
+
+    def testRunServers(self):
+        if IGNORE_TEST:
+            return
+        self._init()
+        results = self.manager.submit(PRIME_SIZES)
+        self.manager.stop()
+        for result, size in zip(results, PRIME_SIZES):
+            self.assertEqual(len(result), size)
 
 
 if __name__ == '__main__':
