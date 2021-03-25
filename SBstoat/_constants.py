@@ -23,3 +23,6 @@ SCORE = "score"
 STD = "std"
 TRUE = "true"
 VALUE = "value"
+# Parameter class
+PARAMETER_LOWER_BOUND = 0
+PARAMETER_UPPER_BOUND = 10

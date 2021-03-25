@@ -18,8 +18,8 @@ import pandas as pd
 import unittest
 
 
-IGNORE_TEST = True
-IS_PLOT = True
+IGNORE_TEST = False
+IS_PLOT = False
 FITTER = th.getFitter(cls=ModelFitterCore)
 NUM_ITERATION = 20
 
@@ -50,7 +50,8 @@ class TestBootstrapRunner(unittest.TestCase):
         self.assertEqual(self.runner.numWorkUnit, NUM_ITERATION)
 
     def testRun(self):
-        # TESTING
+        if IGNORE_TEST:
+            return
         self.runner.run()
 
     def testRun2(self):

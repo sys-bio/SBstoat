@@ -17,8 +17,8 @@ import lmfit
 import unittest
 
 
-IGNORE_TEST = True
-IS_PLOT = True
+IGNORE_TEST = False
+IS_PLOT = False
 NAME = "parameter"
 LOWER = 1
 UPPER = 11
@@ -219,7 +219,8 @@ class TestSuiteFitter(unittest.TestCase):
             self.assertTrue(name in result)
 
     def testPlotResidualsSSQ(self, **kwargs):
-        # TESTING
+        if IGNORE_TEST:
+            return
         # Smoke test
         self._init(numModel=3)
         self.fitter.fitSuite()

@@ -22,11 +22,11 @@ import tellurium as te
 import time
 
 
-IS_TEST = True
-IS_PLOT = True
-IS_PARALLEL = True
+IS_TEST = False
+IS_PLOT = False
+IS_PARALLEL = False
 DIR = os.path.dirname(os.path.abspath(__file__))
-MAX_NFEV = 1000
+MAX_NFEV = 10000
 NUM_MODEL = 4
 DATA_PAT = "benchmarkSuiteFitterData_%d.csv"
 OBSERVED_FILES = [os.path.join(DIR, DATA_PAT % d) for d in range(1, NUM_MODEL+1)]
@@ -57,9 +57,11 @@ def main(maxNfev=MAX_NFEV):
                               fitterMethods=[optimizerMethod])
     suiteFitter.fitSuite()
     elapsedTime = time.time() - startTime
-    print(suiteFitter.reportFit())
-    suiteFitter.plotFitAll()
-    suiteFitter.plotResidualsSSQ()
+    if IS_TEST:
+        print(suiteFitter.reportFit())
+    if IS_PLOT:
+        suiteFitter.plotFitAll()
+        suiteFitter.plotResidualsSSQ()
     return elapsedTime
         
 

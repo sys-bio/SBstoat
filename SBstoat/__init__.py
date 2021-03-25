@@ -9,7 +9,7 @@ METHOD_BOTH = SBstoat._constants.METHOD_BOTH
 METHOD_DIFFERENTIAL_EVOLUTION = SBstoat._constants.METHOD_DIFFERENTIAL_EVOLUTION
 METHOD_LEASTSQ = SBstoat._constants.METHOD_LEASTSQ
 # Externalized methods
-class Parameter(SBstoat._modelFitterCore.Parameter):
+class Parameter(SBstoat._parameterManager.Parameter):
     pass
 class OptimizerMethod(SBstoat._helpers.OptimizerMethod):
     pass

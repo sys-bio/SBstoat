@@ -7,6 +7,7 @@ Core logic of model fitter. Does not include plots.
 """
 
 import SBstoat
+from SBstoat._parameterManager import Parameter
 import SBstoat._constants as cn
 from SBstoat._optimizer import Optimizer
 from SBstoat.namedTimeseries import NamedTimeseries, TIME, mkNamedTimeseries
@@ -22,43 +23,9 @@ import tellurium as te
 import typing
 
 # Constants
-PARAMETER_LOWER_BOUND = 0
-PARAMETER_UPPER_BOUND = 10
 MAX_CHISQ_MULT = 5
 PERCENTILES = [2.5, 97.55]  # Percentile for confidence limits
-LOWER_PARAMETER_MULT = 0.95
-UPPER_PARAMETER_MULT = 1.05
 LARGE_RESIDUAL = 1000000
-
-
-##############################
-class Parameter():
-
-    def __init__(self, name, lower=PARAMETER_LOWER_BOUND,
-              value=None, upper=PARAMETER_UPPER_BOUND):
-        self.name = name
-        self.lower = lower
-        self.upper = upper
-        self.value = value
-        if value is None:
-            self.value = (lower + upper)/2.0
-        if self.value <= self.lower:
-            self.lower = LOWER_PARAMETER_MULT*self.value
-        if self.value >= self.upper:
-            self.upper = UPPER_PARAMETER_MULT*self.value
-        if np.isclose(self.lower, 0.0):
-            self.lower = -0.001
-        if np.isclose(self.upper, 0.0):
-            self.upper = 0.001
-
-    def __str__(self):
-        return self.name
-
-    def copy(self, name=None):
-        if name is None:
-            name = self.name
-        return Parameter(name, lower=self.lower, upper=self.upper,
-              value=self.value)
 
 
 class ModelFitterCore(rpickle.RPickler):
@@ -77,8 +44,8 @@ class ModelFitterCore(rpickle.RPickler):
           numIteration:int=10,
           numPoint=None,
           numRestart=0,
-          parameterLowerBound=PARAMETER_LOWER_BOUND,
-          parameterUpperBound=PARAMETER_UPPER_BOUND,
+          parameterLowerBound=cn.PARAMETER_LOWER_BOUND,
+          parameterUpperBound=cn.PARAMETER_UPPER_BOUND,
           selectedColumns=None,
           serializePath:str=None,
           isParallel=True,
@@ -288,8 +255,8 @@ class ModelFitterCore(rpickle.RPickler):
     @classmethod
     def mkParameters(cls, parametersToFit:list,
           logger:Logger=Logger(),
-          lowerBound:float=PARAMETER_LOWER_BOUND,
-          upperBound:float=PARAMETER_UPPER_BOUND)->lmfit.Parameters:
+          lowerBound:float=cn.PARAMETER_LOWER_BOUND,
+          upperBound:float=cn.PARAMETER_UPPER_BOUND)->lmfit.Parameters:
         """
         Constructs lmfit parameters based on specifications.
 
