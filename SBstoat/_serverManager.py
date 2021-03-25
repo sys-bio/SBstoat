@@ -19,7 +19,7 @@ an instance of an AbstractServer.
     manager = ServerManager(abstractServer, initializationArguments)
     do until done:
         arguments = list of arguments for servers
-        listOfResults = manager.runAll(arguments)
+        listOfResults = manager.submit(arguments)
         user processes results
     manager.stop()
 """
@@ -29,7 +29,7 @@ from SBstoat.logs import Logger
 import multiprocessing
 
 
-TIMEOUT = 5
+TIMEOUT = 120
 
 
 class AbstractServer(multiprocessing.Process):
@@ -38,6 +38,15 @@ class AbstractServer(multiprocessing.Process):
 
     def __init__(self, initialArgument, inputQ, outputQ,
               logger=Logger()):
+        """
+        Parameters
+        ----------
+        initialArgument: Object
+            used by RunFunction
+        inputQ: multiprocessing.queue
+        outputQ: multiprocessing.queue
+        logger: Logger
+        """
         self.initialArgument = initialArgument
         multiprocessing.Process.__init__(self)
         self.inputQ = inputQ
@@ -47,18 +56,11 @@ class AbstractServer(multiprocessing.Process):
     def run(self):
         """
         Repeatedly execute the function with inputs
-        A None terminates the process.
         """
         done = False
         while not done:
             try:
                 next_argument = self.inputQ.get(timeout=TIMEOUT)
-                # A None terminates the process
-                if next_argument is None:
-                    # None argument causes process to terminate
-                    self.logger.activity("Process %s terminated" % self.name)
-                    done = True
-                    break
                 # Try executing the user code
                 try:
                     result = self.runFunction(next_argument)
@@ -132,8 +134,7 @@ class ServerManager():
         """
         Cleans up the queues and terminates all additional processes.
         """
-        for queue in self.inputQs:
-            queue.put(None)
-        _ = [s.join() for s in self.servers]
+        _ = [s.terminate() for s in self.servers]
+        #_ = [s.join() for s in self.servers]
         _ = [q.close for q in self.inputQs]
         _ = [q.close for q in self.outputQs]

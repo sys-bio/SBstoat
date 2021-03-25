@@ -84,7 +84,7 @@ class TestAbstractConsumer(unittest.TestCase):
         server.start()
         self.inputQ.put(SIZE)
         result = self.outputQ.get()
-        self.inputQ.put(None)
+        server.terminate()
         self.assertEqual(len(result), SIZE)
 
     def testRunWithException(self):
@@ -95,7 +95,8 @@ class TestAbstractConsumer(unittest.TestCase):
         server.start()
         self.inputQ.put(SIZE)
         result = self.outputQ.get()
-        self.inputQ.put(None)
+        server.terminate()
+        #self.inputQ.put(None)
         self.assertIsNone(result)
 
 

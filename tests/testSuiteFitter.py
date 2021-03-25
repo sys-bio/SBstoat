@@ -17,8 +17,8 @@ import lmfit
 import unittest
 
 
-IGNORE_TEST = False
-IS_PLOT = False
+IGNORE_TEST = True
+IS_PLOT = True
 NAME = "parameter"
 LOWER = 1
 UPPER = 11
@@ -133,10 +133,21 @@ class TestParameterManager(unittest.TestCase):
         _ = [test(n) for n in self.manager.modelDct.keys()]
 
 
-class TestSuiteFitter(unittest.TestCase):
+class TestResidualsServer(unittest.TestCase):
 
     def setUp(self):
-        self._init()
+        self.fitter = th.getFitter(cls=ModelFitter)
+        self.server = sf.ResidualsServer(self.fitter, None, None)
+
+    def testRunFunction(self):
+        if IGNORE_TEST:
+            return
+        residuals = self.server.runFunction(self.fitter.params)
+        self.assertTrue(isinstance(residuals, np.ndarray))
+
+
+class TestSuiteFitter(unittest.TestCase):
+
 
     def _init(self, numModel=3):
         self.numModel = numModel
@@ -150,9 +161,14 @@ class TestSuiteFitter(unittest.TestCase):
               self.parameterNamesCollection, modelNames=self.modelNames,
               fitterMethods=METHODS)
 
+    def tearDown(self):
+        if "fitter" in self.__dict__.keys():
+            self.fitter.clean()
+
     def testConstructor1(self):
         if IGNORE_TEST:
             return
+        self._init()
         parameterNames = []
         for modelName in self.modelNames:
             parameterNames.extend(self.fitter.parameterManager.modelDct[modelName])
@@ -163,14 +179,17 @@ class TestSuiteFitter(unittest.TestCase):
     def testConstructor2(self):
         if IGNORE_TEST:
             return
+        self._init()
         with self.assertRaises(ValueError):
             self.fitter = sf.SuiteFitter(self.modelSpecifications,
                   self.datasets[0],
                   self.parameterNamesCollection, modelNames=MODEL_NAMES)
+        self.fitter.clean()
 
     def testCalcResiduals(self):
         if IGNORE_TEST:
             return
+        self._init()
         parameters = self.fitter.parameterManager.mkParameters()
         residuals = self.fitter.calcResiduals(parameters)
         expectedSize = th.NUM_POINT*self.numModel*len(th.VARIABLE_NAMES)
@@ -200,8 +219,7 @@ class TestSuiteFitter(unittest.TestCase):
             self.assertTrue(name in result)
 
     def testPlotResidualsSSQ(self, **kwargs):
-        if IGNORE_TEST:
-            return
+        # TESTING
         # Smoke test
         self._init(numModel=3)
         self.fitter.fitSuite()

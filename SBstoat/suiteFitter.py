@@ -4,12 +4,16 @@ Class that does fitting for a suite of related models.
 A parameter has a lower bound, upper bound, and value.
 Parameters are an lmfit collection of parameter.
 A parameter collection is a collection of parameters.
+
+TODO:
+1. Stopping the servers
 """
 
 from SBstoat import _constants as cn
 from SBstoat.modelFitter import ModelFitter
 from SBstoat._optimizer import Optimizer
 from SBstoat.logs import Logger
+from SBstoat._serverManager import AbstractServer, ServerManager
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -113,11 +117,52 @@ class _ParameterManager():
         return parameters
 
 
+class ResidualsServer(AbstractServer):
+
+    """
+    server = ResidualsServer(fitter, inputQ, outputQ)
+    server.run()
+    while not done:
+        inputQ.put(params)
+        residualsArr = outputQ.get()
+    server.terminate()
+    """
+
+    def __init__(self, fitter, inputQ, outputQ, logger=Logger()):
+        """
+        Parameters
+        ----------
+        fitter: ModelFitter
+            cannot have swig objects (e.g., roadrunner)
+        inputQ: multiprocessing.queue
+        outputQ: multiprocessing.queue
+        logger: Logger
+        """
+        super().__init__(fitter, inputQ, outputQ, logger=logger)
+        self.fitter = fitter
+   
+    def runFunction(self, params):
+        """
+        
+        Parameters
+        ----------
+        params: lmfit.parameters
+            Parameters for this simulation
+        
+        Returns
+        -------
+        np.array: residuals
+        """
+        self.fitter.initializeRoadRunnerModel()
+        residuals = self.fitter.calcResiduals(params)
+        return residuals/np.size(residuals)
+
+
 class SuiteFitter():
 
     def __init__(self, modelSpecifications, datasets, parameterNamesCollection,
           modelNames=None, modelWeights=None, fitterMethods=None,
-          numRestart=0,
+          numRestart=0, isParallel=True,
           **kwargs):
         """
         Parameters
@@ -151,6 +196,7 @@ class SuiteFitter():
         if self.modelNames is None:
             self.modelNames = [str(v) for v in range(len(modelSpecifications))]
         self._numRestart = numRestart
+        self._isParallel = isParallel
         # Derived values
         self.numModel = len(self.modelSpecifications)
         # Validation checks
@@ -181,6 +227,10 @@ class SuiteFitter():
               self.parametersCollection)
         self._fitterMethods = ModelFitter.makeMethods(
               fitterMethods, cn.METHOD_FITTER_DEFAULTS)
+        # Residuals calculations
+        self.residualsServers = [ResidualsServer(f, None, None,
+              logger=self.logger) for f in self.fitterDct.values()]
+        self.manager = None
         # Results
         self.optimizer = None
 
@@ -189,6 +239,10 @@ class SuiteFitter():
         if self.optimizer is not None:
             return self.optimizer.params
         return None
+
+    def clean(self):
+        if self.manager is not None:
+            self.manager.stop()
 
     def _calcResiduals(self, parameters):
         """
@@ -207,12 +261,13 @@ class SuiteFitter():
         """
         self.parameterManager.updateValues(parameters)
         residualsCollection = []
-        for modelName, fitter in self.fitterDct.items():
-            fitter.initializeRoadRunnerModel()
-            parameters = self.parameterManager.mkParameters(modelName=modelName)
-            residuals = fitter.calcResiduals(parameters)
-            residuals = residuals/np.size(residuals)
-            residualsCollection.append(residuals)
+        parametersList = [self.parameterManager.mkParameters(modelName=n)
+              for n in self.fitterDct.keys()]
+        if self._isParallel and (self.manager is not None):
+            residualsCollection = self.manager.submit(parametersList)
+        else:
+            residualsCollection = [s.runFunction(p) for s, p in 
+                  zip(self.residualsServers, parametersList)]
         normalizedCollection = [w*a for w, a in zip(self.modelWeights,
               residualsCollection)]
         return normalizedCollection
@@ -254,6 +309,12 @@ class SuiteFitter():
             initialParameters = self.parameterManager.mkParameters()
         else:
             initialParameters = params.copy()
+        # Setup parallel servers if needed
+        if self._isParallel:
+            fitters = [f.copy() for f in self.fitterDct.values()]
+            self.manager = ServerManager(ResidualsServer, fitters,
+                  logger=self.logger)
+        # Do the optimization
         self.optimizer = Optimizer.optimize(self.calcResiduals, initialParameters,
               self._fitterMethods, logger=self.logger, isCollect=True,
               numRestart=self._numRestart)
@@ -262,6 +323,10 @@ class SuiteFitter():
         for modelName, fitter in self.fitterDct.items():
             fitter.suiteFitterParams = self.parameterManager.mkParameters(
                   modelName=modelName)
+        # Clean up
+        if self._isParallel:
+            self.manager.stop()
+            self.manager = None
 
     def reportFit(self):
         """
