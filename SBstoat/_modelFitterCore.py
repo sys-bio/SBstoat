@@ -140,6 +140,7 @@ class ModelFitterCore(rpickle.RPickler):
             self._isParallel = isParallel
             self._isProgressBar = isProgressBar
             self._selectedIdxs = None
+            self._params = self.mkParams()
             # The following are calculated during fitting
             self.roadrunnerModel = None
             self.minimizerResult = None  # Results of minimization
@@ -213,6 +214,8 @@ class ModelFitterCore(rpickle.RPickler):
         if params is None:
             if self.optimizer is not None:
                 params = self.optimizer.params
+            else:
+                params = self._params
         return params
 
     @staticmethod
@@ -275,16 +278,15 @@ class ModelFitterCore(rpickle.RPickler):
             raise RuntimeError("Must specify at least one parameter.")
         if logger is None:
             logger = logger()
-        lmfitParameters = lmfit.Parameters()
         # Process each parameter
+        elements = []
         for element in parametersToFit:
             # Get the lower bound, upper bound, and initial value for the parameter
             if not isinstance(element, SBstoat.Parameter):
                 element = SBstoat.Parameter(element,
                       lower=lowerBound, upper=upperBound)
-            lmfitParameters.add(element.name,
-                  min=element.lower, max=element.upper, value=element.value)
-        return lmfitParameters
+            elements.append(element)
+        return SBstoat.Parameter.mkParameters(elements)
 
     @classmethod
     def initializeRoadrunnerModel(cls, modelSpecification):
@@ -681,10 +683,10 @@ class ModelFitterCore(rpickle.RPickler):
         -------
         f.fitModel()
         """
+        if params is None:
+            params = self.params
         self.initializeRoadRunnerModel()
         if self.parametersToFit is not None:
-            if params is None:
-                params = self.mkParams()
             self.optimizer = Optimizer.optimize(self.calcResiduals, params,
                   self._fitterMethods, logger=self.logger,
                   numRestart=self._numRestart)

@@ -4,6 +4,7 @@ Manages parameters for models.
 A parameter has a lower bound, upper bound, and value.
 Parameters are an lmfit collection of parameter.
 A parameter collection is a collection of parameters.
+
 """
 
 from SBstoat import _constants as cn
@@ -14,6 +15,7 @@ import lmfit
 
 LOWER_PARAMETER_MULT = 0.95
 UPPER_PARAMETER_MULT = 1.05
+ALL = "#all#"  # Model for all parameters
 
 
 class Parameter():
@@ -50,54 +52,126 @@ class Parameter():
     def updateUpper(self, value):
         self.upper = max(self.upper, value)
 
+    @staticmethod
+    def mkParameter(parameter):
+        """
+        Creates an lmfit parameter
+
+        Parameters
+        ----------
+        parameter: Parameter or lmfit.Parameter
+        
+        Returns
+        -------
+        lmfit.Parameter
+        """
+        if isinstance(parameter, lmfit.Parameter):
+            return parameter
+        lmfitParameter = lmfit.Parameter(
+              name=parameter.name,
+              value=parameter.value,
+              min=parameter.lower,
+              max=parameter.upper)
+        return lmfitParameter
+
+    @staticmethod
+    def mkParameters(parameters):
+        """
+        Creates lmfit.Parameters
+
+        Parameters
+        ----------
+        parameters: list-Parameter
+        
+        Returns
+        -------
+        lmfit.Parameters
+        """
+        lmfitParameters = lmfit.Parameters()
+        _ = [lmfitParameters.add(Parameter.mkParameter(p)) for p in parameters]
+        return lmfitParameters
+        
 
 class ParameterManager():
-    """Manages overlapping parameters for models."""
-    ALL = "#all#"  # Model for all parameters
+    """
+    Manages overlapping parameters for models.
+    - modelDct: key is model name; value is lmfit.Parameters
+    - parameterDct: key is parameter name: value lmfit.Parameter
+    """
 
     def __init__(self, modelNames, parameterCollection):
         """
         Parameters
         ----------
-        parameterCollection: collection-lmfit.Parameters
+        parameterCollection: list-lmfit.Parameters
         modelNames: list-str
             name of models corresponding to parameters
         """
-        self.parametersCollection = parameterCollection
-        self.modelNames = modelNames
-        self.modelDct, self.parameterDct = self._mkDcts()
-        pass
+        self.parameterDct = self._mkParameterDct(parameterCollection)
+        self.modelDct = self._mkModelDct(modelNames, parameterCollection)
 
-    def _mkDcts(self):
+    def _mkParameterDct(self, parameterCollection):
         """
-        Constructs dictionaries for parameters and models.
-        Constructs the ALL model.
+        The dictionary that relates parameter names to models.
+        Where there are multiple occurrences of the same parameter,
+        the min, max, and value of the parameter are adjusted.
 
         Returns
         -------
-        parameterDct: dict
+        dict
             key: str (parameter name)
-            value: Parameter
-        modelDct: dict
-            key: str (model name)
-            value: list-str (parameter names)
+            value: list-modelName
         """
         parameterDct = {}
-        modelDct = {}
-        for modelName, parameters in zip(self.modelNames,
-              self.parametersCollection):
-            modelDct[modelName] = []
+        countDct = {}
+        for parameters in parameterCollection:
             for parameterName, parameter in parameters.items():
-                modelDct[modelName].append(parameterName)
-                if parameterName in parameterDct.keys():
-                    parameterDct[parameterName].updateLower(parameter.min)
-                    parameterDct[parameterName].updateUpper(parameter.max)
+                if not parameterName in parameterDct.keys():
+                    newParameter = lmfit.Parameter(
+                          name=parameter.name,
+                          min=parameter.min,
+                          max=parameter.max,
+                          value=parameter.value)
+                    parameterDct[parameterName] = newParameter
+                    countDct[parameterName] = 1
                 else:
-                    parameterDct[parameterName] = Parameter(parameterName,
-                          lower=parameter.min,
-                          upper=parameter.max, value=parameter.value)
-        modelDct[ParameterManager.ALL] = list(parameterDct.keys())
-        return modelDct, parameterDct
+                    # Adjust parameter values
+                    curParameter = parameterDct[parameterName]
+                    curParameter.set(min=min(curParameter.min, parameter.min))
+                    curParameter.set(max=max(curParameter.max, parameter.max))
+                    curParameter.set(value=curParameter.value + parameter.value)
+                    countDct[parameterName] += 1
+        for parameterName, parameter in parameterDct.items():
+            parameter.set(value=parameter.value/countDct[parameterName])
+        return parameterDct
+
+    def _mkModelDct(self, modelNames, parameterCollection):
+        """
+        Ensures that use the same lmfit.Parameter object for shared
+        parameters.
+
+        Parameters
+        ----------
+        modelNames: list-str
+        parameterCollection: list-lmfit.Parameters
+        
+        Returns
+        -------
+        dict
+            key: modelName
+            value: lmfit.Parameters
+        """
+        modelDct = {}
+        for modelName, parameters in zip(modelNames, parameterCollection):
+            modelParameters = lmfit.Parameters()
+            for parameterName, _ in parameters.items():
+                modelParameters.add(self.parameterDct[parameterName])
+            modelDct[modelName] = modelParameters
+        # Consruct parameters for ALL model
+        parameters = lmfit.Parameters()
+        [parameters.add(p) for p in self.parameterDct.values()]
+        modelDct[ALL] = parameters
+        return modelDct
 
     def updateValues(self, parameters):
         """
@@ -107,10 +181,10 @@ class ParameterManager():
         ----------
         parameters: lmfit.Parameters
         """
-        for name, parameter in parameters.items():
-            self.parameterDct[name].value = parameter.value
+        for parameterName, parameter in parameters.items():
+            self.parameterDct[parameterName].set(value=parameter.value)
 
-    def mkParameters(self, modelName=None):
+    def getParameters(self, modelName=ALL):
         """
         Makes lmfit.Parameters for the model. If none, then constructs one
         for all parameters.
@@ -123,11 +197,4 @@ class ParameterManager():
         -------
         lmfit.Parameters
         """
-        if modelName is None:
-            modelName = ParameterManager.ALL
-        parameters = lmfit.Parameters()
-        for parameterName in self.modelDct[modelName]:
-            parameter = self.parameterDct[parameterName]
-            parameters.add(parameter.name,
-                  min=parameter.lower, max=parameter.upper, value=parameter.value)
-        return parameters
+        return self.modelDct[modelName]

@@ -22,8 +22,8 @@ import tellurium as te
 import time
 
 
-IS_TEST = False
-IS_PLOT = False
+IS_TEST = True
+IS_PLOT = True
 IS_PARALLEL = False
 DIR = os.path.dirname(os.path.abspath(__file__))
 MAX_NFEV = 10000

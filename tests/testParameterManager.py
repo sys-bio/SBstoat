@@ -3,12 +3,13 @@
 Created on Tue Feb 9, 2021
 
 @author: joseph-hellerstein
+
+TODO: make sure changes are propagated from ALL to others
 """
 
 from SBstoat import Parameter
-from SBstoat.modelFitter import ModelFitter
 import SBstoat._constants as cn
-from SBstoat._parameterManager import ParameterManager
+from SBstoat._parameterManager import ParameterManager, ALL
 from tests import _testHelpers as th
 
 import matplotlib
@@ -17,8 +18,8 @@ import lmfit
 import unittest
 
 
-IGNORE_TEST = True
-IS_PLOT = True
+IGNORE_TEST = False
+IS_PLOT = False
 NAME = "parameter"
 LOWER = 1
 UPPER = 11
@@ -30,9 +31,10 @@ UPPERS = [100, 200, 300]
 VALUES = [15, 25, 35]
 PARAMETERS = [Parameter(n, lower=l, upper=u, value=v)
       for n, l, u, v in zip(PARAMETER_NAMES, LOWERS, UPPERS, VALUES)]
+PARAMETERS = [Parameter.mkParameter(p) for p in PARAMETERS]
 PARAMETERS_COLLECTION = [[PARAMETERS[0]], [PARAMETERS[0], PARAMETERS[2]],
       [PARAMETERS[1]]]
-PARAMETERS_COLLECTION = [ModelFitter.mkParameters(c)
+PARAMETERS_COLLECTION = [Parameter.mkParameters(c)
       for c in PARAMETERS_COLLECTION]
 
 
@@ -67,7 +69,8 @@ class TestParameter(unittest.TestCase):
         test(LOWER+1, LOWER)
 
     def testUpdateUpper(self):
-        # TESTING
+        if IGNORE_TEST:
+            return
         def test(newValue, expected):
             parameter = Parameter(NAME, lower=LOWER, upper=UPPER, value=VALUE)
             parameter.updateUpper(newValue)
@@ -76,13 +79,25 @@ class TestParameter(unittest.TestCase):
         test(UPPER-1, UPPER)
         test(UPPER+1, UPPER+1)
 
+    def testMkParameters(self):
+        if IGNORE_TEST:
+            return
+        def test(parameterNames):
+            parameters = [Parameter(n) for n in parameterNames]
+            lmfitParameters = Parameter.mkParameters(parameters)
+            self.assertEqual(len(lmfitParameters.valuesdict()),
+                  len(parameterNames))
+        #
+        SIZE = 2
+        test(PARAMETER_NAMES[:SIZE])
+
 
 class TestParameterManager(unittest.TestCase):
 
     def setUp(self):
         self.numModel = 3
         self.manager = ParameterManager(MODEL_NAMES[:self.numModel],
-        PARAMETERS_COLLECTION[:self.numModel])
+              PARAMETERS_COLLECTION[:self.numModel])
 
     def testConstructor(self):
         if IGNORE_TEST:
@@ -94,9 +109,9 @@ class TestParameterManager(unittest.TestCase):
             self.assertEqual(len(diff), 0)
         #
         modelNames = list(MODEL_NAMES[:self.numModel])
-        modelNames.append(ParameterManager.ALL)
-        test(self.manager.modelDct, list, modelNames)
-        test(self.manager.parameterDct, Parameter, PARAMETER_NAMES)
+        modelNames.append(ALL)
+        test(self.manager.modelDct, lmfit.Parameters, modelNames)
+        test(self.manager.parameterDct, lmfit.Parameter, PARAMETER_NAMES)
 
     def testUpdateValues(self):
         if IGNORE_TEST:
@@ -106,7 +121,7 @@ class TestParameterManager(unittest.TestCase):
               for n, l, u, v in zip(PARAMETER_NAMES, LOWERS, UPPERS, VALUES)]
         parametersCollection = [[parameters[0]], [parameters[0], parameters[2]],
               [parameters[1]]]
-        parametersCollection = [ModelFitter.mkParameters(c)
+        parametersCollection = [Parameter.mkParameters(c)
               for c in parametersCollection]
         for oldParameters, newParameters in zip(PARAMETERS_COLLECTION,
               parametersCollection):
@@ -116,17 +131,6 @@ class TestParameterManager(unittest.TestCase):
             trues = [oldValuesDct[k]*MULT == newValuesDct[k]
                   for k in newValuesDct.keys()]
             self.assertTrue(all(trues))
-
-    def testMkParameters(self):
-        if IGNORE_TEST:
-            return
-        def test(modelName):
-            lmfitParameters = self.manager.mkParameters(modelName)
-            self.assertEqual(len(lmfitParameters.valuesdict()),
-                  len(self.manager.modelDct[modelName]))
-        #
-        test(ParameterManager.ALL)
-        _ = [test(n) for n in self.manager.modelDct.keys()]
         
 
 if __name__ == '__main__':

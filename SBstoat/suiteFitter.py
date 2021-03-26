@@ -4,9 +4,6 @@ Class that does fitting for a suite of related models.
 A parameter has a lower bound, upper bound, and value.
 Parameters are an lmfit collection of parameter.
 A parameter collection is a collection of parameters.
-
-TODO:
-1. Stopping the servers
 """
 
 from SBstoat import _constants as cn
@@ -162,7 +159,7 @@ class SuiteFitter():
 
     def __init__(self, modelSpecifications, datasets, parameterNamesCollection,
           modelNames=None, modelWeights=None, fitterMethods=None,
-          numRestart=0, isParallel=True,
+          numRestart=0, isParallel=False,
           **kwargs):
         """
         Parameters
