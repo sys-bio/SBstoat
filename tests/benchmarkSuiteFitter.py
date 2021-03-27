@@ -6,8 +6,8 @@ Created on Thurs March 25, 2021
 
 Timing history
 
-date         Version         numIteration    numProcess  Time (sec)
-
+date         Version        max_nfev  Time (sec)
+3/26/2021     1.16           10,000   173.17
 """
 import SBstoat
 from SBstoat.namedTimeseries import NamedTimeseries
@@ -22,8 +22,8 @@ import tellurium as te
 import time
 
 
-IS_TEST = True
-IS_PLOT = True
+IS_TEST = False
+IS_PLOT = False
 IS_PARALLEL = False
 DIR = os.path.dirname(os.path.abspath(__file__))
 MAX_NFEV = 10000
