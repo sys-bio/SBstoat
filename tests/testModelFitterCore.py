@@ -441,6 +441,15 @@ class TestModelFitterCore(unittest.TestCase):
               smallTimes)
         np.testing.assert_array_equal(smallTimes, resultArr)
 
+    def testNoneParameters(self):
+        if IGNORE_TEST:
+            return
+        self._init()
+        fitter = ModelFitterCore(th.ANTIMONY_MODEL, self.timeseries, None)
+        fitter.fitModel()
+        self.assertIsNone(fitter.params)
+        self.assertGreater(len(fitter.fittedTS), 0)
+
 
        
 

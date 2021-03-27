@@ -733,10 +733,13 @@ class ModelFitterCore(rpickle.RPickler):
         """
         if parametersToFit is None:
             parametersToFit = self.parametersToFit
-        return ModelFitterCore.mkParameters(parametersToFit,
-              logger=self.logger,
-              lowerBound=self.lowerBound,
-              upperBound=self.upperBound)
+        if parametersToFit is not None:
+            return ModelFitterCore.mkParameters(parametersToFit,
+                  logger=self.logger,
+                  lowerBound=self.lowerBound,
+                  upperBound=self.upperBound)
+        else:
+            return None
 
     def _checkFit(self):
         if self.params is None:
