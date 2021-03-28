@@ -141,6 +141,13 @@ More details of the features of `SBstoat` can be found in this
 * Progress bar. Long running activities have a progress bar. In this release, only bootstrapping has a progress bar. Future releases will extend this.
 * Random restarts for fitting. The quality of a fit often depends on the initial values used for parameters. The optional keyword ``numRestart`` for constructing ``ModelFitter`` indicates the number of random restarts to use in a fit.
 
+## Release 1.16
+* Benchmark for ``SuiteFitter``, ``benchmarkSuiteFitter.py``.
+* Improved performance of SuiteFitter by a factor of 7.
+* [Parallel implementation of Cross Validation]
+* [Cross validation for ``SuiteFitter``.]
+
+
 # Developer Notes
 
 1. run tests as follows:
