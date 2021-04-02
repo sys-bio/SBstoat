@@ -36,9 +36,9 @@ class ModelFitterCore(rpickle.RPickler):
           bootstrapMethods=None,
           endTime=None,
           fitterMethods=None,
+          isPlot=True,
           logger=Logger(),
           _loggerPrefix="",
-          isPlot=True,
           maxProcess:int=None,
           numFitRepeat=1,
           numIteration:int=10,
@@ -152,6 +152,73 @@ class ModelFitterCore(rpickle.RPickler):
             #
         else:
             pass
+
+    def copy(self, isKeepLogger=False, isKeepOptimizer=False):
+        """
+        Creates a copy of the model fitter.
+        Preserves the user-specified settings and the results
+        of bootstrapping.
+        
+        Parameters
+        ----------
+        isKeepLogger: bool
+        isKeepOptimizer: bool
+        isMinimalCopy: bool
+            copy minimal context for bootstrap
+        
+        Returns
+        -------
+        ModelFitter
+        """
+        if not isinstance(self.modelSpecification, str):
+            try:
+                modelSpecification = self.modelSpecification.getAntimony()
+            except Exception as err:
+                self.logger.error("Problem wth conversion to Antimony. Details:",
+                      err)
+                raise ValueError("Cannot proceed.")
+            observedTS, selectedColumns = self._adjustNames(
+                  modelSpecification, self.observedTS)
+        else:
+            modelSpecification = self.modelSpecification
+            observedTS = self.observedTS.copy()
+            selectedColumns = self.selectedColumns
+        #
+        if isKeepLogger:
+            logger = self.logger
+        elif self.logger is not None:
+            logger = self.logger.copy()
+        else:
+            logger = None
+        newModelFitter = self.__class__(
+              copy.deepcopy(modelSpecification),
+              observedTS,
+              parametersToFit=copy.deepcopy(self.parametersToFit),
+              bootstrapMethods=list(self._bootstrapMethods),
+              endTime=self.endTime,
+              fitterMethods=self._fitterMethods,
+              isPlot=self._isPlot,
+              isProgressBar=self._isProgressBar,
+              logger=logger,
+              _loggerPrefix=self._loggerPrefix,
+              maxProcess=self._maxProcess,
+              numFitRepeat=self._numFitRepeat,
+              numIteration=self.bootstrapKwargs["numIteration"],
+              numPoint=self.numPoint,
+              numRestart=self._numRestart,
+              selectedColumns=self.selectedColumns,
+              parameterLowerBound=self.lowerBound,
+              parameterUpperBound=self.upperBound,
+              serializePath=self.bootstrapKwargs["serializePath"],
+              )
+        if self.optimizer is not None:
+            if isKeepOptimizer:
+                newModelFitter.optimizer = self.optimizer.copyResults()
+        if self.bootstrapResult is not None:
+            newModelFitter.bootstrapResult = self.bootstrapResult.copy()
+        else:
+            newModelFitter.bootstrapResult = None
+        return newModelFitter
  
     def _updateSelectedIdxs(self):
         resultTS = self.simulate()
@@ -461,63 +528,6 @@ class ModelFitterCore(rpickle.RPickler):
         """
         self.roadrunnerModel = None
         return self
-
-    def copy(self, isKeepLogger=False, isKeepOptimizer=False):
-        """
-        Creates a copy of the model fitter.
-        Preserves the user-specified settings and the results
-        of bootstrapping.
-        
-        Parameters
-        ----------
-        isKeepLogger: bool
-        isKeepOptimizer: bool
-        isMinimalCopy: bool
-            copy minimal context for bootstrap
-        
-        Returns
-        -------
-        ModelFitter
-        """
-        if not isinstance(self.modelSpecification, str):
-            try:
-                modelSpecification = self.modelSpecification.getAntimony()
-            except Exception as err:
-                self.logger.error("Problem wth conversion to Antimony. Details:",
-                      err)
-                raise ValueError("Cannot proceed.")
-            observedTS, selectedColumns = self._adjustNames(
-                  modelSpecification, self.observedTS)
-        else:
-            modelSpecification = self.modelSpecification
-            observedTS = self.observedTS.copy()
-            selectedColumns = self.selectedColumns
-        #
-        if isKeepLogger:
-            logger = self.logger
-        elif self.logger is not None:
-            logger = self.logger.copy()
-        else:
-            logger = None
-        newModelFitter = self.__class__(
-              copy.deepcopy(modelSpecification),
-              observedTS,
-              copy.deepcopy(self.parametersToFit),
-              selectedColumns=selectedColumns,
-              fitterMethods=self._fitterMethods,
-              bootstrapMethods=self._bootstrapMethods,
-              parameterLowerBound=self.lowerBound,
-              parameterUpperBound=self.upperBound,
-              logger=logger,
-              isPlot=self._isPlot)
-        if self.optimizer is not None:
-            if isKeepOptimizer:
-                newModelFitter.optimizer = self.optimizer.copyResults()
-        if self.bootstrapResult is not None:
-            newModelFitter.bootstrapResult = self.bootstrapResult.copy()
-        else:
-            newModelFitter.bootstrapResult = None
-        return newModelFitter
 
     def initializeRoadRunnerModel(self):
         """

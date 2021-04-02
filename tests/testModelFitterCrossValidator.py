@@ -77,11 +77,19 @@ class TestModelFitterCrossValidator(unittest.TestCase):
             return
         self.assertEqual(len(self.validator.observedTS), th.NUM_POINT)
 
-    def testCrossValidate(self):
+    def testCrossValidateParallel(self):
         if IGNORE_TEST:
             return
-        self.validator.crossValidate(NUM_FOLD)
-        self.assertEqual(NUM_FOLD, len(self.validator.cvFitters))
+        numFold = 30
+        self.validator.crossValidate(numFold, isParallel=True)
+        self.assertEqual(numFold, len(self.validator.cvFitters))
+
+    def testCrossValidateSequential(self):
+        if IGNORE_TEST:
+            return
+        numFold = 30
+        self.validator.crossValidate(numFold, isParallel=False)
+        self.assertEqual(numFold, len(self.validator.cvFitters))
 
     def testScoreDF(self):
         if IGNORE_TEST:
@@ -94,6 +102,11 @@ class TestModelFitterCrossValidator(unittest.TestCase):
             return
         self.validator.crossValidate(th.NUM_POINT)
         df = self.validator.parameterDF
+        # Parameter values should be increasing
+        for parameter1, value1 in df[cn.MEAN].items():
+            for parameter2, value2 in df[cn.MEAN].items():
+                if int(parameter1[-1]) < int(parameter2[-1]):
+                    self.assertLess(value1, value2)
         self.assertLess(min(self.validator.scoreDF[cn.SCORE]), 0.1)
 
 

@@ -144,7 +144,7 @@ More details of the features of `SBstoat` can be found in this
 ## Release 1.16
 * Benchmark for ``SuiteFitter``, ``benchmarkSuiteFitter.py``.
 * Improved performance of SuiteFitter by a factor of 7.
-* [Parallel implementation of Cross Validation]
+* Parallel implementation of Cross Validation
 * [Cross validation for ``SuiteFitter``.]
 
 

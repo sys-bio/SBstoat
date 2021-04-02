@@ -7,7 +7,8 @@ Created on Tue March 11, 2021
 
 import SBstoat
 import SBstoat._constants as cn
-from SBstoat.abstractCrossValidator import AbstractFitter, AbstractCrossValidator
+from SBstoat.abstractCrossValidator import AbstractFitter, \
+      AbstractCrossValidator, FitterRunner
 
 import matplotlib
 import numpy as np
@@ -73,13 +74,14 @@ class Fitter(AbstractFitter):
 
 class CrossValidator(AbstractCrossValidator):
 
-    def __init__(self, **kwargs):
+    def __init__(self, isParallel=True, **kwargs):
         """
         Parameters
         ----------
         kwargs: dict
             optional arguments for Fitter
         """
+        self.isParallel = isParallel
         self.kwargs = kwargs
         super().__init__()
 
@@ -89,7 +91,7 @@ class CrossValidator(AbstractCrossValidator):
 
     def crossValidate(self, numFold):
         fitterGenerator = self._getFitterGenerator(numFold)
-        self._crossValidate(fitterGenerator)
+        self._crossValidate(fitterGenerator, isParallel=self.isParallel)
 
 
 class BadCrossValidator(AbstractCrossValidator):
@@ -106,6 +108,28 @@ class BadCrossValidator(AbstractCrossValidator):
         
 
 ################ TEST CLASSES #############
+class TestFitterRunner(unittest.TestCase):
+
+    def setUp(self):
+        self.fitter = Fitter()
+        self.numWorkUnit = 3
+        self.runner = FitterRunner(np.repeat(self.fitter, self.numWorkUnit))
+
+    def testConstructor1(self):
+        if IGNORE_TEST:
+            return
+        self.assertEqual(self.runner.numWorkUnit, self.numWorkUnit)
+        self.assertFalse(self.runner.isDone)
+
+    def testRun(self):
+        if IGNORE_TEST:
+            return
+        result = self.runner.run()
+        self.assertEqual(len(result), 1)
+        self.assertTrue(isinstance(result[0][0], lmfit.Parameters))
+        self.assertTrue(isinstance(result[0][1], float))
+        
+
 class TestAbstractFitter(unittest.TestCase):
 
     def setUp(self):
@@ -153,7 +177,7 @@ class TestCrossValidator(unittest.TestCase):
             return
         self.assertEqual(self.validator.numFold, 0)
 
-    def testCrossValidate(self):
+    def testCrossValidateSequential(self):
         if IGNORE_TEST:
             return
         self.validator.crossValidate(NUM_FOLD)
@@ -163,6 +187,19 @@ class TestCrossValidator(unittest.TestCase):
         self.assertTrue(isinstance(self.validator.cvFitters[0], Fitter))
         self.assertTrue(isinstance(self.validator.cvRsqs[0], float))
         self.assertTrue(isinstance(self.validator.cvParametersCollection[0],
+              lmfit.Parameters))
+
+    def testCrossValidateParallel(self):
+        if IGNORE_TEST:
+            return
+        numFold=10
+        validator = CrossValidator(isParallel=True, noiseStd=0)
+        validator.crossValidate(numFold)
+        for items in [validator.cvRsqs, validator.cvParametersCollection]:
+            self.assertEqual(len(items), numFold)
+        self.assertTrue(isinstance(validator.cvFitters[0], Fitter))
+        self.assertTrue(isinstance(validator.cvRsqs[0], float))
+        self.assertTrue(isinstance(validator.cvParametersCollection[0],
               lmfit.Parameters))
 
     def testFoldIdxGenerator(self):

@@ -1,15 +1,31 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-"""Functions and Classes used for cross validation."""
+"""
+Functions and Classes used for cross validation.
+
+_runCrossValidate: top level function for executing a fitter.
+    returns parameters and a score
+
+AbstractFitter: Wrapper for a fitter. Must be pickleable.
+
+
+AbstractCrossValidator: Controls cross validation.
+    Must overide:
+      _getFitterGenerator: generator for fitters
+      crossValidate: loop for cross validation
+      
+"""
+import SBstoat._constants as cn
+from SBstoat._parallelRunner import AbstractRunner, ParallelRunner
 
 import copy
 import lmfit
 import matplotlib.pyplot as plt
 import numpy as np
+import os
 import pandas as pd
 
-import SBstoat._constants as cn
 
 ################ FUNCTIONS ################
 def _runCrossValidate(fitter):
@@ -31,6 +47,50 @@ def _runCrossValidate(fitter):
 
 
 ################ CLASSES ################
+class FitterRunner(AbstractRunner):
+    """
+    Wrapper for user-provided code that is run in parallel.
+    An AbstractRunner has a run method that returns a list of
+    work unit results.
+    """
+
+    def __init__(self, fitters):
+        self.fitters = fitters
+        self._fittersProcessed = 0
+
+    @property
+    def numWorkUnit(self):
+        """
+        Returns
+        -------
+        int: number of work units to be processed by runner
+        """
+        return len(self.fitters)
+
+    @property
+    def isDone(self):
+        """
+        Returns
+        -------
+        bool: all work has been processed
+        """
+        self._fittersProcessed == self.numWorkUnit
+
+    def run(self):
+        """
+        Interface for repeated running of work units.
+
+        Returns
+        -------
+        Object
+            list of work unit results
+        """
+        if not self.isDone:
+            results = self.fitters[self._fittersProcessed].run()
+            self._fittersProcessed += 1
+            return [results]
+
+
 class AbstractFitter(object):
     """
     Fitting function for CrossValidation. Constructed with
@@ -45,6 +105,17 @@ class AbstractFitter(object):
         """
         raise RuntimeError("Must implement method %s in class %s" %
               ("parameters", str(self.__class__)))
+
+    def run(self):
+        """
+        Required by AbstractRunner.
+        
+        Returns
+        -------
+        lmfit.Parameters, float
+        """
+        self.fit()
+        return self.parameters, self.score()
 
     def fit(self):
         """
@@ -77,7 +148,14 @@ class AbstractCrossValidator(object):
     Base clase for performing cross validation using parameter fitting.
     """
 
-    def __init__(self):
+    def __init__(self, maxProcess=None):
+        """
+        Parameters
+        ----------
+        maxProcess: int
+            maximum number of processes if running in parallel
+        """
+        self.maxProcess = maxProcess
         self.cvFitters = []
         self.cvRsqs = []
         self.cvParametersCollection = []
@@ -106,8 +184,8 @@ class AbstractCrossValidator(object):
     def getFoldIdxGenerator(numPoint, numFold):
         """
         Generates pairs of trainining and test indices.
-        
-        Parameters:
+
+        Parameters
         ----------
         numPoint: int
             number of time points
@@ -127,7 +205,7 @@ class AbstractCrossValidator(object):
             trainIndices = list(set(indices).difference(testIndices))
             yield trainIndices, testIndices
     
-    def _crossValidate(self, fitterGenerator, isParallel=False):
+    def _crossValidate(self, fitterGenerator, isParallel=True):
         """
         Calculates parameters for folds.
 
@@ -136,12 +214,14 @@ class AbstractCrossValidator(object):
         fitterGenerator: generator
         """
         self.cvFitters = [f for f in fitterGenerator]
+        runner = ParallelRunner(FitterRunner, desc="Folds",
+              maxProcess=self.maxProcess)
+        argumentsCol = runner._mkArgumentsCollections(self.cvFitters)
+        initialResults = runner.runSync(argumentsCol,
+              #isParallel=isParallel, isProgressBar=True)
+              isParallel=isParallel, isProgressBar=True)
         results = []
-        if isParallel:
-            raise RuntimeError("Not implemented.")
-        else:
-            for fitter in self.cvFitters:
-                results.append(_runCrossValidate(fitter))
+        [results.extend(r) for r in initialResults]
         # Extract the fields
         [self.cvParametersCollection.append(r[0]) for r in results]
         [self.cvRsqs.append(r[1]) for r in results]
@@ -172,8 +252,8 @@ class AbstractCrossValidator(object):
         dct = {}
         for key in keys:
             dct[key] = []
-        for fold in range(self.numFold):
-            valuesDct = self.cvFitters[fold].parameters.valuesdict()
+        for fold, parameters in enumerate(self.cvParametersCollection):
+            valuesDct = parameters.valuesdict()
             for parameterName in valuesDct.keys():
                 dct[cn.FOLD].append(fold)
                 dct[cn.PARAMETER].append(parameterName)
