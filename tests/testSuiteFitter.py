@@ -8,7 +8,9 @@ Created on Tue Feb 9, 2021
 import SBstoat
 import SBstoat._constants as cn
 from SBstoat.modelFitter import ModelFitter
-from SBstoat import suiteFitter as sf
+from SBstoat._suiteFitterCore import _Parameter, _ParameterManager, \
+      ResidualsServer, SuiteFitterCore
+
 from tests import _testHelpers as th
 
 import matplotlib
@@ -47,7 +49,7 @@ def mkRepeatedList(list, repeat):
 class TestParameter(unittest.TestCase):
 
     def setUp(self):
-        self.parameter = sf._Parameter(NAME, lower=LOWER,
+        self.parameter = _Parameter(NAME, lower=LOWER,
         upper=UPPER, value=VALUE)
 
     def testConstructor(self):
@@ -62,7 +64,7 @@ class TestParameter(unittest.TestCase):
         if IGNORE_TEST:
             return
         def test(newValue, expected):
-            parameter = sf._Parameter(NAME, LOWER, UPPER, VALUE)
+            parameter = _Parameter(NAME, LOWER, UPPER, VALUE)
             parameter.updateLower(newValue)
             self.assertEqual(parameter.lower, expected)
         #
@@ -73,7 +75,7 @@ class TestParameter(unittest.TestCase):
         if IGNORE_TEST:
             return
         def test(newValue, expected):
-            parameter = sf._Parameter(NAME, LOWER, UPPER, VALUE)
+            parameter = _Parameter(NAME, LOWER, UPPER, VALUE)
             parameter.updateUpper(newValue)
             self.assertEqual(parameter.upper, expected)
         #
@@ -85,7 +87,7 @@ class TestParameterManager(unittest.TestCase):
 
     def setUp(self):
         self.numModel = 3
-        self.manager = sf._ParameterManager(MODEL_NAMES[:self.numModel],
+        self.manager = _ParameterManager(MODEL_NAMES[:self.numModel],
         PARAMETERS_COLLECTION[:self.numModel])
 
     def testConstructor(self):
@@ -98,9 +100,9 @@ class TestParameterManager(unittest.TestCase):
             self.assertEqual(len(diff), 0)
         #
         modelNames = list(MODEL_NAMES[:self.numModel])
-        modelNames.append(sf._ParameterManager.ALL)
+        modelNames.append(_ParameterManager.ALL)
         test(self.manager.modelDct, list, modelNames)
-        test(self.manager.parameterDct, sf._Parameter, PARAMETER_NAMES)
+        test(self.manager.parameterDct, _Parameter, PARAMETER_NAMES)
 
     def testUpdateValues(self):
         if IGNORE_TEST:
@@ -129,7 +131,7 @@ class TestParameterManager(unittest.TestCase):
             self.assertEqual(len(lmfitParameters.valuesdict()),
                   len(self.manager.modelDct[modelName]))
         #
-        test(sf._ParameterManager.ALL)
+        test(_ParameterManager.ALL)
         _ = [test(n) for n in self.manager.modelDct.keys()]
 
 
@@ -137,7 +139,7 @@ class TestResidualsServer(unittest.TestCase):
 
     def setUp(self):
         self.fitter = th.getFitter(cls=ModelFitter)
-        self.server = sf.ResidualsServer(self.fitter, None, None)
+        self.server = ResidualsServer(self.fitter, None, None)
 
     def testRunFunction(self):
         if IGNORE_TEST:
@@ -146,7 +148,7 @@ class TestResidualsServer(unittest.TestCase):
         self.assertTrue(isinstance(residuals, np.ndarray))
 
 
-class TestSuiteFitter(unittest.TestCase):
+class TestSuiteFitterCore(unittest.TestCase):
 
 
     def _init(self, numModel=3):
@@ -157,7 +159,7 @@ class TestSuiteFitter(unittest.TestCase):
         self.parameterNames = list(th.PARAMETER_DCT.keys())
         self.parameterNamesCollection = mkRepeatedList(self.parameterNames,
               numModel)
-        self.fitter = sf.SuiteFitter(self.modelSpecifications, self.datasets,
+        self.fitter = SuiteFitterCore(self.modelSpecifications, self.datasets,
               self.parameterNamesCollection, modelNames=self.modelNames,
               fitterMethods=METHODS)
 
@@ -173,7 +175,7 @@ class TestSuiteFitter(unittest.TestCase):
         for modelName in self.modelNames:
             parameterNames.extend(self.fitter.parameterManager.modelDct[modelName])
         diff = set(parameterNames).symmetric_difference(
-            self.fitter.parameterManager.modelDct[sf._ParameterManager.ALL])
+            self.fitter.parameterManager.modelDct[_ParameterManager.ALL])
         self.assertEqual(len(diff), 0)
 
     def testConstructor2(self):
@@ -181,7 +183,7 @@ class TestSuiteFitter(unittest.TestCase):
             return
         self._init()
         with self.assertRaises(ValueError):
-            self.fitter = sf.SuiteFitter(self.modelSpecifications,
+            self.fitter = SuiteFitterCore(self.modelSpecifications,
                   self.datasets[0],
                   self.parameterNamesCollection, modelNames=MODEL_NAMES)
         self.fitter.clean()
