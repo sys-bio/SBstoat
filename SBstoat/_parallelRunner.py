@@ -15,6 +15,19 @@ This class if provided to ParallelRunner, which runs the codes in parallel.
     runner = ParallelRunner(cls)  # cls is an AbstractRunner
     arguments = list of arguments for instances of cls
     listOfResults = runner.runSync(arguments)
+
+Classes:
+
+AbstractRunner. Wrapper for codes executed in parallel.
+User must subclass and override:
+    property: numWorkUnit
+        Indicates the number of work units that will be performed by an instance.
+    property: isDone
+        Indicates that all work units have been completed.
+    function: run()
+        Do one work unit
+
+ParallelRunner. Runs AbstractRunners in parallel.
 """
 
 import multiprocessing
@@ -149,7 +162,7 @@ class RunnerManager():
             display progress bar
         numProcess: int
             number of prceses
-        
+
         Returns
         -------
         list-object
@@ -163,12 +176,13 @@ class RunnerManager():
         #
         results = []
         for runner in self.runners:
-            for idx in range(runner.numWorkUnit):
+            for _ in range(runner.numWorkUnit):
                 _ = generator.__next__()
                 if not runner.isDone:
                     results.append(runner.run())
         # Ensure generator is emptied
-        _ = [g for g in generator]
+        for _ in generator:
+            pass
         #
         return results
 

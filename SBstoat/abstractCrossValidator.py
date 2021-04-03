@@ -8,22 +8,23 @@ _runCrossValidate: top level function for executing a fitter.
     returns parameters and a score
 
 AbstractFitter: Wrapper for a fitter. Must be pickleable.
+    User must subclass this.
+    Must override:
+      @property: parameters - returns lmfit.parameters
+      function: fit. After running fit, parameters are available.
+      function: score. Returns a value between 0 (low) and 1 (high)
 
 
 AbstractCrossValidator: Controls cross validation.
+    User must subclass this.
     Must overide:
-      _getFitterGenerator: generator for fitters
-      crossValidate: loop for cross validation
-      
+      function: _getFitterGenerator: generator for fitters
+      function: crossValidate: loop for cross validation
+
 """
 import SBstoat._constants as cn
 from SBstoat._parallelRunner import AbstractRunner, ParallelRunner
 
-import copy
-import lmfit
-import matplotlib.pyplot as plt
-import numpy as np
-import os
 import pandas as pd
 
 
@@ -36,7 +37,7 @@ def _runCrossValidate(fitter):
     Parameters
     ----------
     AbstractFitter
-    
+
     Returns
     -------
     lmfit.Parameters, score
@@ -74,7 +75,7 @@ class FitterRunner(AbstractRunner):
         -------
         bool: all work has been processed
         """
-        self._fittersProcessed == self.numWorkUnit
+        return self._fittersProcessed == self.numWorkUnit
 
     def run(self):
         """
@@ -89,6 +90,7 @@ class FitterRunner(AbstractRunner):
             results = self.fitters[self._fittersProcessed].run()
             self._fittersProcessed += 1
             return [results]
+        return []
 
 
 class AbstractFitter(object):
@@ -106,23 +108,12 @@ class AbstractFitter(object):
         raise RuntimeError("Must implement method %s in class %s" %
               ("parameters", str(self.__class__)))
 
-    def run(self):
-        """
-        Required by AbstractRunner.
-        
-        Returns
-        -------
-        lmfit.Parameters, float
-        """
-        self.fit()
-        return self.parameters, self.score()
-
     def fit(self):
         """
         Estimates parameters.
         Parameters
         ----------
-        
+
         Returns
         -------
         """
@@ -134,7 +125,7 @@ class AbstractFitter(object):
         Returns an R^2 for predicting testData
         Parameters
         ----------
-        
+
         Returns
         -------
         float
@@ -171,8 +162,8 @@ class AbstractCrossValidator(object):
         Parameters
         ----------
         numFold: int
-            number of folds to generate       
-  
+            number of folds to generate
+
         Returns
         -------
         iter-AbstractFitter
@@ -191,7 +182,7 @@ class AbstractCrossValidator(object):
             number of time points
         numFold: int
             number of pairs of testIndices and trainIndices
-        
+
         Returns:
         --------
         list of pairs of train indices, test indices
@@ -204,7 +195,7 @@ class AbstractCrossValidator(object):
                     testIndices.append(idx)
             trainIndices = list(set(indices).difference(testIndices))
             yield trainIndices, testIndices
-    
+
     def _crossValidate(self, fitterGenerator, isParallel=True):
         """
         Calculates parameters for folds.
@@ -213,7 +204,7 @@ class AbstractCrossValidator(object):
         ----------
         fitterGenerator: generator
         """
-        self.cvFitters = [f for f in fitterGenerator]
+        self.cvFitters = list(fitterGenerator)
         runner = ParallelRunner(FitterRunner, desc="Folds",
               maxProcess=self.maxProcess)
         argumentsCol = runner._mkArgumentsCollections(self.cvFitters)
@@ -221,11 +212,11 @@ class AbstractCrossValidator(object):
               #isParallel=isParallel, isProgressBar=True)
               isParallel=isParallel, isProgressBar=True)
         results = []
-        [results.extend(r) for r in initialResults]
+        _ = [results.extend(r) for r in initialResults]
         # Extract the fields
-        [self.cvParametersCollection.append(r[0]) for r in results]
-        [self.cvRsqs.append(r[1]) for r in results]
-    
+        _ = [self.cvParametersCollection.append(r[0]) for r in results]
+        _ = [self.cvRsqs.append(r[1]) for r in results]
+
     def crossValidate(self, numFold):
         """
         External interface to crossvalidation.
@@ -241,7 +232,7 @@ class AbstractCrossValidator(object):
     def parameterDF(self):
         """
         Constructs a DataFrame for the mean, std of parameter values.
-        
+
         Returns
         -------
         pd.DataFrame
@@ -267,8 +258,8 @@ class AbstractCrossValidator(object):
         reportDF[cn.STD] = stdDF[cn.VALUE]
         reportDF[cn.COUNT] = self.numFold
         return reportDF
-   
-    @property 
+
+    @property
     def scoreDF(self):
         scores = [f.score() for f in self.cvFitters]
         return pd.DataFrame({cn.SCORE: scores})
