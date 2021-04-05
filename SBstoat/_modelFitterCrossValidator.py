@@ -21,7 +21,7 @@ from SBstoat._modelFitterCore import ModelFitterCore
 
 
 ##################### CLASSES ###########################
-class Fitter(AbstractFitter):
+class ModelFitterWrapper(AbstractFitter):
 
     def __init__(self, modelSpecification, observedTS, parametersToFit,
           trainIdxs=None, testIdxs=None,  **kwargs):
@@ -102,7 +102,7 @@ class Fitter(AbstractFitter):
 
 
 class ModelFitterCrossValidator(ModelFitterCore, AbstractCrossValidator):
-    """Cross validation for Model Fitter"""
+    """Cross validation for ModelFitter"""
 
     def __init__(self, *args, **kwargs):
         # Run the constructors for the parent classes
@@ -124,12 +124,12 @@ class ModelFitterCrossValidator(ModelFitterCore, AbstractCrossValidator):
         Returns
         -------
         Generator
-            iter-Fitter
+            iter-ModelFitterWrapper
         """
         foldIdxGenerator = self.__class__.getFoldIdxGenerator(
                   self.numPoint, numFold)
         for trainIdxs, testIdxs in foldIdxGenerator:
-            yield Fitter(self.modelSpecification,
+            yield ModelFitterWrapper(self.modelSpecification,
                   self.observedTS, self.parametersToFit, trainIdxs, testIdxs,
                   bootstrapMethods=self._bootstrapMethods,
                   endTime=self.endTime,
@@ -158,5 +158,5 @@ class ModelFitterCrossValidator(ModelFitterCore, AbstractCrossValidator):
         kwargs: dict
              optional parameters for _crossValidate
         """
-        fitterGenerator = self._getFitterGenerator(numFold)
+        fitterGenerator = self._getModelFitter(numFold)
         self._crossValidate(fitterGenerator, **kwargs)

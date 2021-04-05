@@ -157,7 +157,7 @@ class ResidualsServer(AbstractServer):
 
 class SuiteFitterCore():
 
-    def __init__(self, modelSpecifications, datasets, parameterNamesCollection,
+    def __init__(self, modelSpecifications, datasets, parametersCol,
           modelNames=None, modelWeights=None, fitterMethods=None,
           numRestart=0, isParallel=False,
           **kwargs):
@@ -166,7 +166,7 @@ class SuiteFitterCore():
         ----------
         models: list-modelSpecification argument for ModelFitter
         datasets: list-observedData argument for ModelFitter
-        parameterNamesCollection: list-iparametersToFit argument for modelFitter
+        parametersCol: list-iparametersToFit argument for modelFitter
         modelWeights: list-float
             how models are weighted in least squares
         modelNames: list-str
@@ -184,7 +184,7 @@ class SuiteFitterCore():
         # Mandatory parameters
         self.modelSpecifications = modelSpecifications
         self.datasets = datasets
-        self.parameterNamesCollection = parameterNamesCollection
+        self.parametersCol = parametersCol
         #
         self.modelWeights = modelWeights
         if self.modelWeights is None:
@@ -199,7 +199,7 @@ class SuiteFitterCore():
         # Validation checks
         if self.numModel != len(self.datasets):
             raise ValueError("Number of datasets must equal number of models")
-        if self.numModel != len(self.parameterNamesCollection):
+        if self.numModel != len(self.parametersCol):
             msg = "Number of parametersNameCollection must equal number of models"
             raise ValueError(msg)
         if self.numModel != len(self.modelWeights):
@@ -213,13 +213,13 @@ class SuiteFitterCore():
             kwargs[cn.LOGGER] = self.logger
         for modelSpecification, dataset, parametersToFit, modelName in   \
               zip(self.modelSpecifications, self.datasets,
-              self.parameterNamesCollection, self.modelNames):
+              self.parametersCol, self.modelNames):
             self.fitterDct[modelName] = ModelFitter(modelSpecification, dataset,
                   parametersToFit=parametersToFit,
                   **kwargs)
         # Construct tha parameters for each model
         self.parametersCollection = [f.mkParams(c) for f, c
-              in zip(self.fitterDct.values(), self.parameterNamesCollection)]
+              in zip(self.fitterDct.values(), self.parametersCol)]
         self.parameterManager = _ParameterManager(self.modelNames,
               self.parametersCollection)
         self._fitterMethods = ModelFitter.makeMethods(

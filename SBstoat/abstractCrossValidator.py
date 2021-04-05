@@ -203,13 +203,14 @@ class AbstractCrossValidator(object):
         Parameters
         ----------
         fitterGenerator: generator
+        isParallel: bool
+             run each fold in parallel
         """
         self.cvFitters = list(fitterGenerator)
         runner = ParallelRunner(FitterRunner, desc="Folds",
               maxProcess=self.maxProcess)
         argumentsCol = runner._mkArgumentsCollections(self.cvFitters)
         initialResults = runner.runSync(argumentsCol,
-              #isParallel=isParallel, isProgressBar=True)
               isParallel=isParallel, isProgressBar=True)
         results = []
         _ = [results.extend(r) for r in initialResults]

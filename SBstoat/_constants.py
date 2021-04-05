@@ -12,7 +12,7 @@ MAX_NFEV_DFT = 100
 PARAMS = "params"
 # Kwargs
 LOGGER = "logger"
-# Dataframe columns
+# Column names
 COUNT = "count"
 FOLD = "fold"
 MEAN = "mean"
@@ -21,6 +21,7 @@ PARAMETER = "parameter"
 RSQ = "rsq"
 SCORE = "score"
 STD = "std"
+TIME = "time"
 TRUE = "true"
 VALUE = "value"
 # Parameter class
