@@ -1,10 +1,11 @@
+# Test for hetergenous collection of fitters
+
 from SBstoat import NamedTimeseries, ModelFitter, SuiteFitter, \
       ObservationSynthesizerRandomErrors
+import SBstoat._constants as cn
 
 import tellurium as te
-import matplotlib
-matplotlib.use('TkAgg')
-
+import unittest
 
 
 # Model of a linear pathway
@@ -23,8 +24,6 @@ MODEL1 = """
     k3 = 3;
 """
 PARAMETERS1 = ["k1", "k2", "k3"]
-
-
 # Model of a linear pathway
 MODEL2 = """ 
 # Reactions
@@ -41,10 +40,6 @@ MODEL2 = """
     k5 = 5;
 """
 PARAMETERS2 = ["k3", "k4", "k5"]
-
-
-# To illustrate fitting suites of models, we create synthetic observational data based on the true model.
-# There are two synthetic data sets, one for each of the experiments described above.
 
 
 def mkSyntheticData(model, std=0.3):
@@ -69,24 +64,31 @@ def mkSyntheticData(model, std=0.3):
         fittedTS=fittedTS, std=std)
     return synthesizer.calculate()
 
+DATA1_TS = mkSyntheticData(MODEL1)
+DATA2_TS = mkSyntheticData(MODEL2)
+MODEL_COL = [MODEL1, MODEL2]
+DATA_COL = [DATA1_TS, DATA2_TS]
+PARAMETER_COL = [PARAMETERS1, PARAMETERS2]
+MODEL_NAMES = ["Model1", "Model2"]
 
 
-data1TS = mkSyntheticData(MODEL1)
-data2TS = mkSyntheticData(MODEL2)
+class TestSuiteFitter(unittest.TestCase):
 
+    def setUp(self):
+        modelFitters = []
+        items = zip(MODEL_COL, DATA_COL, PARAMETER_COL)
+        for model, dataTS, parametersToFit in items:
+            modelFitter = ModelFitter(model, dataTS,
+                  parametersToFit=parametersToFit)
+            modelFitters.append(modelFitter)
+        self.suiteFitter = SuiteFitter(modelFitters, modelNames=MODEL_NAMES,
+              fitterMethods=["differential_evolution"])
 
-# Fit the model suite
-modelFitters = []
-for model, dataTS, parametersToFit in  \
-      zip([MODEL1, MODEL2], [data1TS, data2TS], [PARAMETERS1, PARAMETERS2]):
-    modelFitter = ModelFitter(model, dataTS,
-          parametersToFit=parametersToFit)
-    modelFitters.append(modelFitter)
-suiteFitter = SuiteFitter(modelFitters, modelNames=["Model1", "Model2"],
-      fitterMethods=["differential_evolution"])
-#suiteFitter.fitSuite()
+    def testHeterogeneous(self):
+        numFold = 3
+        self.suiteFitter.crossValidate(numFold, isParallel=True)
+        trues = [r2 > 0.9 for r2 in self.suiteFitter.scoreDF[cn.SCORE]]
+        
 
-numFold = 3
-suiteFitter.crossValidate(numFold, isParallel=True)
-print(suiteFitter.scoreDF)  # R^2 value for each fold
-print(suiteFitter.parameterDF)  # Parameter estimates aggregated across folds
+if __name__ == '__main__':
+    unittest.main()

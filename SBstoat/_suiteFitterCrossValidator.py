@@ -123,7 +123,6 @@ class SuiteFitterCrossValidator(SuiteFitterCore, AbstractCrossValidator):
                 testTSDct[modelName] = modelFitter.observedTS[testIdxs]
                 datasets.append(modelFitter.observedTS[trainIdxs])
             # Construct the SuiteFitterWrapper
-            # FIXME: Must pass collection of kwargs
             suiteFitter = SuiteFitterCore(self.fitterDct.values(),
                   modelNames=self.modelNames,
                   fitterMethods=self._fitterMethods,

@@ -263,5 +263,4 @@ class AbstractCrossValidator(object):
 
     @property
     def scoreDF(self):
-        scores = [f.score() for f in self.cvFitters]
-        return pd.DataFrame({cn.SCORE: scores})
+        return pd.DataFrame({cn.SCORE: self.cvRsqs})
