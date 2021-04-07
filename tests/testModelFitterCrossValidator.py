@@ -7,7 +7,8 @@ Created on Tue Aug 19, 2020
 """
 
 import SBstoat
-from SBstoat._modelFitterCrossValidator import ModelFitterCrossValidator, Fitter
+from SBstoat._modelFitterCrossValidator import ModelFitterCrossValidator,  \
+      ModelFitterWrapper
 import SBstoat._constants as cn
 from SBstoat.modelFitter import ModelFitter
 from SBstoat import _helpers
@@ -32,7 +33,7 @@ TIMESERIES = th.getTimeseries()
 NUM_FOLD = 5
 
 
-class TestFitter(unittest.TestCase):
+class TestModelFitterWrapper(unittest.TestCase):
 
     def setUp(self):
         pass
@@ -40,27 +41,27 @@ class TestFitter(unittest.TestCase):
     def _init(self):
         trainIdxs = list(range(th.NUM_POINT))
         testIdxs = list(range(th.NUM_POINT))
-        self.fitter = th.getFitter(cls=Fitter, trainIdxs=trainIdxs,
+        self.wrapper = th.getFitter(cls=ModelFitterWrapper, trainIdxs=trainIdxs,
               testIdxs=testIdxs)
 
     def testConstructor(self):
         if IGNORE_TEST:
             return
         self._init()
-        self.assertTrue(self.fitter.trainTS.equals(self.fitter.testTS))
+        self.assertTrue(self.wrapper.trainTS.equals(self.wrapper.testTS))
 
     def testScore(self):
         if IGNORE_TEST:
             return
         self._init()
-        self.fitter.fit()
-        rsq1 = self.fitter.score()
+        self.wrapper.fit()
+        rsq1 = self.wrapper.score()
         self.assertGreater(rsq1, 0.9)
         #
         size = th.NUM_POINT // 6
         trainIdxs = list(range(th.NUM_POINT))[:size]
         testIdxs = list(range(th.NUM_POINT))[size:]
-        fitter = th.getFitter(cls=Fitter, trainIdxs=trainIdxs,
+        fitter = th.getFitter(cls=ModelFitterWrapper, trainIdxs=trainIdxs,
               testIdxs=testIdxs)
         fitter.fit()
         rsq2 = fitter.score()

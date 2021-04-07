@@ -150,7 +150,6 @@ class TestResidualsServer(unittest.TestCase):
 
 class TestSuiteFitterCore(unittest.TestCase):
 
-
     def _init(self, numModel=3):
         self.numModel = numModel
         self.modelNames = MODEL_NAMES[0:numModel]
@@ -159,7 +158,8 @@ class TestSuiteFitterCore(unittest.TestCase):
         self.parameterNames = list(th.PARAMETER_DCT.keys())
         self.parameterNamesCollection = mkRepeatedList(self.parameterNames,
               numModel)
-        self.fitter = SuiteFitterCore(self.modelSpecifications, self.datasets,
+        self.fitter = SBstoat.mkSuiteFitter(self.modelSpecifications,
+              self.datasets,
               self.parameterNamesCollection, modelNames=self.modelNames,
               fitterMethods=METHODS)
 
@@ -183,7 +183,7 @@ class TestSuiteFitterCore(unittest.TestCase):
             return
         self._init()
         with self.assertRaises(ValueError):
-            self.fitter = SuiteFitterCore(self.modelSpecifications,
+            self.fitter = SBstoat.mkSuiteFitter(self.modelSpecifications,
                   self.datasets[0],
                   self.parameterNamesCollection, modelNames=MODEL_NAMES)
         self.fitter.clean()

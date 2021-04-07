@@ -157,69 +157,43 @@ class ResidualsServer(AbstractServer):
 
 class SuiteFitterCore():
 
-    def __init__(self, modelSpecifications, datasets, parametersCol,
-          modelNames=None, modelWeights=None, fitterMethods=None,
-          numRestart=0, isParallel=False,
-          **kwargs):
+    def __init__(self, modelFitters, modelNames=None, modelWeights=None,
+          fitterMethods=None, numRestart=0, isParallel=False, logger=Logger()):
         """
         Parameters
         ----------
-        models: list-modelSpecification argument for ModelFitter
-        datasets: list-observedData argument for ModelFitter
-        parametersCol: list-iparametersToFit argument for modelFitter
+        modelFitters: list-modelFiter
         modelWeights: list-float
             how models are weighted in least squares
         modelNames: list-str
+        fitterMethods: list-optimization methods
         numRestart: int
             number of times the minimization is restarted with random
             initial values for parameters to fit.
-        kwargs: dict
-            constructor arguments passed to fitter for a model
+        logger: Logger
 
         Raises
         ------
-        ValueError: len(models) == len(parametersCollection) == len(datasets)
-                     == len(modelNames)
+        ValueError: len(modelNames) == len(modelFitters)
         """
-        # Mandatory parameters
-        self.modelSpecifications = modelSpecifications
-        self.datasets = datasets
-        self.parametersCol = parametersCol
-        #
+        self.numModel = len(modelFitters)
         self.modelWeights = modelWeights
         if self.modelWeights is None:
-            self.modelWeights = np.repeat(1, len(self.modelSpecifications))
+            self.modelWeights = np.repeat(1, self.numModel)
         self.modelNames = modelNames
         if self.modelNames is None:
             self.modelNames = [str(v) for v in range(len(modelSpecifications))]
         self._numRestart = numRestart
         self._isParallel = isParallel
-        # Derived values
-        self.numModel = len(self.modelSpecifications)
+        self.logger = logger
         # Validation checks
-        if self.numModel != len(self.datasets):
-            raise ValueError("Number of datasets must equal number of models")
-        if self.numModel != len(self.parametersCol):
-            msg = "Number of parametersNameCollection must equal number of models"
-            raise ValueError(msg)
-        if self.numModel != len(self.modelWeights):
-            raise ValueError("Number of modelWeights must equal number of models")
         if self.numModel != len(self.modelNames):
-            raise ValueError("Number of modelNames must equal number of models")
+            msg = "Length of modelNames must be same as number of modelFitters."
+            raise ValueError(msg)
         #
-        self.fitterDct = {}  # key: model name, value: ModelFitter
-        self.logger = Logger()
-        if cn.LOGGER not in kwargs.keys():
-            kwargs[cn.LOGGER] = self.logger
-        for modelSpecification, dataset, parametersToFit, modelName in   \
-              zip(self.modelSpecifications, self.datasets,
-              self.parametersCol, self.modelNames):
-            self.fitterDct[modelName] = ModelFitter(modelSpecification, dataset,
-                  parametersToFit=parametersToFit,
-                  **kwargs)
+        self.fitterDct = {n: f for n, f in zip(modelNames, modelFitters)}
         # Construct tha parameters for each model
-        self.parametersCollection = [f.mkParams(c) for f, c
-              in zip(self.fitterDct.values(), self.parametersCol)]
+        self.parametersCollection = [f.params for f in self.fitterDct.values()]
         self.parameterManager = _ParameterManager(self.modelNames,
               self.parametersCollection)
         self._fitterMethods = ModelFitter.makeMethods(

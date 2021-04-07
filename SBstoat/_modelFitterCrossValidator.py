@@ -112,7 +112,7 @@ class ModelFitterCrossValidator(ModelFitterCore, AbstractCrossValidator):
         if "observedTS" in self.__dict__.keys():
             self.numPoint = len(self.observedTS)
 
-    def _getFitterGenerator(self, numFold): 
+    def _getModelFitterGenerator(self, numFold): 
         """
         Constructs fitters for each fold.
 
@@ -158,5 +158,5 @@ class ModelFitterCrossValidator(ModelFitterCore, AbstractCrossValidator):
         kwargs: dict
              optional parameters for _crossValidate
         """
-        fitterGenerator = self._getModelFitter(numFold)
+        fitterGenerator = self._getModelFitterGenerator(numFold)
         self._crossValidate(fitterGenerator, **kwargs)

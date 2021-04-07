@@ -6,8 +6,9 @@ Created on Thurs March 25, 2021
 
 Timing history
 
-date         Version        max_nfev  Time (sec)
-3/26/2021     1.16           10,000   173.17
+date         Version  no. Fold        max_nfev  Time (sec)
+3/26/2021     1.16       1              10,000   173.17
+4/05/2021     1.16       3              10,000   120.19  (parallel)
 """
 import SBstoat
 from SBstoat.namedTimeseries import NamedTimeseries
@@ -25,6 +26,7 @@ import time
 IS_TEST = False
 IS_PLOT = False
 IS_PARALLEL = False
+NUM_FOLD = 3
 DIR = os.path.dirname(os.path.abspath(__file__))
 MAX_NFEV = 10000
 NUM_MODEL = 4
@@ -55,7 +57,10 @@ def main(maxNfev=MAX_NFEV):
                               MODEL_NAMES, isParallel=IS_PARALLEL,
                               logger=logger,
                               fitterMethods=[optimizerMethod])
-    suiteFitter.fitSuite()
+    if NUM_FOLD == 1:
+        suiteFitter.fitSuite()
+    else:
+        suiteFitter.crossValidate(NUM_FOLD)
     elapsedTime = time.time() - startTime
     if IS_TEST:
         print(suiteFitter.reportFit())

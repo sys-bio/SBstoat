@@ -231,9 +231,10 @@ class ParallelRunner():
         -------
         list-list
         """
-        collection = [[] for _ in range(self.maxProcess)]
+        size = min(len(arguments), self.maxProcess)
+        collection = [[] for _ in range(size)]
         for idx, argument in enumerate(arguments):
-            pos = np.mod(idx, self.maxProcess)
+            pos = np.mod(idx, size)
             collection[pos].append(argument)
         return collection
 
@@ -263,10 +264,11 @@ class ParallelRunner():
             queue = multiprocessing.Queue()
             # Start the processes
             argumentsCollection = self._mkArgumentsCollections(argumentsList)
+            numProcess = min(len(argumentsCollection), self.maxProcess)
             for idx, arguments in enumerate(argumentsCollection):
                 isThisProgresBar = isProgressBar and (idx == 0)
                 process = multiprocessing.Process(target=_toplevelRunner,
-                      args=(self.cls, arguments, isThisProgresBar, self.maxProcess,
+                      args=(self.cls, arguments, isThisProgresBar, numProcess,
                       self.desc, queue,))
                 process.start()
                 self.processes.append(process)

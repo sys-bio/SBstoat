@@ -10,6 +10,7 @@ Usage:
 """
 
 import SBstoat._constants as cn
+from SBstoat import ModelFitter
 from SBstoat.abstractCrossValidator import AbstractCrossValidator, AbstractFitter
 from SBstoat._suiteFitterCore import SuiteFitterCore
 
@@ -109,7 +110,7 @@ class SuiteFitterCrossValidator(SuiteFitterCore, AbstractCrossValidator):
         """
         foldIdxGenerators = {m: self.getFoldIdxGenerator(f.numPoint, numFold)
               for m, f in self.fitterDct.items()}
-        modelSpecifications = [f.modelSpecifications
+        modelSpecifications = [f.modelSpecification
               for f in self.fitterDct.values()]
         parametersCol = [f.parametersToFit for f in self.fitterDct.values()]
         # Create the arguments for processing each fold
@@ -119,28 +120,18 @@ class SuiteFitterCrossValidator(SuiteFitterCore, AbstractCrossValidator):
             # Create the test and training data
             for modelName, modelFitter in self.fitterDct.items():
                 trainIdxs, testIdxs = foldIdxGenerators[modelName].__next__()
-                testTSDct[model] = modelFitter.observedTS[testIdxs]
+                testTSDct[modelName] = modelFitter.observedTS[testIdxs]
                 datasets.append(modelFitter.observedTS[trainIdxs])
             # Construct the SuiteFitterWrapper
-            suiteFitterWrapper = SuiteFitterWrapper(modelSPecifications, datasets,
-                  parametersCol,
-                  bootstrapMethods=self._bootstrapMethods,
-                  endTime=self.endTime,
+            # FIXME: Must pass collection of kwargs
+            suiteFitter = SuiteFitterCore(self.fitterDct.values(),
+                  modelNames=self.modelNames,
                   fitterMethods=self._fitterMethods,
-                  logger=self.logger,
-                  _loggerPrefix=self._loggerPrefix,
-                  isPlot=self._isPlot,
-                  maxProcess=self._maxProcess,
-                  numFitRepeat=self._numFitRepeat,
-                  numIteration=self.bootstrapKwargs["numIteration"],
-                  numPoint=self.numPoint,
                   numRestart=self._numRestart,
-                  parameterLowerBound=self.lowerBound,
-                  parameterUpperBound=self.upperBound,
-                  selectedColumns=self.selectedColumns,
-                  serializePath=self.bootstrapKwargs["serializePath"],
+                  isParallel=self._isParallel,
+                  logger=self.logger,
                   )
-            yield SuiteFitterWrapper(suiteFitterWrapper, testTSDct)
+            yield SuiteFitterWrapper(suiteFitter, testTSDct)
 
     def crossValidate(self, numFold, isParallel=True):
         """

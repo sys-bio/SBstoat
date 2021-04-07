@@ -87,9 +87,10 @@ class FitterRunner(AbstractRunner):
             list of work unit results
         """
         if not self.isDone:
-            results = self.fitters[self._fittersProcessed].run()
+            fitter = self.fitters[self._fittersProcessed]
+            fitter.fit()
             self._fittersProcessed += 1
-            return [results]
+            return [(fitter.parameters, fitter.score())]
         return []
 
 
