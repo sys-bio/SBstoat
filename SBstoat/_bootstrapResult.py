@@ -100,8 +100,8 @@ class BootstrapResult(rpickle.RPickler):
               selectedColumns=fitter.selectedColumns,
               fitterMethods=fitter._fitterMethods,
               bootstrapMethods=fitter._bootstrapMethods,
-              parameterLowerBound=fitter.lowerBound,
-              parameterUpperBound=fitter.upperBound,
+              parameterLowerBound=fitter.parameterLowerBound,
+              parameterUpperBound=fitter.parameterUpperBound,
               logger=fitter.logger,
               isPlot=fitter._isPlot)
         return newModelFitter

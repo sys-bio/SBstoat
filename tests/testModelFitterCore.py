@@ -105,7 +105,7 @@ class TestModelFitterCore(unittest.TestCase):
         if IGNORE_TEST:
             return
         self._init()
-        newFitter = self.fitter.copy()
+        newFitter = self.fitter.copy(observedTS=4)
         self.assertTrue(isinstance(newFitter.modelSpecification, str))
         self.assertTrue(isinstance(newFitter, ModelFitterCore))
 

@@ -8,6 +8,7 @@ Created on Tue Feb 9, 2021
 import SBstoat
 import SBstoat._constants as cn
 from SBstoat.modelFitter import ModelFitter
+from SBstoat.suiteFitter import mkSuiteFitter
 from SBstoat.namedTimeseries import NamedTimeseries
 from SBstoat._suiteFitterCore import SuiteFitterCore
 from SBstoat._suiteFitterCrossValidator import SuiteFitterWrapper,  \
@@ -48,20 +49,20 @@ class TestSuiteFitterWrapper(unittest.TestCase):
         numModel: int
         """
         self.numModel = numModel
-        observedTS = NamedTimeseries(th.TEST_DATA_PATH)
-        numPoint = len(observedTS)
+        self.observedTS = NamedTimeseries(th.TEST_DATA_PATH)
+        numPoint = len(self.observedTS)
         testIdxs = [n for n in range(numPoint) if n % numFold == 0]
         trainIdxs = [n for n in range(numPoint) if n % numFold != 0]
         self.modelNames = MODEL_NAMES[0:self.numModel]
-        self.trainTS = observedTS[trainIdxs]
-        self.testTS = observedTS[testIdxs]
+        self.trainTS = self.observedTS[trainIdxs]
+        self.testTS = self.observedTS[testIdxs]
         self.modelSpecifications = mkRepeatedList(th.ANTIMONY_MODEL, self.numModel)
         self.trainTSCol = mkRepeatedList(self.testTS, self.numModel)
         self.testTSDct = {n: self.testTS for n in self.modelNames}
         self.parameterNames = list(th.PARAMETER_DCT.keys())
         self.parameterNamesCollection = mkRepeatedList(self.parameterNames,
               self.numModel)
-        self.suiteFitter = SuiteFitterCore(self.modelSpecifications,
+        self.suiteFitter = mkSuiteFitter(self.modelSpecifications,
               self.trainTSCol,
               self.parameterNamesCollection, modelNames=self.modelNames)
         self.wrapper = SuiteFitterWrapper(self.suiteFitter, self.testTSDct)
@@ -104,7 +105,7 @@ class TestSuiteFitterCrossValidator(unittest.TestCase):
         self.parameterNames = list(th.PARAMETER_DCT.keys())
         self.parameterNamesCollection = mkRepeatedList(self.parameterNames,
               numModel)
-        self.suiteFitter = SuiteFitterCrossValidator(
+        self.suiteFitter = mkSuiteFitter(
               self.modelSpecifications, self.datasets,
               self.parameterNamesCollection, modelNames=self.modelNames,
               fitterMethods=METHODS)
@@ -124,12 +125,17 @@ class TestSuiteFitterCrossValidator(unittest.TestCase):
         if IGNORE_TEST:
             return
         numFold = 2
+        expectedObservedLen = len(self.observedTS) // 2
         modelName = MODEL_NAMES[0]
         generator = self.suiteFitter._getFitterGenerator(numFold)
         expectedLength = len(self.observedTS) // numFold
         self.assertEqual(len(self.suiteFitter.fitterDct), self.numModel)
         actualNumFold = 0
+        expectedObservedLen = len(self.observedTS) // 2
         for suiteFitterWrapper in generator:
+            firstModelFitter = list(
+                  suiteFitterWrapper.suiteFitter.fitterDct.values())[0]
+            self.assertEqual(len(firstModelFitter.observedTS), expectedLength)
             actualNumFold += 1
             self.assertTrue(isinstance(suiteFitterWrapper, SuiteFitterWrapper))
             modelFitter = suiteFitterWrapper.suiteFitter.fitterDct[modelName]
@@ -140,7 +146,7 @@ class TestSuiteFitterCrossValidator(unittest.TestCase):
     def testCrossValidate(self):
         if IGNORE_TEST:
             return
-        numFold = 10
+        numFold = 5
         numParameter = len(th.PARAMETER_DCT)
         self.suiteFitter.crossValidate(numFold)
         self.assertEqual(len(self.suiteFitter.scoreDF), numFold)

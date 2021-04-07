@@ -170,6 +170,8 @@ class SuiteFitterCore():
         numRestart: int
             number of times the minimization is restarted with random
             initial values for parameters to fit.
+        isParallel: bool
+            runs each fitter in parallel
         logger: Logger
 
         Raises

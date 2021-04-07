@@ -21,6 +21,7 @@ import pandas as pd
 import time
 
 SEPARATOR = "/"  # Separates levels in performance logs
+LEVEL_SUPPRESS = 0
 LEVEL_ACTIVITY = 1
 LEVEL_RESULT = 2
 LEVEL_STATUS = 3

@@ -122,15 +122,19 @@ class SuiteFitterCrossValidator(SuiteFitterCore, AbstractCrossValidator):
                 trainIdxs, testIdxs = foldIdxGenerators[modelName].__next__()
                 testTSDct[modelName] = modelFitter.observedTS[testIdxs]
                 datasets.append(modelFitter.observedTS[trainIdxs])
+            # Create copies of the fitters but with different observed data
+            newFitters = []
+            for fitter, observedTS in zip(self.fitterDct.values(), datasets):
+                newFitters.append(fitter.copy(observedData=observedTS))
             # Construct the SuiteFitterWrapper
-            suiteFitter = SuiteFitterCore(self.fitterDct.values(),
+            newSuiteFitter = SuiteFitterCore(newFitters,
                   modelNames=self.modelNames,
                   fitterMethods=self._fitterMethods,
                   numRestart=self._numRestart,
                   isParallel=self._isParallel,
                   logger=self.logger,
                   )
-            yield SuiteFitterWrapper(suiteFitter, testTSDct)
+            yield SuiteFitterWrapper(newSuiteFitter, testTSDct)
 
     def crossValidate(self, numFold, isParallel=True):
         """

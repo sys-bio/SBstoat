@@ -8,6 +8,7 @@ Running a single thread of bootstrapping.
 """
 
 from SBstoat._modelFitterCore import ModelFitterCore
+from SBstoat.logs import Logger
 from SBstoat._bootstrapResult import BootstrapResult
 from SBstoat.timeseriesStatistic import TimeseriesStatistic
 from SBstoat.observationSynthesizer import  \
@@ -61,7 +62,10 @@ class BootstrapRunner(AbstractRunner):
         self.numIteration = runnerArgument.numIteration
         self.kwargs = runnerArgument.kwargs
         self.synthesizerClass = runnerArgument.synthesizerClass
-        self.logger = self.fitter.logger
+        if "logger" in self.fitter.__dict__.keys():
+            self.logger = self.fitter.logger
+        else:
+            self.logger = Logger()
         self._isDone = not self._fitInitial()
         self.columns = self.fitter.selectedColumns
         # Initializations for bootstrap loop

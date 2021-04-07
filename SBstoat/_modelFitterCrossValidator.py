@@ -142,8 +142,8 @@ class ModelFitterCrossValidator(ModelFitterCore, AbstractCrossValidator):
                   numIteration=self.bootstrapKwargs["numIteration"],
                   numPoint=self.numPoint,
                   numRestart=self._numRestart,
-                  parameterLowerBound=self.lowerBound,
-                  parameterUpperBound=self.upperBound,
+                  parameterLowerBound=self.parameterLowerBound,
+                  parameterUpperBound=self.parameterUpperBound,
                   selectedColumns=self.selectedColumns,
                   serializePath=self.bootstrapKwargs["serializePath"],
                   )

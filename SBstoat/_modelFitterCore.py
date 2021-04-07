@@ -17,6 +17,7 @@ from SBstoat import rpickle
 from SBstoat import _helpers
 
 import copy
+import inspect
 import lmfit
 import numpy as np
 import tellurium as te
@@ -104,11 +105,14 @@ class ModelFitterCore(rpickle.RPickler):
         """
         if modelSpecification is not None:
             # Not the default constructor
+            self._numIteration = numIteration  # Save for copy constructor
+            self._serializePath = serializePath  # Save for copy constructor
             self._loggerPrefix = _loggerPrefix
             self.modelSpecification = modelSpecification
+            self.observedData = observedData
             self.parametersToFit = parametersToFit
-            self.lowerBound = parameterLowerBound
-            self.upperBound = parameterUpperBound
+            self.parameterLowerBound = parameterLowerBound
+            self.parameterUpperBound = parameterUpperBound
             self._maxProcess = maxProcess
             self.bootstrapKwargs = dict(
                   numIteration=numIteration,
@@ -117,7 +121,7 @@ class ModelFitterCore(rpickle.RPickler):
             self._numFitRepeat = numFitRepeat
             self.selectedColumns = selectedColumns
             self.observedTS, self.selectedColumns = self._updateObservedTS(
-                  mkNamedTimeseries(observedData))
+                  mkNamedTimeseries(self.observedData))
             #
             self.selectedColumns = [c.strip() for c in self.selectedColumns]
             self.numPoint = numPoint
@@ -153,9 +157,11 @@ class ModelFitterCore(rpickle.RPickler):
         else:
             pass
 
-    def copy(self, isKeepLogger=False, isKeepOptimizer=False):
+    # TESTME:
+    def copy(self, isKeepLogger=False, isKeepOptimizer=False, **kwargs):
         """
-        Creates a copy of the model fitter.
+        Creates a copy of the model fitter, overridding any argument
+        that is not None.
         Preserves the user-specified settings and the results
         of bootstrapping.
         
@@ -163,61 +169,82 @@ class ModelFitterCore(rpickle.RPickler):
         ----------
         isKeepLogger: bool
         isKeepOptimizer: bool
-        isMinimalCopy: bool
-            copy minimal context for bootstrap
+        kwargs: dict
+            arguments to override in copy
         
         Returns
         -------
         ModelFitter
         """
-        if not isinstance(self.modelSpecification, str):
-            try:
-                modelSpecification = self.modelSpecification.getAntimony()
-            except Exception as err:
-                self.logger.error("Problem wth conversion to Antimony. Details:",
-                      err)
-                raise ValueError("Cannot proceed.")
-            observedTS, selectedColumns = self._adjustNames(
-                  modelSpecification, self.observedTS)
-        else:
-            modelSpecification = self.modelSpecification
-            observedTS = self.observedTS.copy()
-            selectedColumns = self.selectedColumns
+        def setValues(names):
+            """
+            Sets the value for a list of names.
+   
+            Parameters
+            ----------
+            names: list-str
+           
+            Returns
+            -------
+            list-object
+            """
+            results = []
+            for name in names:
+                altName = "_%s" % name
+                if name in kwargs.keys():
+                    results.append(kwargs[name])
+                elif name in self.__dict__.keys():
+                    results.append(self.__dict__[name])
+                elif altName in self.__dict__.keys():                    
+                    results.append(self.__dict__[altName])
+                else:
+                    raise RuntimeError("%s: not found" % name)
+            return results
         #
-        if isKeepLogger:
-            logger = self.logger
-        elif self.logger is not None:
-            logger = self.logger.copy()
+        # Get the positional and keyword arguments
+        inspectResult = inspect.getfullargspec(ModelFitterCore.__init__)
+        allArgNames = inspectResult.args[1:]  # Ignore 'self'
+        if inspectResult.defaults is None:
+            numKwarg = 0
         else:
-            logger = None
-        newModelFitter = self.__class__(
-              copy.deepcopy(modelSpecification),
-              observedTS,
-              parametersToFit=copy.deepcopy(self.parametersToFit),
-              bootstrapMethods=list(self._bootstrapMethods),
-              endTime=self.endTime,
-              fitterMethods=self._fitterMethods,
-              isPlot=self._isPlot,
-              isProgressBar=self._isProgressBar,
-              logger=logger,
-              _loggerPrefix=self._loggerPrefix,
-              maxProcess=self._maxProcess,
-              numFitRepeat=self._numFitRepeat,
-              numIteration=self.bootstrapKwargs["numIteration"],
-              numPoint=self.numPoint,
-              numRestart=self._numRestart,
-              selectedColumns=self.selectedColumns,
-              parameterLowerBound=self.lowerBound,
-              parameterUpperBound=self.upperBound,
-              serializePath=self.bootstrapKwargs["serializePath"],
-              )
+            numKwarg = len(inspectResult.defaults)
+        numParg = len(allArgNames) - numKwarg  # positional arguments
+        pargNames = allArgNames[:numParg]
+        kwargNames = allArgNames[numParg:]
+        # Construct the arguments
+        callPargs = setValues(pargNames)
+        callKwargValues = setValues(kwargNames)
+        callKwargs = {n: v for n, v in zip(kwargNames, callKwargValues)}
+        if numKwarg > 0:
+            # Adjust model specification
+            modelSpecificationIdx = pargNames.index("modelSpecification")
+            observedDataIdx = pargNames.index("observedData")
+            modelSpecification = callPargs[modelSpecificationIdx]
+            observedTS = NamedTimeseries(callPargs[observedDataIdx])
+            selectedColumns = callKwargs["selectedColumns"]
+            if not isinstance(modelSpecification, str):
+                try:
+                    callPargs[modelSpecificationIdx] =  \
+                          self.modelSpecification.getAntimony()
+                    observedTS, selectedColumns = self._adjustNames(
+                          modelSpecification, observedTS)
+                    callPargs[observedDataIdx] = observedTS
+                    callKwargs["selectedColumns"] = selectedColumns
+                except Exception as err:
+                    self.logger.error("Problem wth conversion to Antimony. Details:",
+                          err)
+                    raise ValueError("Cannot proceed.")
+            #
+            if isKeepLogger:
+                callKwargs["logger"] = self.logger
+        if numParg < 2:
+            callPargs = [None, None]
+        newModelFitter = self.__class__(*callPargs, **callKwargs)
         if self.optimizer is not None:
             if isKeepOptimizer:
                 newModelFitter.optimizer = self.optimizer.copyResults()
         if self.bootstrapResult is not None:
             newModelFitter.bootstrapResult = self.bootstrapResult.copy()
-        else:
-            newModelFitter.bootstrapResult = None
         return newModelFitter
  
     def _updateSelectedIdxs(self):
@@ -325,8 +352,8 @@ class ModelFitterCore(rpickle.RPickler):
     @classmethod
     def mkParameters(cls, parametersToFit:list,
           logger:Logger=Logger(),
-          lowerBound:float=cn.PARAMETER_LOWER_BOUND,
-          upperBound:float=cn.PARAMETER_UPPER_BOUND)->lmfit.Parameters:
+          parameterLowerBound:float=cn.PARAMETER_LOWER_BOUND,
+          parameterUpperBound:float=cn.PARAMETER_UPPER_BOUND)->lmfit.Parameters:
         """
         Constructs lmfit parameters based on specifications.
 
@@ -334,8 +361,8 @@ class ModelFitterCore(rpickle.RPickler):
         ----------
         parametersToFit: list-Parameter/list-str
         logger: error logger
-        lowerBound: lower value of range for parameters
-        upperBound: upper value of range for parameters
+        parameterLowerBound: lower value of range for parameters
+        parameterUpperBound: upper value of range for parameters
 
         Returns
         -------
@@ -351,7 +378,7 @@ class ModelFitterCore(rpickle.RPickler):
             # Get the lower bound, upper bound, and initial value for the parameter
             if not isinstance(element, SBstoat.Parameter):
                 element = SBstoat.Parameter(element,
-                      lower=lowerBound, upper=upperBound)
+                      lower=parameterLowerBound, upper=parameterUpperBound)
             elements.append(element)
         return SBstoat.Parameter.mkParameters(elements)
 
@@ -746,8 +773,8 @@ class ModelFitterCore(rpickle.RPickler):
         if parametersToFit is not None:
             return ModelFitterCore.mkParameters(parametersToFit,
                   logger=self.logger,
-                  lowerBound=self.lowerBound,
-                  upperBound=self.upperBound)
+                  parameterLowerBound=self.parameterLowerBound,
+                  parameterUpperBound=self.parameterUpperBound)
         else:
             return None
 

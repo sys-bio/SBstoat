@@ -105,6 +105,7 @@ def cleanColnames(colnames):
 class NamedTimeseries(rpickle.RPickler):
 
     def __init__(self,
+          ambiguous=None,
           csvPath=None,
           colnames=None, array=None,
           namedArray=None,
@@ -114,6 +115,8 @@ class NamedTimeseries(rpickle.RPickler):
         """
         Parameters
         ---------
+        ambiguous: object
+            must discover the type
         csvPath: str
             path to CSV file
         colnames: list-str
@@ -137,6 +140,18 @@ class NamedTimeseries(rpickle.RPickler):
         """
         if isNone:
             return
+        if ambiguous is not None:
+            if isinstance(ambiguous, NamedTimeseries):
+                timeseries = ambiguous
+            elif "NamedArray" in str(type(ambiguous)):
+                namedArray = ambiguous
+            elif isinstance(ambiguous, pd.DataFrame):
+                dataframe = ambiguous
+            elif isinstance(ambiguous, str):
+                csvPath = ambiguous
+            else:
+                msg = "Unrecognized type for constructing NamedTimeseries"
+                raise RuntimeError(msg)
         if timeseries is not None:
             # Copy the existing object
             for k in timeseries.__dict__.keys():

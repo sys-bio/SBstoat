@@ -12,7 +12,7 @@ date         Version  no. Fold        max_nfev  Time (sec)
 """
 import SBstoat
 from SBstoat.namedTimeseries import NamedTimeseries
-from SBstoat.suiteFitter import SuiteFitter
+from SBstoat.suiteFitter import mkSuiteFitter
 from SBstoat import logs
 from tests.benchmarkSuiteFitterModel import MODEL, PARAMETERS
 
@@ -25,7 +25,7 @@ import time
 
 IS_TEST = False
 IS_PLOT = False
-IS_PARALLEL = False
+IS_PARALLEL = True
 NUM_FOLD = 3
 DIR = os.path.dirname(os.path.abspath(__file__))
 MAX_NFEV = 10000
@@ -47,13 +47,13 @@ def main(maxNfev=MAX_NFEV):
     -------
     float: time in seconds
     """
-    logger = logs.Logger(logLevel=logs.LEVEL_ACTIVITY, logPerformance=IS_TEST)
+    logger = logs.Logger(logLevel=logs.LEVEL_SUPPRESS, logPerformance=IS_TEST)
     models = [MODEL for _ in range(NUM_MODEL)]
     parametersList = [PARAMETERS for _ in range(NUM_MODEL)]
     optimizerMethod = SBstoat.OptimizerMethod(method="differential_evolution",
           kwargs={"popsize": 10, 'max_nfev': maxNfev})
     startTime = time.time()
-    suiteFitter = SuiteFitter(models, OBSERVED_FILES, parametersList,
+    suiteFitter = mkSuiteFitter(models, OBSERVED_FILES, parametersList,
                               MODEL_NAMES, isParallel=IS_PARALLEL,
                               logger=logger,
                               fitterMethods=[optimizerMethod])
