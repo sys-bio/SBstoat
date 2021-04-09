@@ -43,7 +43,7 @@ class _FunctionWrapper():
         self.perfStatistics = []  # durations of function executions
         self.rssqStatistics = []  # residual sum of squares, a quality measure
         self.rssq = 10e10
-        self.bestParams = None
+        self.bestParamDct = None
 
     @staticmethod
     def _calcSSQ(arr):
@@ -58,7 +58,7 @@ class _FunctionWrapper():
         rssq = _FunctionWrapper._calcSSQ(result)
         if rssq < self.rssq:
             self.rssq = rssq
-            self.bestParams = params.copy()
+            self.bestParamDct = dict(params.valuesdict())
         if self._isCollect:
             self.perfStatistics.append(duration - startTime)
             self.rssqStatistics.append(rssq)
@@ -160,7 +160,8 @@ class Optimizer():
         for optimizerMethod in self._methods:
             method = optimizerMethod.method
             kwargs = optimizerMethod.kwargs
-            wrapperFunction = _FunctionWrapper(self._function, isCollect=self._isCollect)
+            wrapperFunction = _FunctionWrapper(self._function,
+                  isCollect=self._isCollect)
             minimizer = lmfit.Minimizer(wrapperFunction.execute, self.params)
             try:
                 self.minimizerResult = minimizer.minimize(method=method, **kwargs)
@@ -169,7 +170,12 @@ class Optimizer():
                 msg = "Error minimizing for method: %s" % method
                 self.logger.error(msg, excp)
                 continue
-            self.params = wrapperFunction.bestParams
+            # Update the parameters
+            valuesDct = self.params.valuesdict()
+            for parameterName in valuesDct.keys():
+                self.params[parameterName].set(
+                      value=wrapperFunction.bestParamDct[parameterName])
+            # Update other statistics
             self.rssq = wrapperFunction.rssq
             self.performanceStats.append(list(wrapperFunction.perfStatistics))
             self.qualityStats.append(list(wrapperFunction.rssqStatistics))

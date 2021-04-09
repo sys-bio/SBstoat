@@ -89,7 +89,6 @@ class ModelFitterWrapper(AbstractFitter):
               modelSpecification=self.modelFitter.modelSpecification,
               endTime=self.observedTS.end,
               numPoint=len(self.observedTS),
-              returnDataFrame=False,
               _logger=self.modelFitter.logger,
               _loggerPrefix=self.modelFitter._loggerPrefix,
               )

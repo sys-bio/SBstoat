@@ -67,7 +67,6 @@ class SuiteFitterWrapper(AbstractFitter):
                   modelSpecification=modelFitter.modelSpecification,
                   endTime=modelFitter.observedTS.end,
                   numPoint=modelFitter.numPoint,
-                  returnDataFrame=False,
                   _logger=modelFitter.logger,
                   _loggerPrefix=modelFitter._loggerPrefix,
                   )

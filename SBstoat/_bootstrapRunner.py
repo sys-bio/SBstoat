@@ -128,7 +128,7 @@ class BootstrapRunner(AbstractRunner):
         for _ in range(ITERATION_MULTIPLIER):
             newObservedTS = self.synthesizer.calculate()
             self.report("newObservedTS")
-            # Construct a new fitter
+            # Update fitter to use the new observed data
             _ = self.fitter._updateObservedTS(newObservedTS, isCheck=False)
             self.report("updated fitter")
             # Try fitting
@@ -142,11 +142,11 @@ class BootstrapRunner(AbstractRunner):
                 self.logger.error(msg, err)
                 bootstrapError += 1
                 continue
+            # Verify that there is a result
+            if self.fitter.minimizerResult is None:
+                continue
             # Check if the fit is of sufficient quality
             if self.fitter.minimizerResult.redchi > MAX_CHISQ_MULT*self.baseChisq:
-                # msg = "Fit has high chisq: %2.2f on iteration %d."
-                # self.logger.exception(msg
-                #      % (fitter.minimizerResult.redchi, iteration))
                 continue
             if self.fitter.params is None:
                 continue

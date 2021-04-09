@@ -122,6 +122,8 @@ class ModelFitterCore(rpickle.RPickler):
             self.selectedColumns = selectedColumns
             self.observedTS, self.selectedColumns = self._updateObservedTS(
                   mkNamedTimeseries(self.observedData))
+            # Check for nan in observedTS
+            self._isObservedNan = np.isnan(np.sum(self.observedTS.flatten()))
             #
             self.selectedColumns = [c.strip() for c in self.selectedColumns]
             self.numPoint = numPoint
@@ -428,18 +430,43 @@ class ModelFitterCore(rpickle.RPickler):
                 logger.error(msg, err)
 
     @classmethod
-    def runSimulation(cls, parameters=None,
+    def runSimulation(cls, **kwargs):
+        """
+        Runs a simulation. Defaults to parameter values in the simulation.
+        Returns a NamedTimeseries.
+
+        Return
+        ------
+        NamedTimeseries (or None if fail to converge)
+        """
+        return NamedTimeseries(namedArray=cls.runSimulationNumpy(**kwargs))
+
+    @classmethod
+    def runSimulationDF(cls, **kwargs):
+        """
+        Runs a simulation. Defaults to parameter values in the simulation.
+        Returns a NamedTimeseries.
+
+        Return
+        ------
+        pd.DataFrame
+        """
+        fittedTS = NamedTimeseries(namedArray=cls.runSimulationArr(**kwargs))
+        return fittedTS.to_dataframe()
+
+    @classmethod
+    def runSimulationNumpy(cls, parameters=None,
           modelSpecification=None,
           startTime=0,
           endTime=5,
           numPoint=30,
           selectedColumns=None,
-          returnDataFrame=True,
           _logger=Logger(),
           _loggerPrefix="",
           ):
         """
         Runs a simulation. Defaults to parameter values in the simulation.
+        Returns a NamedArray
 
         Parameters
        ----------
@@ -455,15 +482,13 @@ class ModelFitterCore(rpickle.RPickler):
             number of points in the simulation
         selectedColumns: list-str
             output columns in simulation
-        returnDataFrame: bool
-            return a DataFrame
         _logger: Logger
         _loggerPrefix: str
 
 
         Return
         ------
-        NamedTimeseries (or None if fail to converge)
+        NamedArray (or None if fail to converge)
         """
         roadrunnerModel = modelSpecification
         if isinstance(modelSpecification, str):
@@ -479,25 +504,18 @@ class ModelFitterCore(rpickle.RPickler):
             if TIME not in newSelectedColumns:
                 newSelectedColumns.insert(0, TIME)
             try:
-                data = roadrunnerModel.simulate(startTime, endTime, numPoint,
+                dataArr = roadrunnerModel.simulate(startTime, endTime, numPoint,
                       newSelectedColumns)
             except Exception as err:
                 _logger.error("Roadrunner exception: ", err)
-                data = None
+                dataArr = None
         else:
             try:
-                data = roadrunnerModel.simulate(startTime, endTime, numPoint)
+                dataArr = roadrunnerModel.simulate(startTime, endTime, numPoint)
             except Exception as err:
                 _logger.exception("Roadrunner exception: %s", err)
-                data = None
-        if data is None:
-            return data
-        fittedTS = NamedTimeseries(namedArray=data)
-        if returnDataFrame:
-            result = fittedTS.to_dataframe()
-        else:
-            result = fittedTS
-        return result
+                dataArr = None
+        return dataArr
 
     @classmethod
     def rpConstruct(cls):
@@ -579,7 +597,25 @@ class ModelFitterCore(rpickle.RPickler):
             dct[parameterName] = self.roadrunnerModel.model[parameterName]
         return dct
 
-    def simulate(self, params=None, startTime=None, endTime=None, numPoint=None):
+    def simulate(self, **kwargs):
+        """
+        Runs a simulation. Defaults to parameter values in the simulation.
+
+        Parameters
+       ----------
+        params: lmfit.Parameters
+        startTime: float
+        endTime: float
+        numPoint: int
+
+        Return
+        ------
+        NamedTimeseries
+        """
+        fixedArr = self._simulateNumpy(**kwargs)
+        return NamedTimeseries(namedArray=fixedArr)
+
+    def _simulateNumpy(self, params=None, startTime=None, endTime=None, numPoint=None):
         """
         Runs a simulation. Defaults to parameter values in the simulation.
 
@@ -607,15 +643,14 @@ class ModelFitterCore(rpickle.RPickler):
         if self.roadrunnerModel is None:
             self.initializeRoadRunnerModel()
         #
-        return ModelFitterCore.runSimulation(parameters=params,
+        return self.runSimulationNumpy(parameters=params,
               modelSpecification=self.roadrunnerModel,
               startTime=startTime,
               endTime=endTime,
               numPoint=numPoint,
               selectedColumns=self.selectedColumns,
               _logger=self.logger,
-              _loggerPrefix=self._loggerPrefix,
-              returnDataFrame=False)
+              _loggerPrefix=self._loggerPrefix)
 
     def updateFittedAndResiduals(self, **kwargs)->np.ndarray:
         """
@@ -688,21 +723,22 @@ class ModelFitterCore(rpickle.RPickler):
         """
         if self._selectedIdxs is None:
             self._updateSelectedIdxs()
-        dataTS = ModelFitterCore.runSimulation(parameters=params,
+        dataArr = ModelFitterCore.runSimulationNumpy(parameters=params,
               modelSpecification=self.roadrunnerModel,
               startTime=self.observedTS.start,
               endTime=self.endTime,
               numPoint=self.numPoint,
               selectedColumns=self.selectedColumns,
               _logger=self.logger,
-              _loggerPrefix=self._loggerPrefix,
-              returnDataFrame=False)
-        if dataTS is None:
+              _loggerPrefix=self._loggerPrefix)
+        if dataArr is None:
             residualsArr = np.repeat(LARGE_RESIDUAL, len(self._observedArr))
         else:
-            truncatedTS = dataTS[self._selectedIdxs]
-            residualsArr = self._observedArr - truncatedTS.flatten()
-            residualsArr = np.nan_to_num(residualsArr)
+            truncatedArr = dataArr[self._selectedIdxs, 1:]
+            truncatedArr = truncatedArr.flatten()
+            residualsArr = self._observedArr - truncatedArr
+            if self._isObservedNan:
+                residualsArr = np.nan_to_num(residualsArr)
         return residualsArr
 
     def fitModel(self, params:lmfit.Parameters=None):
