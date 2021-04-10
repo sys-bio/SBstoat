@@ -19,6 +19,7 @@ from SBstoat._parallelRunner import ParallelRunner
 from SBstoat import _helpers
 
 import multiprocessing
+import time
 import typing
 
 MAX_CHISQ_MULT = 5

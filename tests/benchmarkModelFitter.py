@@ -14,6 +14,7 @@ date         Version         numIteration    numProcess  Time (sec)
 02/03/2021*  1.3             10,000          5            33.6
 02/15/2021*  1.4             10,000          5            30.9
 03/21/2021*  1.4             10,000          5            34.8
+04/09/2021*  1.6             10,000          5            52.3
 
 *Using only leastsq, 100 function evaluations, S1, S3
 """
@@ -41,7 +42,7 @@ MODEL = """
     S1 = 1; S2 = 0; S3 = 0;
     k1 = 0; k2 = 0; 
 """
-NUM_ITERATION = 10000
+NUM_ITERATION = 1000
         
 
 def main(numIteration):

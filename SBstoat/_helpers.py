@@ -243,6 +243,22 @@ def ppDict(dct, indent=0):
         lines.append(line)
     return "\n".join(lines)
 
+def updateParameterValues(parameters, newValuesDct):
+    """
+    Updates the values of lmfit.Parameters.
+
+    Parameters
+    ----------
+    parameters: lmfit.Parameters
+    newVvaluesDct: dict
+        key: parameter name
+        value: value of parameter
+    """
+    currentValuesDct = parameters.valuesdict()
+    for parameterName in currentValuesDct.keys():
+        parameters[parameterName].set(
+              value=newValuesDct[parameterName])
+
 
 class OptimizerMethod():
 
