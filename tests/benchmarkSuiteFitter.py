@@ -9,6 +9,7 @@ Timing history
 date         Version  no. Fold        max_nfev  Time (sec)
 3/26/2021     1.16       1              10,000   173.17
 4/05/2021     1.16       3              10,000   120.19  (parallel)
+4/13/2021     1.16       3              10,000   120.19  (parallel)
 """
 import SBstoat
 from SBstoat.namedTimeseries import NamedTimeseries
@@ -54,13 +55,13 @@ def main(maxNfev=MAX_NFEV):
           kwargs={"popsize": 10, 'max_nfev': maxNfev})
     startTime = time.time()
     suiteFitter = mkSuiteFitter(models, OBSERVED_FILES, parametersList,
-                              MODEL_NAMES, isParallel=IS_PARALLEL,
+                              MODEL_NAMES,
                               logger=logger,
                               fitterMethods=[optimizerMethod])
     if NUM_FOLD == 1:
         suiteFitter.fitSuite()
     else:
-        suiteFitter.crossValidate(NUM_FOLD)
+        suiteFitter.crossValidate(NUM_FOLD, isParallel=IS_PARALLEL)
     elapsedTime = time.time() - startTime
     if IS_TEST:
         print(suiteFitter.reportFit())

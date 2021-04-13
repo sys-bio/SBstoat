@@ -105,7 +105,7 @@ class ModelFitterBootstrap(mfc.ModelFitterCrossValidator):
             msg = "\nCurent value: %f" % MAX_ITERATION_TIME
             self.logger.result(msg)
         else:
-            self.bootstrapResult = BootstrapResult.merge(results)
+            self.bootstrapResult = BootstrapResult.merge(results, self)
             # Update the logger in place
             _ = _helpers.copyObject(self.bootstrapResult.fitter.logger,
                   self.logger)

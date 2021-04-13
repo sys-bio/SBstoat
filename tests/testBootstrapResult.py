@@ -68,7 +68,7 @@ class TestBootstrapResult(unittest.TestCase):
         bootstrapResult = br.BootstrapResult(self.fitter, NUM_ITERATION,
               self.parameterDct, self.fittedStatistic)
         mergedResult = br.BootstrapResult.merge(
-              [self.bootstrapResult, bootstrapResult])
+              [self.bootstrapResult, bootstrapResult], self.fitter)
         self.assertEqual(mergedResult.numIteration, 2*NUM_ITERATION)
         self.assertEqual(len(mergedResult.parameterDct[self.parameterNames[0]]),
               mergedResult.numIteration)
@@ -76,6 +76,7 @@ class TestBootstrapResult(unittest.TestCase):
     def testSimulate(self):
         if IGNORE_TEST:
             return
+        self.bootstrapResult.setFitter(self.fitter)
         statistic = self.bootstrapResult.simulate()
         lowers = statistic.percentileDct[bsr.PERCENTILES[0]].flatten()
         uppers = statistic.percentileDct[bsr.PERCENTILES[-1]].flatten()

@@ -33,6 +33,7 @@ class BootstrapResult(rpickle.RPickler):
 
         Parameters
         ----------
+        fitter: Fitter
         numIteration: number of successful iterations
         parameterDct: dict
             key: parameter name
@@ -40,46 +41,52 @@ class BootstrapResult(rpickle.RPickler):
         fittedStatistic: statistics for fitted timeseries
         err: Error encountered
         """
-        self.fitter = fitter
+        self.fitter = None
         self.numIteration = numIteration
-        self.parameterDct = parameterDct
+        self.parameterDct = dict(parameterDct)
         self.bootstrapError = bootstrapError
+        self.numSimulation = 0
+        self.parameterMeanDct = {}
         # Timeseries statistics for fits
         self.fittedStatistic = fittedStatistic
-        if fitter is not None:
-            self.fitter = self.copyFitter(self.fitter)
-            # population of parameter values
-            self.parameterDct = dict(self.parameterDct)
-            # list of parameters
-            self.parameters = list(self.parameterDct.keys())
-            # Number of simulations
-            if len(self.parameters) > 0:
-                self.numSimulation =  \
-                      len(self.parameterDct[self.parameters[0]])
-            else:
-                self.numSimulation = 0
-            if self.numSimulation > 1:
-                # means of parameter values
-                self.parameterMeanDct = {p: np.mean(parameterDct[p])
-                      for p in self.parameters}
-                # standard deviation of parameter values
-                self.parameterStdDct = {p: np.std(parameterDct[p])
-                      for p in self.parameters}
-                # Confidence limits for parameter values
-                self.percentileDct = {p: [] for p in self.parameterDct}
-                for name, values in self.parameterDct.items():
-                    if len(values) > MIN_COUNT_PERCENTILE:
-                        self.percentileDct[name] = np.percentile(values, PERCENTILES)
-            else:
-                # means of parameter values
-                self.parameterMeanDct = {p: np.nan for p in self.parameters}
-                # standard deviation of parameter values
-                self.parameterStdDct = {p: np.nan for p in self.parameters}
-                # Confidence limits for parameter values
-                self.percentileDct = {p: np.nan for p in self.parameters}
+        if fitter is None:
+            self.logger = Logger()
+        else:
+            self.logger = fitter.logger
+        # list of parameters
+        self.parameters = list(self.parameterDct.keys())
+        # Number of simulations
+        if len(self.parameters) > 0:
+            self.numSimulation =  \
+                  len(self.parameterDct[self.parameters[0]])
+        else:
+            self.numSimulation = 0
+        if self.numSimulation > 1:
+            # means of parameter values
+            self.parameterMeanDct = {p: np.mean(parameterDct[p])
+                  for p in self.parameters}
+            # standard deviation of parameter values
+            self.parameterStdDct = {p: np.std(parameterDct[p])
+                  for p in self.parameters}
+            # Confidence limits for parameter values
+            self.percentileDct = {p: [] for p in self.parameterDct}
+            for name, values in self.parameterDct.items():
+                if len(values) > MIN_COUNT_PERCENTILE:
+                    self.percentileDct[name] = np.percentile(values, PERCENTILES)
+        else:
+            # means of parameter values
+            self.parameterMeanDct = {p: np.nan for p in self.parameters}
+            # standard deviation of parameter values
+            self.parameterStdDct = {p: np.nan for p in self.parameters}
+            # Confidence limits for parameter values
+            self.percentileDct = {p: np.nan for p in self.parameters}
         ### PRIVATE
         # Fitting parameters from result
         self._params = None
+
+    def setFitter(self, fitter):
+        self.fitter = fitter
+        self.fitter.logger = self.logger
 
     def copyFitter(self, fitter):
         """
@@ -131,7 +138,7 @@ class BootstrapResult(rpickle.RPickler):
         -------
         Instance of cls
         """
-        return cls(None, None, None, None)
+        return cls(None, 0, {}, None)
 
     def __str__(self) -> str:
         """
@@ -188,6 +195,8 @@ class BootstrapResult(rpickle.RPickler):
         -------
         TimeseriesStatistic
         """
+        if self.fitter is None:
+            raise RuntimeError("Must use setFitter before running simulation.")
         params_list = self._sampleParams(numSample)
         fittedTS = self.fitter.simulate(params=params_list[0], numPoint=numPoint)
         timeseriesStatistic = TimeseriesStatistic(fittedTS,
@@ -212,6 +221,8 @@ class BootstrapResult(rpickle.RPickler):
         -------
         list-lmfit.Parameters
         """
+        if self.fitter is None:
+            raise RuntimeError("Must use setFitter before running simulation.")
         df = pd.DataFrame(self.parameterDct)
         df_sample = df.sample(numSample, replace=True, axis=0)
         dcts = df_sample.to_dict('records')
@@ -227,13 +238,14 @@ class BootstrapResult(rpickle.RPickler):
         return results
 
     @classmethod
-    def merge(cls, bootstrapResults):
+    def merge(cls, bootstrapResults, fitter=None):
         """
-        Combines a list of BootstrapResult.
+        Combines a list of BootstrapResult. Sets a fitter.
 
         Parameter
         ---------
         bootstrapResults: list-BootstrapResult
+        fitter: ModelFitter
 
         Return
         ------
@@ -241,15 +253,13 @@ class BootstrapResult(rpickle.RPickler):
         """
         if len(bootstrapResults) == 0:
             raise ValueError("Must provide a non-empty list")
-        fitter = bootstrapResults[0].fitter
         parameterDct = {p: [] for p in bootstrapResults[0].parameterDct}
         numIteration = sum([r.numIteration for r in bootstrapResults])
         bootstrapError = sum([b.bootstrapError for b in bootstrapResults])
         fittedStatistic = None
         if numIteration > 0:
-            # Merge the fitter logs
-            fitter.logger = Logger.merge([b.fitter.logger
-                  for b in bootstrapResults])
+            # Merge the logs
+            logger = Logger.merge([b.logger for b in bootstrapResults])
             # Merge the statistics for fitted timeseries
             fittedStatistics = [b.fittedStatistic for b in bootstrapResults
                   if b.fittedStatistic is not None]
@@ -260,5 +270,8 @@ class BootstrapResult(rpickle.RPickler):
                     parameterDct[parameter].extend(
                           bootstrapResult.parameterDct[parameter])
             #
-        return BootstrapResult(fitter, numIteration, parameterDct,
+        fitter.logger = Logger.merge([fitter.logger, logger])
+        bootstrapResult = BootstrapResult(fitter, numIteration, parameterDct,
               fittedStatistic, bootstrapError=bootstrapError)
+        bootstrapResult.setFitter(fitter)
+        return bootstrapResult

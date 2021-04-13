@@ -159,7 +159,6 @@ class ModelFitterCore(rpickle.RPickler):
         else:
             pass
 
-    # TESTME:
     def copy(self, isKeepLogger=False, isKeepOptimizer=False, **kwargs):
         """
         Creates a copy of the model fitter, overridding any argument
@@ -513,7 +512,7 @@ class ModelFitterCore(rpickle.RPickler):
             try:
                 dataArr = roadrunnerModel.simulate(startTime, endTime, numPoint)
             except Exception as err:
-                _logger.exception("Roadrunner exception: %s", err)
+                _logger.exception("Roadrunner exception: %s" % err)
                 dataArr = None
         return dataArr
 

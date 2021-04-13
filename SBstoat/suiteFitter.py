@@ -47,7 +47,7 @@ def mkSuiteFitter(modelSpecifications, datasets, parametersCol,
     for modelSpecification, dataset, parametersToFit in   \
           zip(modelSpecifications, datasets, parametersCol):
         modelFitter = ModelFitter(modelSpecification, dataset,
-              parametersToFit=parametersToFit, **kwargs)
+              parametersToFit=parametersToFit, logger=logger, **kwargs)
         modelFitters.append(modelFitter)
     return SuiteFitter(modelFitters, modelNames=modelNames,
           modelWeights=modelWeights, fitterMethods=fitterMethods,
