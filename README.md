@@ -146,6 +146,7 @@ More details of the features of `SBstoat` can be found in this
 * Improved performance of SuiteFitter by a factor of 7.
 * Parallel implementation of Cross Validation
 * Cross validation for ``SuiteFitter``; runs in parallel for each fold.
+* Speedup of bootstrap by a factor of 5 by reducing the volume and complexity of data transferred by ``BootstrapRunner``.
 
 
 # Developer Notes
