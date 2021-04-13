@@ -142,6 +142,11 @@ More details of the features of `SBstoat` can be found in this
 * Random restarts for fitting. The quality of a fit often depends on the initial values used for parameters. The optional keyword ``numRestart`` for constructing ``ModelFitter`` indicates the number of random restarts to use in a fit.
 
 ## Release 1.16
+* **Breaking change**: The interface to SuiteFitter has changed. See
+the tutorial for details. You can retain the old functionality
+(with exactly the same arguments)  by using
+``SBstoat.mkSuiteFitter`` instead of the constructor
+``SBstoat.SuiteFitter``.
 * Benchmark for ``SuiteFitter``, ``benchmarkSuiteFitter.py``.
 * Improved performance of SuiteFitter by a factor of 7.
 * Parallel implementation of Cross Validation
