@@ -225,8 +225,8 @@ class ModelFitterCore(rpickle.RPickler):
             selectedColumns = callKwargs["selectedColumns"]
             if not isinstance(modelSpecification, str):
                 try:
-                    callPargs[modelSpecificationIdx] =  \
-                          self.modelSpecification.getAntimony()
+                    modelSpecification = self.modelSpecification.getAntimony()
+                    callPargs[modelSpecificationIdx] = modelSpecification
                     observedTS, selectedColumns = self._adjustNames(
                           modelSpecification, observedTS)
                     callPargs[observedDataIdx] = observedTS
