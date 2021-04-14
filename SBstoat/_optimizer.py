@@ -171,8 +171,9 @@ class Optimizer():
                 self.logger.error(msg, excp)
                 continue
             # Update the parameters
-            _helpers.updateParameterValues(self.params,
-                  wrapperFunction.bestParamDct)
+            if wrapperFunction.bestParamDct is not None:
+                _helpers.updateParameterValues(self.params,
+                      wrapperFunction.bestParamDct)
             # Update other statistics
             self.rssq = wrapperFunction.rssq
             self.performanceStats.append(list(wrapperFunction.perfStatistics))

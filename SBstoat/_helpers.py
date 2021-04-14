@@ -256,8 +256,7 @@ def updateParameterValues(parameters, newValuesDct):
     """
     currentValuesDct = parameters.valuesdict()
     for parameterName in currentValuesDct.keys():
-        parameters[parameterName].set(
-              value=newValuesDct[parameterName])
+        parameters[parameterName].set(value=newValuesDct[parameterName])
 
 
 class OptimizerMethod():
