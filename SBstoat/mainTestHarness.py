@@ -55,6 +55,7 @@ BOOTSTRAP = "bootstrap"
 NUM_NOERROR = "num_noerror"
 NUM_MODEL = "num_model"
 LOGGER = "logger"
+MAX_RELATIVE_ERROR = 1.0
 # Context variables that are saved. Uses the following naming convention:
 #  ends in "s" is a list: initialized to []
 #  ends in "Dct" is a dict: initialized to {}
@@ -226,15 +227,39 @@ class Runner(object):
             raise ValueError("***Restart file %s does not exist"
                   % self.pclPath)
 
+    @staticmethod
+    def _pruneRelativeErrors(relativeErrors, maxError=MAX_RELATIVE_ERROR):
+        """
+        Deletes Nans. Removes very large values.
+
+        Parameters
+        ----------
+        list: relative errors
+        maxError: maximum relative error considered
+        
+        Returns
+        -------
+        list: pruned errors
+        float: fraction pruned from non-nan values
+        """
+        noNanErrors = [v for v in relativeErrors if not np.isnan(v)]
+        prunedErrors = [v for v in noNanErrors if v <= maxError]
+        prunedFrc = 1 - len(prunedErrors) / len(noNanErrors)
+        return prunedErrors, prunedFrc
+
     def plot(self):
         """
         Does all plots.
         """
         _, axes = plt.subplots(1, 2)
-        maxBin1 = self._plotRelativeErrors(axes[0], self.fitModelRelerrors,
-              FIT_MODEL)
-        maxBin2 = self._plotRelativeErrors(axes[1], self.bootstrapRelerrors,
-              BOOTSTRAP, isYLabel=False)
+        prunedModelErrors, modelPrunedFrc =  \
+            self._pruneRelativeErrors(self.fitModelRelerrors)
+        prunedBootstrapErrors, bootstrapPrunedFrc =  \
+            self._pruneRelativeErrors(self.bootstrapRelerrors)
+        maxBin1 = self._plotRelativeErrors(axes[0], prunedModelErrors,
+              FIT_MODEL, modelPrunedFrc)
+        maxBin2 = self._plotRelativeErrors(axes[1], prunedBootstrapErrors,
+              BOOTSTRAP, bootstrapPrunedFrc, isYLabel=False)
         maxBin = max(maxBin1, maxBin2)
         if maxBin > 0:
             axes[0].set_ylim([0, maxBin])
@@ -251,7 +276,7 @@ class Runner(object):
         plt.show()
         plt.savefig(self.figPath)
 
-    def _plotRelativeErrors(self, ax, relErrors, title, isYLabel=True):
+    def _plotRelativeErrors(self, ax, relErrors, title, prunedFrc, isYLabel=True):
         """
         Plots histogram of relative errors.
 
@@ -260,13 +285,16 @@ class Runner(object):
         ax: Matplotlib.axes
         relErrors: list-float
         title: str
+        prunedFrc: float
+        isYlabel: bool
 
         Returns
         -------
         float: maximum number in a bin
         """
         rr = ax.hist(relErrors)
-        ax.set_title(title)
+        fullTitle = "%s. Frc Pruned: %2.2f" % (title, prunedFrc)
+        ax.set_title(fullTitle)
         ax.set_xlabel("relative error")
         if isYLabel:
             ax.set_ylabel("number parameters")
