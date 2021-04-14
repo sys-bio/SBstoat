@@ -153,6 +153,8 @@ the tutorial for details. You can retain the old functionality
 * Cross validation for ``SuiteFitter``; runs in parallel for each fold.
 * Speedup of bootstrap by a factor of 5 by reducing the volume and complexity of data transferred by ``BootstrapRunner``.
 
+## Release 2.00
+* Implement the [PEtab standard](https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1008646).
 
 # Developer Notes
 
