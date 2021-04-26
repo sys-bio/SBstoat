@@ -612,7 +612,10 @@ class ModelFitterCore(rpickle.RPickler):
         NamedTimeseries
         """
         fixedArr = self._simulateNumpy(**kwargs)
-        return NamedTimeseries(namedArray=fixedArr)
+        if fixedArr is not None:
+            return NamedTimeseries(namedArray=fixedArr)
+        else:
+            return None
 
     def _simulateNumpy(self, params=None, startTime=None, endTime=None, numPoint=None):
         """

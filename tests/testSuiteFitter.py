@@ -160,7 +160,8 @@ class TestSuiteFitterCore(unittest.TestCase):
               numModel)
         self.fitter = SBstoat.mkSuiteFitter(self.modelSpecifications,
               self.datasets,
-              self.parameterNamesCollection, modelNames=self.modelNames,
+              self.parameterNamesCollection,
+              modelNames=self.modelNames,
               fitterMethods=METHODS)
 
     def tearDown(self):

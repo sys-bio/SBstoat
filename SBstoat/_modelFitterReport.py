@@ -54,6 +54,9 @@ class ModelFitterReport(ModelFitterBootstrap):
         -------
         f.reportFit()
         """
+        if (params is None) or (minimizerResult is None):
+            msg = "\n ***No parameters estimated. Check the log for errors.***\n"
+            return msg
         VARIABLE_STG = "[[Variables]]"
         CORRELATION_STG = "[[Correlations]]"
         valuesDct = params.valuesdict()

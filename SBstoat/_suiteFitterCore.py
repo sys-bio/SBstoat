@@ -137,15 +137,15 @@ class ResidualsServer(AbstractServer):
         """
         super().__init__(fitter, inputQ, outputQ, logger=logger)
         self.fitter = fitter
-   
+
     def runFunction(self, params):
         """
-        
+
         Parameters
         ----------
         params: lmfit.parameters
             Parameters for this simulation
-        
+
         Returns
         -------
         np.array: residuals
@@ -184,7 +184,7 @@ class SuiteFitterCore():
             self.modelWeights = np.repeat(1, self.numModel)
         self.modelNames = modelNames
         if self.modelNames is None:
-            self.modelNames = [str(v) for v in range(len(modelSpecifications))]
+            self.modelNames = [str(v) for v in range(len(modelFitters))]
         self._numRestart = numRestart
         self._isParallel = isParallel
         self.logger = logger
@@ -193,7 +193,7 @@ class SuiteFitterCore():
             msg = "Length of modelNames must be same as number of modelFitters."
             raise ValueError(msg)
         #
-        self.fitterDct = {n: f for n, f in zip(modelNames, modelFitters)}
+        self.fitterDct = {n: f for n, f in zip(self.modelNames, modelFitters)}
         # Construct tha parameters for each model
         self.parametersCollection = [f.params for f in self.fitterDct.values()]
         self.parameterManager = _ParameterManager(self.modelNames,
@@ -239,8 +239,9 @@ class SuiteFitterCore():
         if self._isParallel and (self.manager is not None):
             residualsCollection = self.manager.submit(parametersList)
         else:
-            residualsCollection = [s.runFunction(p) for s, p in 
-                  zip(self.residualsServers, parametersList)]
+            residualsCollection = []
+            for server, parameters in zip(self.residualsServers, parametersList):
+                residualsCollection.append(server.runFunction(parameters))
         normalizedCollection = [w*a for w, a in zip(self.modelWeights,
               residualsCollection)]
         return normalizedCollection
@@ -303,15 +304,17 @@ class SuiteFitterCore():
 
     def reportFit(self):
         """
-
-        Parameters
-        ----------
-
         Returns
         -------
+        atr
         """
-        return ModelFitter.reportTheFit(self.optimizer.minimizerResult,
-              self.params)
+        if self.params is not None:
+            msg = ModelFitter.reportTheFit(self.optimizer.minimizerResult,
+                  self.params)
+        else:
+            msg = "No parameters estimated. Check the log for errors."
+        return(msg)
+
 
     def plotResidualsSSQ(self, isPlot=True):
         """
@@ -321,7 +324,7 @@ class SuiteFitterCore():
         ----------
         isPlot: bool
         """
-        fig, ax = plt.subplots(1)
+        _, ax = plt.subplots(1)
         rssqs = [np.sum(v**2) for v in self._calcResiduals(self.params)]
         totalRssq = np.sum(rssqs)
         fracs = rssqs/totalRssq
